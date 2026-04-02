@@ -2,6 +2,7 @@
   "expo": {
     "name": "fairfuhrer-mobile",
     "slug": "fairfuhrer-mobile",
+    "owner": "darsim",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -21,10 +22,20 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.fairfuehrer.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "feab62c4-b204-4da1-a5f2-34d240a5b139"
+      }
+    },
+    "plugins": [
+      "@rnmapbox/maps",
+      "expo-router"
+    ]
   }
 }
