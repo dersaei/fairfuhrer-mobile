@@ -99,6 +99,11 @@ export interface DirectusOrte {
   Land?: string;
 }
 
+export interface DirectusEinstellungen {
+  Logo?: string;
+  Slogan?: string;
+}
+
 // ========================================
 // TYPY DLA UŻYTKOWNIKA / AUTH
 // ========================================

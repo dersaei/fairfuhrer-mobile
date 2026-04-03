@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   ImageBackground,
+  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -19,7 +20,11 @@ import * as Location from "expo-location";
 import { readItems } from "@directus/sdk";
 import { supabase } from "@/lib/supabase";
 import { directus } from "@/lib/directus";
-import type { DirectusOrte, DirectusKategorie } from "@/types";
+import type {
+  DirectusOrte,
+  DirectusKategorie,
+  DirectusEinstellungen,
+} from "@/types";
 
 const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
@@ -157,6 +162,8 @@ function KategorieModal({
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function ListeScreen() {
+  const [einstellungen, setEinstellungen] =
+    useState<DirectusEinstellungen | null>(null);
   const [allPlaces, setAllPlaces] = useState<DirectusOrte[]>([]);
   const [allCategories, setAllCategories] = useState<DirectusKategorie[]>([]);
   const [orderedIds, setOrderedIds] = useState<number[] | null>(null);
@@ -169,7 +176,11 @@ export default function ListeScreen() {
 
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
-  const [searchLayout, setSearchLayout] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [searchLayout, setSearchLayout] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
   const searchRowRef = useRef<View>(null);
 
   useEffect(() => {
@@ -177,7 +188,12 @@ export default function ListeScreen() {
 
     async function init() {
       try {
-        const [places, categories] = await Promise.all([
+        const [settings, places, categories] = await Promise.all([
+          directus.request(
+            readItems("Einstellungen" as never, {
+              fields: ["Logo", "Slogan"] as never[],
+            }),
+          ),
           directus.request(
             readItems("Orte" as never, {
               fields: [
@@ -207,6 +223,7 @@ export default function ListeScreen() {
         ]);
 
         if (!mounted) return;
+        setEinstellungen(settings as unknown as DirectusEinstellungen);
         setAllPlaces(places as unknown as DirectusOrte[]);
         setAllCategories(categories as unknown as DirectusKategorie[]);
       } catch {
@@ -323,10 +340,22 @@ export default function ListeScreen() {
 
   const ListHeader = (
     <View style={styles.listHeader}>
-      <Text style={styles.logo}>FAIRFÜHRER</Text>
-      <Text style={styles.tagline}>
-        Der Audioguide für nachhaltiges Leben und Reisen
-      </Text>
+      {einstellungen?.Logo ? (
+        <Image
+          source={{ uri: `${DIRECTUS_URL}/assets/${einstellungen.Logo}` }}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
+      ) : (
+        <Text style={styles.logo}>FAIRFÜHRER</Text>
+      )}
+      {einstellungen?.Slogan ? (
+        <Text style={styles.tagline}>{einstellungen.Slogan}</Text>
+      ) : (
+        <Text style={styles.tagline}>
+          Der Audioguide für nachhaltiges Leben und Reisen
+        </Text>
+      )}
 
       <View style={styles.searchContainer}>
         <View style={styles.searchWrapper}>
@@ -334,9 +363,11 @@ export default function ListeScreen() {
             ref={searchRowRef}
             style={styles.searchRow}
             onLayout={() => {
-              searchRowRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
-                setSearchLayout({ top: pageY + height, left: pageX, width });
-              });
+              searchRowRef.current?.measure(
+                (_x, _y, width, height, pageX, pageY) => {
+                  setSearchLayout({ top: pageY + height, left: pageX, width });
+                },
+              );
             }}
           >
             <TextInput
@@ -478,13 +509,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   listContent: {
-    paddingHorizontal: 16,
     paddingBottom: 24,
   },
   listHeader: {
     paddingTop: 8,
     paddingBottom: 12,
     gap: 5,
+  },
+  logoImage: {
+    width: "100%",
+    height: 60,
+    marginHorizontal: 0,
   },
   logo: {
     fontFamily: "Anton_400Regular",
@@ -495,15 +530,17 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontFamily: "FiraSansCondensed_400Regular",
-    fontSize: 18,
-    color: "#000",
+    fontSize: 24,
+    padding: 5,
+    color: "#fc6c14",
     textAlign: "center",
   },
   searchContainer: {
     backgroundColor: "#fc6c14",
     padding: 12,
     gap: 8,
-    borderWidth: 1,
+    borderBottomWidth: 1,
+    borderTopWidth: 1,
     borderColor: "#000",
   },
   searchWrapper: {
@@ -588,7 +625,7 @@ const styles = StyleSheet.create({
   },
   categoryChipText: {
     fontSize: 14,
-    color: "#fff",
+    color: "#000",
     fontFamily: "FiraSansCondensed_600SemiBold",
   },
   card: {
@@ -633,9 +670,8 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   cardBottom: {
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   cardName: {
     fontSize: 24,
@@ -644,7 +680,7 @@ const styles = StyleSheet.create({
   },
   cardLocation: {
     fontSize: 13,
-    color: "#ccc",
+    color: "#fff",
     fontFamily: "FiraSansCondensed_400Regular",
     marginTop: 2,
   },
@@ -653,7 +689,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   modalTitle: {
-    fontSize: 30,
+    fontSize: 40,
     fontFamily: "FiraSansCondensed_700Bold",
     color: "#000",
     textAlign: "center",
@@ -663,12 +699,12 @@ const styles = StyleSheet.create({
   },
   modalCloseBtn: {
     backgroundColor: "#fc6c14",
-    paddingVertical: 5,
+    paddingVertical: 6,
     alignItems: "center",
   },
   modalCloseBtnText: {
     color: "#fff",
-    fontSize: 30,
+    fontSize: 40,
     fontFamily: "FiraSansCondensed_700Bold",
   },
   modalRow: {
