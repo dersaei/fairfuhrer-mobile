@@ -218,21 +218,13 @@ function KategorieBar({
         })}
       </ScrollView>
 
-      {/* Strzałki — overlay absolutny, nie wypychają ScrollView */}
       {canScrollLeft && (
         <TouchableOpacity
           style={styles.kategorieArrowLeft}
           onPress={scrollLeft}
-          activeOpacity={0.8}
+          activeOpacity={0.7}
         >
-          <LinearGradient
-            colors={["rgba(255,255,255,0.95)", "rgba(255,255,255,0)"]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={styles.kategorieArrowGradient}
-          >
-            <Text style={styles.kategorieArrowText}>‹</Text>
-          </LinearGradient>
+          <Text style={styles.kategorieArrowText}>‹</Text>
         </TouchableOpacity>
       )}
 
@@ -240,16 +232,9 @@ function KategorieBar({
         <TouchableOpacity
           style={styles.kategorieArrowRight}
           onPress={scrollRight}
-          activeOpacity={0.8}
+          activeOpacity={0.7}
         >
-          <LinearGradient
-            colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.95)"]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={styles.kategorieArrowGradient}
-          >
-            <Text style={styles.kategorieArrowText}>›</Text>
-          </LinearGradient>
+          <Text style={styles.kategorieArrowText}>›</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -269,13 +254,20 @@ export default function ListeScreen() {
 
   const [query, setQuery] = useState("");
   const [geoSuggestions, setGeoSuggestions] = useState<
-    { display_name: string; lat: string; lon: string }[]
+    {
+      place_id: number;
+      name: string;
+      display_name: string;
+      lat: string;
+      lon: string;
+    }[]
   >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gpsOrderedIdsRef = useRef<number[] | null>(null);
+  const flatListRef = useRef<FlatList<DirectusOrte>>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -385,7 +377,7 @@ export default function ListeScreen() {
     }
     debounceRef.current = setTimeout(async () => {
       try {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&limit=6&addressdetails=0&accept-language=de`;
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&limit=7&addressdetails=0&accept-language=de&featuretype=city,town,village,county,state,country`;
         const res = await fetch(url, {
           headers: { "User-Agent": "FairFuehrer/1.0" },
         });
@@ -399,8 +391,14 @@ export default function ListeScreen() {
   }, []);
 
   const selectGeoSuggestion = useCallback(
-    async (item: { display_name: string; lat: string; lon: string }) => {
-      setQuery(item.display_name);
+    async (item: {
+      place_id: number;
+      name: string;
+      display_name: string;
+      lat: string;
+      lon: string;
+    }) => {
+      setQuery(item.name || item.display_name);
       setShowSuggestions(false);
       setGeoSuggestions([]);
       Keyboard.dismiss();
@@ -412,6 +410,7 @@ export default function ListeScreen() {
         });
         if (data) {
           setOrderedIds((data as { id: number }[]).map((r) => r.id));
+          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
         }
       } catch {
         // fallback — zostają GPS orderedIds
@@ -445,26 +444,50 @@ export default function ListeScreen() {
     [],
   );
 
-  const ListHeader = (
-    <View style={styles.listHeader}>
-      {einstellungen?.Logo ? (
-        <Image
-          source={{ uri: `${DIRECTUS_URL}/assets/${einstellungen.Logo}` }}
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
-      ) : (
-        <Text style={styles.logo}>FAIRFÜHRER</Text>
-      )}
-      {einstellungen?.Slogan ? (
-        <Text style={styles.tagline}>{einstellungen.Slogan}</Text>
-      ) : (
-        <Text style={styles.tagline}>
-          Der Audioguide für nachhaltiges Leben und Reisen
-        </Text>
-      )}
+  // Logo + slogan — statyczne, bezpiecznie w ListHeaderComponent
+  const renderListHeader = useCallback(
+    () => (
+      <View style={styles.listHeader}>
+        {einstellungen?.Logo ? (
+          <Image
+            source={{ uri: `${DIRECTUS_URL}/assets/${einstellungen.Logo}` }}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+        ) : (
+          <Text style={styles.logo}>FAIRFÜHRER</Text>
+        )}
+        {einstellungen?.Slogan ? (
+          <Text style={styles.tagline}>{einstellungen.Slogan}</Text>
+        ) : (
+          <Text style={styles.tagline}>
+            Der Audioguide für nachhaltiges Leben und Reisen
+          </Text>
+        )}
+      </View>
+    ),
+    [einstellungen],
+  );
 
-      {/* Pasek wyszukiwania */}
+  if (isLoading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#fc6c14" />
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]}>
+        <Text style={styles.errorText}>{error}</Text>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      {/* Pasek wyszukiwania — poza FlatList, nie remontuje się przy wpisywaniu */}
       <View style={styles.searchBar}>
         <TextInput
           style={styles.searchInput}
@@ -502,16 +525,21 @@ export default function ListeScreen() {
         )}
       </View>
 
-      {/* Sugestie Nominatim */}
+      {/* Sugestie */}
       {showSuggestions && geoSuggestions.length > 0 && (
         <View style={styles.suggestionsBox}>
           {geoSuggestions.map((s) => (
             <TouchableOpacity
-              key={s.display_name}
+              key={String(s.place_id)}
               style={styles.suggestionItem}
               onPress={() => selectGeoSuggestion(s)}
             >
-              <Text style={styles.suggestionText}>{s.display_name}</Text>
+              <Text style={styles.suggestionText}>
+                {s.name || s.display_name}
+              </Text>
+              <Text style={styles.suggestionSubtext} numberOfLines={1}>
+                {s.display_name}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -523,32 +551,13 @@ export default function ListeScreen() {
         selectedIds={selectedCategoryIds}
         onToggle={toggleCategory}
       />
-    </View>
-  );
 
-  if (isLoading) {
-    return (
-      <SafeAreaView style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#fc6c14" />
-      </SafeAreaView>
-    );
-  }
-
-  if (error) {
-    return (
-      <SafeAreaView style={[styles.container, styles.centered]}>
-        <Text style={styles.errorText}>{error}</Text>
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
       <FlatList
+        ref={flatListRef}
         data={displayedPlaces}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderPin}
-        ListHeaderComponent={ListHeader}
+        ListHeaderComponent={renderListHeader}
         ListEmptyComponent={
           <View style={styles.centered}>
             <Text style={styles.emptyText}>Keine Ergebnisse gefunden.</Text>
@@ -646,7 +655,13 @@ const styles = StyleSheet.create({
   suggestionText: {
     fontSize: 16,
     color: "#000",
+    fontFamily: "FiraSansCondensed_600SemiBold",
+  },
+  suggestionSubtext: {
+    fontSize: 12,
+    color: "#555",
     fontFamily: "FiraSansCondensed_400Regular",
+    marginTop: 1,
   },
   // Pasek kategorii
   kategorieBar: {
@@ -664,23 +679,18 @@ const styles = StyleSheet.create({
   kategorieScrollContent: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    gap: 6,
   },
   kategorieTab: {
     paddingHorizontal: 12,
     paddingVertical: 5,
-    borderWidth: 1,
     borderColor: "#000",
     backgroundColor: "transparent",
   },
   kategorieTabActive: {
     backgroundColor: "#000",
-    borderColor: "#000",
   },
   kategorieTabText: {
-    fontSize: 14,
+    fontSize: 18,
     fontFamily: "FiraSansCondensed_600SemiBold",
     color: "#000",
   },
@@ -695,7 +705,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 10,
     justifyContent: "center",
-    backgroundColor: "#ffffff",
+    alignItems: "center",
+    backgroundColor: "#000",
+    width: 44,
   },
   kategorieArrowRight: {
     position: "absolute",
@@ -704,18 +716,14 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 10,
     justifyContent: "center",
-    backgroundColor: "#ffffff",
-  },
-  kategorieArrowGradient: {
-    height: "100%",
-    width: 52,
-    justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#000",
+    width: 44,
   },
   kategorieArrowText: {
-    fontSize: 32,
-    color: "#000",
-    lineHeight: 36,
+    fontSize: 28,
+    color: "#fff",
+    lineHeight: 32,
   },
   // PinCard
   categoryChip: {
