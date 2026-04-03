@@ -128,11 +128,11 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   logo: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: '#2D6A4F',
+    fontFamily: 'Anton_400Regular',
+    fontSize: 32,
+    color: '#fc6c14',
     textAlign: 'center',
-    letterSpacing: 2,
+    letterSpacing: 3,
     marginBottom: 8,
   },
   title: {

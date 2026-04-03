@@ -1,12 +1,12 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function ListeScreen() {
+export default function KarteScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.placeholder}>
-        <Text style={styles.title}>Liste</Text>
-        <Text style={styles.subtitle}>Pin-Liste mit Suche — kommt bald</Text>
+        <Text style={styles.title}>Karte</Text>
+        <Text style={styles.subtitle}>Mapbox mit Pins — kommt bald</Text>
       </View>
     </SafeAreaView>
   );

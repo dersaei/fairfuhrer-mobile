@@ -95,6 +95,8 @@ export interface DirectusOrte {
   Galerie_Bilder?: string[];
   Galerie?: string[];
   Zertifizierungen?: DirectusZertifizierungItem[];
+  Stadt?: string;
+  Land?: string;
 }
 
 // ========================================

@@ -1,6 +1,13 @@
 import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { View } from 'react-native';
+import { useFonts, Anton_400Regular } from '@expo-google-fonts/anton';
+import {
+  FiraSansCondensed_400Regular,
+  FiraSansCondensed_600SemiBold,
+  FiraSansCondensed_700Bold,
+} from '@expo-google-fonts/fira-sans-condensed';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 
 function RootLayoutNav() {
@@ -13,11 +20,7 @@ function RootLayoutNav() {
 
     const inAuthGroup = segments[0] === '(auth)';
 
-    if (!session && !inAuthGroup) {
-      // Nie zalogowany — przekieruj do logowania
-      router.replace('/(auth)/login');
-    } else if (session && inAuthGroup) {
-      // Zalogowany — przekieruj do głównego ekranu
+    if (session && inAuthGroup) {
       router.replace('/(tabs)');
     }
   }, [session, isLoading, segments, router]);
@@ -31,6 +34,17 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Anton_400Regular,
+    FiraSansCondensed_400Regular,
+    FiraSansCondensed_600SemiBold,
+    FiraSansCondensed_700Bold,
+  });
+
+  if (!fontsLoaded) {
+    return <View style={{ flex: 1, backgroundColor: '#fff' }} />;
+  }
+
   return (
     <AuthProvider>
       <StatusBar style="auto" />

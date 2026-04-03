@@ -32,7 +32,9 @@
     },
     "plugins": [
       "@rnmapbox/maps",
-      "expo-router"
+      "expo-router",
+      "expo-font",
+      "expo-location"
     ]
   }
 }
