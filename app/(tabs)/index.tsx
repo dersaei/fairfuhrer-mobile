@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, memo } from "react";
 import {
   View,
   Text,
@@ -46,7 +46,7 @@ function getCategoriesFromPlace(place: DirectusOrte): DirectusKategorie[] {
 
 // ─── PinCard ────────────────────────────────────────────────────────────────
 
-function PinCard({ place }: { place: DirectusOrte }) {
+const PinCard = memo(function PinCard({ place }: { place: DirectusOrte }) {
   const imageUrl = getImageUrl(place);
   const categories = getCategoriesFromPlace(place);
 
@@ -66,12 +66,7 @@ function PinCard({ place }: { place: DirectusOrte }) {
           style={styles.gradientBottom}
         />
         <View style={styles.cardTopRow}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.chipScroll}
-            contentContainerStyle={styles.chipScrollContent}
-          >
+          <View style={styles.chipWrap}>
             {categories.map((cat) => (
               <View
                 key={cat.id}
@@ -83,7 +78,7 @@ function PinCard({ place }: { place: DirectusOrte }) {
                 <Text style={styles.categoryChipText}>{cat.Name}</Text>
               </View>
             ))}
-          </ScrollView>
+          </View>
         </View>
 
         <View style={styles.cardBottom}>
@@ -97,7 +92,9 @@ function PinCard({ place }: { place: DirectusOrte }) {
       </ImageBackground>
     </View>
   );
-}
+});
+
+const ItemSeparator = () => <View style={{ height: 12 }} />;
 
 // ─── KategorieBar ────────────────────────────────────────────────────────────
 
@@ -134,6 +131,15 @@ function KategorieBar({
     [recalcArrows],
   );
 
+  const snapToStart = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (e.nativeEvent.contentOffset.x < 2) {
+        scrollRef.current?.scrollTo({ x: 0, animated: false });
+      }
+    },
+    [],
+  );
+
   const handleContentSizeChange = useCallback(
     (w: number) => {
       contentWidthRef.current = w;
@@ -167,6 +173,10 @@ function KategorieBar({
         showsHorizontalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        bounces={false}
+        overScrollMode="never"
+        onScrollEndDrag={snapToStart}
+        onMomentumScrollEnd={snapToStart}
         onContentSizeChange={(w) => handleContentSizeChange(w)}
         onLayout={(e) => handleLayout(e.nativeEvent.layout.width)}
         style={styles.kategorieScroll}
@@ -424,8 +434,8 @@ export default function ListeScreen() {
     setQuery("");
     setGeoSuggestions([]);
     setShowSuggestions(false);
-    // przywróć kolejność GPS
     setOrderedIds(gpsOrderedIdsRef.current);
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   }, []);
 
   const toggleCategory = useCallback((id: number | null) => {
@@ -563,7 +573,7 @@ export default function ListeScreen() {
             <Text style={styles.emptyText}>Keine Ergebnisse gefunden.</Text>
           </View>
         }
-        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        ItemSeparatorComponent={ItemSeparator}
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
         removeClippedSubviews
@@ -721,9 +731,11 @@ const styles = StyleSheet.create({
     width: 44,
   },
   kategorieArrowText: {
-    fontSize: 28,
+    fontSize: 24,
     color: "#fff",
-    lineHeight: 32,
+    lineHeight: 24,
+    includeFontPadding: false,
+    textAlignVertical: "center",
   },
   // PinCard
   categoryChip: {
@@ -772,12 +784,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 10,
   },
-  chipScroll: {
-    flex: 1,
-    marginRight: 8,
-  },
-  chipScrollContent: {
-    alignItems: "flex-start",
+  chipWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
   },
   cardBottom: {
     paddingHorizontal: 10,
