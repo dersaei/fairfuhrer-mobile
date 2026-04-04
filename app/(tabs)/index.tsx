@@ -19,6 +19,7 @@ import {
   Easing,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Svg, { Circle, G, Path } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { readItems } from "@directus/sdk";
@@ -50,6 +51,116 @@ function getCategoriesFromPlace(place: DirectusOrte): DirectusKategorie[] {
   ) as DirectusKategorie[];
 }
 
+// ─── Ikony kategorii (SVG Lucide paths) ──────────────────────────────────────
+
+const CATEGORY_COLORS: Record<number, string> = {
+  1: "#E45858", // Erlebnisse
+  2: "#6477E3", // Gastronomie & Übernachten
+  3: "#F0873D", // Einkaufen
+  5: "#42D742", // Engagement
+  8: "#E0D12E", // Unternehmen
+};
+
+// Lucide paths jako tablice stringów d="" — viewBox 0 0 24 24
+const CATEGORY_ICON_PATHS: Record<number, string[]> = {
+  1: [
+    // Binoculars
+    "M10 10h4",
+    "M19 7V4a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v3",
+    "M20 21a2 2 0 0 0 2-2v-3.851c0-1.39-2-2.962-2-4.829V8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v11a2 2 0 0 0 2 2z",
+    "M22 16L2 16",
+    "M4 21a2 2 0 0 1-2-2v-3.851c0-1.39 2-2.962 2-4.829V8a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v11a2 2 0 0 1-2 2z",
+    "M9 7V4a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v3",
+  ],
+  2: [
+    // Utensils
+    "M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2",
+    "M7 2v20",
+    "M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7",
+  ],
+  3: [
+    // ShoppingCart
+    "M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12",
+  ],
+  5: [
+    // HeartHandshake
+    "M19.414 14.414C21 12.828 22 11.5 22 9.5a5.5 5.5 0 0 0-9.591-3.676.6.6 0 0 1-.818.001A5.5 5.5 0 0 0 2 9.5c0 2.3 1.5 4 3 5.5l5.535 5.362a2 2 0 0 0 2.879.052 2.12 2.12 0 0 0-.004-3 2.124 2.124 0 1 0 3-3 2.124 2.124 0 0 0 3.004 0 2 2 0 0 0 0-2.828l-1.881-1.882a2.41 2.41 0 0 0-3.409 0l-1.71 1.71a2 2 0 0 1-2.828 0 2 2 0 0 1 0-2.828l2.823-2.762",
+  ],
+  8: [
+    // Building2
+    "M10 12h4",
+    "M10 8h4",
+    "M14 21v-3a2 2 0 0 0-4 0v3",
+    "M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2",
+    "M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16",
+  ],
+};
+
+const DEFAULT_ICON_PATHS = [
+  "M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0",
+  "M12 10m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0",
+];
+
+const ALL_ICON_PATHS = [
+  "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20",
+  "M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20",
+  "M2 12h20",
+];
+
+// Koła ShoppingCart jako osobne d-strings (circle nie ma d)
+const SHOPPING_CART_CIRCLES = [
+  { cx: "8", cy: "21", r: "1" },
+  { cx: "19", cy: "21", r: "1" },
+];
+
+function CategoryIcon({
+  categoryId,
+  color,
+  size = 36,
+}: {
+  categoryId: number | null;
+  color: string;
+  size?: number;
+}) {
+  const paths =
+    categoryId !== null
+      ? (CATEGORY_ICON_PATHS[categoryId] ?? DEFAULT_ICON_PATHS)
+      : ALL_ICON_PATHS;
+  const extraCircles = categoryId === 3 ? SHOPPING_CART_CIRCLES : [];
+
+  // Skalujemy ikonę do ~60% rozmiaru i centrujemy ją w okręgu
+  const scale = 0.6;
+  const offset = 12 * (1 - scale); // = 4.8 — przesuwa punkt (0,0) → wycentrowanie
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx="12" cy="12" r="11" fill={color} />
+      <G
+        fill="none"
+        stroke="white"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        transform={`translate(${offset}, ${offset}) scale(${scale})`}
+      >
+        {paths.map((d, i) => (
+          <Path key={i} d={d} />
+        ))}
+        {extraCircles.map((c, i) => (
+          <Circle
+            key={`c${i}`}
+            cx={c.cx}
+            cy={c.cy}
+            r={c.r}
+            fill="white"
+            stroke="white"
+          />
+        ))}
+      </G>
+    </Svg>
+  );
+}
+
 // ─── PinCard ────────────────────────────────────────────────────────────────
 
 const PinCard = memo(function PinCard({ place }: { place: DirectusOrte }) {
@@ -68,21 +179,18 @@ const PinCard = memo(function PinCard({ place }: { place: DirectusOrte }) {
           style={styles.gradientTop}
         />
         <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.6)"]}
+          colors={["transparent", "rgb(252, 108, 20, 0.6)"]}
           style={styles.gradientBottom}
         />
         <View style={styles.cardBottom}>
           <View style={styles.chipWrap}>
             {categories.map((cat) => (
-              <View
+              <CategoryIcon
                 key={cat.id}
-                style={[
-                  styles.categoryChip,
-                  { backgroundColor: cat.Farbe ?? "#666" },
-                ]}
-              >
-                <Text style={styles.categoryChipText}>{cat.Name}</Text>
-              </View>
+                categoryId={cat.id}
+                color={cat.Farbe ?? "#666"}
+                size={40}
+              />
             ))}
           </View>
           <Text style={styles.cardName} numberOfLines={3}>
@@ -96,16 +204,6 @@ const PinCard = memo(function PinCard({ place }: { place: DirectusOrte }) {
     </View>
   );
 });
-
-// ─── Ikony kategorii (emoji) ──────────────────────────────────────────────────
-
-const CATEGORY_EMOJI: Record<number, string> = {
-  1: "🔭", // Erlebnisse
-  2: "🍽️", // Gastronomie & Übernachten
-  3: "🛒", // Einkaufen
-  5: "🤝", // Engagement
-  8: "🏢", // Unternehmen
-};
 
 // ─── KategorieBar z wbudowanym menu ──────────────────────────────────────────
 
@@ -184,7 +282,9 @@ function KategorieBar({
             onPress={() => closeMenu(null)}
             activeOpacity={0.7}
           >
-            <Text style={styles.kategorieMenuIcon}>🗺️</Text>
+            <View style={styles.kategorieMenuIcon}>
+              <CategoryIcon categoryId={null} color="#000" />
+            </View>
             <Text
               style={[
                 styles.kategorieMenuText,
@@ -207,9 +307,14 @@ function KategorieBar({
                 onPress={() => closeMenu(cat.id)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.kategorieMenuIcon}>
-                  {CATEGORY_EMOJI[cat.id] ?? "📍"}
-                </Text>
+                <View style={styles.kategorieMenuIcon}>
+                  <CategoryIcon
+                    categoryId={cat.id}
+                    color={
+                      isActive ? "#fff" : (CATEGORY_COLORS[cat.id] ?? "#fc6c14")
+                    }
+                  />
+                </View>
                 <Text
                   style={[
                     styles.kategorieMenuText,
@@ -225,31 +330,49 @@ function KategorieBar({
       )}
 
       {/* Trigger */}
-      <TouchableOpacity
-        style={styles.kategorieBar}
-        onPress={openMenu}
-        activeOpacity={0.85}
-      >
-        {selectedCat ? (
-          <>
-            <Text style={styles.kategorieBarText}>
-              {CATEGORY_EMOJI[selectedCat.id] ?? "📍"} {selectedCat.Name}
-            </Text>
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation();
-                onSelect(null);
-              }}
-              style={styles.kategorieClearBtn}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={styles.kategorieClearText}>✕</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <Text style={styles.kategorieBarText}>Kategorie wählen ›</Text>
-        )}
-      </TouchableOpacity>
+      {(() => {
+        const barColor = selectedCat
+          ? (CATEGORY_COLORS[selectedCat.id] ?? "#fc6c14")
+          : "#000";
+        return (
+          <TouchableOpacity
+            style={[styles.kategorieBar, { backgroundColor: barColor }]}
+            onPress={openMenu}
+            activeOpacity={0.85}
+          >
+            {selectedCat ? (
+              <>
+                <View style={styles.kategorieBarIcon}>
+                  <CategoryIcon
+                    categoryId={selectedCat.id}
+                    color={barColor}
+                    size={28}
+                  />
+                </View>
+                <Text style={[styles.kategorieBarText, { color: "#fff" }]}>
+                  {selectedCat.Name}
+                </Text>
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    onSelect(null);
+                  }}
+                  style={styles.kategorieClearBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={[styles.kategorieClearText, { color: "#fff" }]}>
+                    ✕
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text style={[styles.kategorieBarText, { color: "#fff" }]}>
+                Kategorie wählen ›
+              </Text>
+            )}
+          </TouchableOpacity>
+        );
+      })()}
     </View>
   );
 }
@@ -522,7 +645,15 @@ export default function ListeScreen() {
 
       {/* Zur Karte */}
       <View style={styles.zurKarteBar}>
-        <Text style={styles.zurKarteText}>Zur Karte</Text>
+        <TouchableOpacity style={styles.zurKarteBtn} activeOpacity={0.7}>
+          <Text style={styles.zurKarteText}>Zur Karte</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.zurKarteBtn} activeOpacity={0.7}>
+          <Text style={styles.zurKarteText}>Hilfe</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.zurKarteBtn} activeOpacity={0.7}>
+          <Text style={styles.zurKarteText}>Anmelden</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Karty — przewijane poziomo */}
@@ -698,9 +829,9 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontFamily: "FiraSansCondensed_400Regular",
-    fontSize: 22,
+    fontSize: 21,
     paddingVertical: 4,
-    paddingHorizontal: 30,
+    paddingHorizontal: 40,
     color: "#fc6c14",
     textAlign: "center",
   },
@@ -751,12 +882,13 @@ const styles = StyleSheet.create({
   // Zur Karte
   zurKarteBar: {
     backgroundColor: "#000",
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: "#000",
+    flexDirection: "row",
+  },
+  zurKarteBtn: {
+    flex: 1,
     paddingHorizontal: 14,
     paddingVertical: Platform.OS === "ios" ? 12 : 10,
-    justifyContent: "center",
+    alignItems: "center",
   },
   zurKarteText: {
     fontSize: 20,
@@ -768,8 +900,6 @@ const styles = StyleSheet.create({
   // Pasek wyszukiwania
   searchBar: {
     backgroundColor: "#fc6c14",
-    borderTopWidth: 1,
-    borderColor: "#000",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 14,
@@ -829,11 +959,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "rgba(252, 108, 20, 0.1)",
     borderTopWidth: 1,
     borderColor: "#000",
     paddingHorizontal: 14,
     paddingVertical: Platform.OS === "ios" ? 12 : 10,
+  },
+  kategorieBarIcon: {
+    marginRight: 10,
   },
   kategorieBarText: {
     fontSize: 18,
@@ -867,8 +999,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: "100%",
     backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderColor: "#000",
     zIndex: 10,
   },
   kategorieMenuItem: {
@@ -876,17 +1006,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
   },
   kategorieMenuItemActive: {
     backgroundColor: "#000",
   },
   kategorieMenuIcon: {
-    fontSize: 22,
     marginRight: 14,
-    width: 30,
-    textAlign: "center",
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
   },
   kategorieMenuText: {
     fontSize: 20,
@@ -897,17 +1026,6 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   // PinCard
-  categoryChip: {
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: "#000",
-  },
-  categoryChipText: {
-    fontSize: 14,
-    color: "#000",
-    fontFamily: "FiraSansCondensed_600SemiBold",
-  },
   card: {
     overflow: "hidden",
     width: CARD_WIDTH,
@@ -945,7 +1063,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   cardName: {
-    fontSize: 45,
+    fontSize: 40,
     fontFamily: "FiraSansCondensed_700Bold",
     color: "#fff",
     textAlign: "center",
