@@ -15,6 +15,8 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Keyboard,
+  Animated,
+  Easing,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -32,8 +34,7 @@ const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const CARD_WIDTH = Math.round(SCREEN_WIDTH * 0.85);
-const CARD_SIDE_MARGIN = Math.round((SCREEN_WIDTH - CARD_WIDTH) / 2);
+const CARD_WIDTH = SCREEN_WIDTH;
 
 function getImageUrl(place: DirectusOrte): string | null {
   if (place.Titelbild) return `${DIRECTUS_URL}/assets/${place.Titelbild}`;
@@ -63,14 +64,14 @@ const PinCard = memo(function PinCard({ place }: { place: DirectusOrte }) {
         resizeMode="cover"
       >
         <LinearGradient
-          colors={["rgba(0,0,0,0.55)", "transparent"]}
+          colors={["rgba(0,0,0,0.5)", "transparent"]}
           style={styles.gradientTop}
         />
         <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.5)"]}
+          colors={["transparent", "rgba(0,0,0,0.6)"]}
           style={styles.gradientBottom}
         />
-        <View style={styles.cardTopRow}>
+        <View style={styles.cardBottom}>
           <View style={styles.chipWrap}>
             {categories.map((cat) => (
               <View
@@ -84,10 +85,7 @@ const PinCard = memo(function PinCard({ place }: { place: DirectusOrte }) {
               </View>
             ))}
           </View>
-        </View>
-
-        <View style={styles.cardBottom}>
-          <Text style={styles.cardName} numberOfLines={2}>
+          <Text style={styles.cardName} numberOfLines={3}>
             {place.Name}
           </Text>
           <Text style={styles.cardLocation} numberOfLines={1}>
@@ -99,157 +97,159 @@ const PinCard = memo(function PinCard({ place }: { place: DirectusOrte }) {
   );
 });
 
-// ─── KategorieBar ────────────────────────────────────────────────────────────
+// ─── Ikony kategorii (emoji) ──────────────────────────────────────────────────
+
+const CATEGORY_EMOJI: Record<number, string> = {
+  1: "🔭", // Erlebnisse
+  2: "🍽️", // Gastronomie & Übernachten
+  3: "🛒", // Einkaufen
+  5: "🤝", // Engagement
+  8: "🏢", // Unternehmen
+};
+
+// ─── KategorieBar z wbudowanym menu ──────────────────────────────────────────
 
 function KategorieBar({
   categories,
-  selectedIds,
-  onToggle,
+  selectedId,
+  onSelect,
 }: {
   categories: DirectusKategorie[];
-  selectedIds: number[];
-  onToggle: (id: number | null) => void;
+  selectedId: number | null;
+  onSelect: (id: number | null) => void;
 }) {
-  const scrollRef = useRef<ScrollView>(null);
-  const scrollXRef = useRef(0);
-  const scrollWidthRef = useRef(0);
-  const contentWidthRef = useRef(0);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [open, setOpen] = useState(false);
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const selectedCat = categories.find((c) => c.id === selectedId) ?? null;
 
-  const allSelected = selectedIds.length === 0;
+  const openMenu = useCallback(() => {
+    setOpen(true);
+    Animated.timing(slideAnim, {
+      toValue: 1,
+      duration: 250,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [slideAnim]);
 
-  const recalcArrows = useCallback(() => {
-    const x = scrollXRef.current;
-    const maxX = contentWidthRef.current - scrollWidthRef.current;
-    setCanScrollLeft(x > 2);
-    setCanScrollRight(maxX > 4 && x < maxX - 2);
-  }, []);
-
-  const handleScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      scrollXRef.current = e.nativeEvent.contentOffset.x;
-      recalcArrows();
+  const closeMenu = useCallback(
+    (id: number | null | "cancel") => {
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 200,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }).start(() => {
+        setOpen(false);
+        if (id !== "cancel") onSelect(id);
+      });
     },
-    [recalcArrows],
+    [slideAnim, onSelect],
   );
 
-  const snapToStart = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (e.nativeEvent.contentOffset.x < 2) {
-        scrollRef.current?.scrollTo({ x: 0, animated: false });
-      }
-    },
-    [],
-  );
+  const translateY = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [20, 0],
+  });
 
-  const handleContentSizeChange = useCallback(
-    (w: number) => {
-      contentWidthRef.current = w;
-      recalcArrows();
-    },
-    [recalcArrows],
-  );
-
-  const handleLayout = useCallback(
-    (w: number) => {
-      scrollWidthRef.current = w;
-      recalcArrows();
-    },
-    [recalcArrows],
-  );
-
-  const scrollLeft = useCallback(() => {
-    scrollRef.current?.scrollTo({ x: 0, animated: true });
-  }, []);
-
-  const scrollRight = useCallback(() => {
-    const target = contentWidthRef.current - scrollWidthRef.current;
-    scrollRef.current?.scrollTo({ x: Math.max(0, target), animated: true });
-  }, []);
+  const menuOpacity = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
 
   return (
-    <View style={styles.kategorieBar}>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        bounces={false}
-        overScrollMode="never"
-        onScrollEndDrag={snapToStart}
-        onMomentumScrollEnd={snapToStart}
-        onContentSizeChange={(w) => handleContentSizeChange(w)}
-        onLayout={(e) => handleLayout(e.nativeEvent.layout.width)}
-        style={styles.kategorieScroll}
-        contentContainerStyle={styles.kategorieScrollContent}
-      >
+    <View style={styles.kategorieWrapper}>
+      {/* Backdrop pokrywający cały ekran powyżej bottomSection */}
+      {open && (
         <TouchableOpacity
+          style={styles.kategorieBackdrop}
+          activeOpacity={1}
+          onPress={() => closeMenu("cancel")}
+        />
+      )}
+
+      {/* Menu wyrasta ku górze */}
+      {open && (
+        <Animated.View
           style={[
-            styles.kategorieTab,
-            allSelected && styles.kategorieTabActive,
+            styles.kategorieMenu,
+            { opacity: menuOpacity, transform: [{ translateY }] },
           ]}
-          onPress={() => onToggle(null)}
-          activeOpacity={0.7}
         >
-          <Text
+          <TouchableOpacity
             style={[
-              styles.kategorieTabText,
-              allSelected && styles.kategorieTabTextActive,
+              styles.kategorieMenuItem,
+              selectedId === null && styles.kategorieMenuItemActive,
             ]}
+            onPress={() => closeMenu(null)}
+            activeOpacity={0.7}
           >
-            Alles
-          </Text>
-        </TouchableOpacity>
-
-        {categories.map((cat) => {
-          const isActive = selectedIds.includes(cat.id);
-          return (
-            <TouchableOpacity
-              key={cat.id}
+            <Text style={styles.kategorieMenuIcon}>🗺️</Text>
+            <Text
               style={[
-                styles.kategorieTab,
-                isActive && {
-                  backgroundColor: cat.Farbe ?? "#fc6c14",
-                  borderColor: cat.Farbe ?? "#fc6c14",
-                },
+                styles.kategorieMenuText,
+                selectedId === null && styles.kategorieMenuTextActive,
               ]}
-              onPress={() => onToggle(cat.id)}
-              activeOpacity={0.7}
             >
-              <Text
+              Alle
+            </Text>
+          </TouchableOpacity>
+
+          {categories.map((cat) => {
+            const isActive = cat.id === selectedId;
+            return (
+              <TouchableOpacity
+                key={cat.id}
                 style={[
-                  styles.kategorieTabText,
-                  isActive && styles.kategorieTabTextActive,
+                  styles.kategorieMenuItem,
+                  isActive && { backgroundColor: cat.Farbe ?? "#fc6c14" },
                 ]}
+                onPress={() => closeMenu(cat.id)}
+                activeOpacity={0.7}
               >
-                {cat.Name}
-              </Text>
+                <Text style={styles.kategorieMenuIcon}>
+                  {CATEGORY_EMOJI[cat.id] ?? "📍"}
+                </Text>
+                <Text
+                  style={[
+                    styles.kategorieMenuText,
+                    isActive && styles.kategorieMenuTextActive,
+                  ]}
+                >
+                  {cat.Name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </Animated.View>
+      )}
+
+      {/* Trigger */}
+      <TouchableOpacity
+        style={styles.kategorieBar}
+        onPress={openMenu}
+        activeOpacity={0.85}
+      >
+        {selectedCat ? (
+          <>
+            <Text style={styles.kategorieBarText}>
+              {CATEGORY_EMOJI[selectedCat.id] ?? "📍"} {selectedCat.Name}
+            </Text>
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                onSelect(null);
+              }}
+              style={styles.kategorieClearBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.kategorieClearText}>✕</Text>
             </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {canScrollLeft && (
-        <TouchableOpacity
-          style={styles.kategorieArrowLeft}
-          onPress={scrollLeft}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.kategorieArrowText}>‹</Text>
-        </TouchableOpacity>
-      )}
-
-      {canScrollRight && (
-        <TouchableOpacity
-          style={styles.kategorieArrowRight}
-          onPress={scrollRight}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.kategorieArrowText}>›</Text>
-        </TouchableOpacity>
-      )}
+          </>
+        ) : (
+          <Text style={styles.kategorieBarText}>Kategorie wählen ›</Text>
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
@@ -278,7 +278,9 @@ export default function ListeScreen() {
   >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
+    null,
+  );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gpsOrderedIdsRef = useRef<number[] | null>(null);
   const flatListRef = useRef<FlatList<DirectusOrte>>(null);
@@ -363,11 +365,10 @@ export default function ListeScreen() {
   const displayedPlaces = useMemo(() => {
     let result = [...allPlaces];
 
-    if (selectedCategoryIds.length > 0) {
+    if (selectedCategoryId !== null) {
       result = result.filter((p) =>
         p.Kategorie?.some(
-          (k) =>
-            k.Kategorie_id && selectedCategoryIds.includes(k.Kategorie_id.id),
+          (k) => k.Kategorie_id && k.Kategorie_id.id === selectedCategoryId,
         ),
       );
     }
@@ -380,7 +381,7 @@ export default function ListeScreen() {
     }
 
     return result;
-  }, [allPlaces, selectedCategoryIds, orderedIds]);
+  }, [allPlaces, selectedCategoryId, orderedIds]);
 
   const fetchGeoSuggestions = useCallback((text: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -445,14 +446,7 @@ export default function ListeScreen() {
   }, []);
 
   const toggleCategory = useCallback((id: number | null) => {
-    if (id === null) {
-      setSelectedCategoryIds([]);
-    } else {
-      setSelectedCategoryIds((prev) => {
-        if (prev.includes(id)) return prev.filter((x) => x !== id);
-        return [...prev, id];
-      });
-    }
+    setSelectedCategoryId(id);
     setActiveIndex(0);
     flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, []);
@@ -464,6 +458,20 @@ export default function ListeScreen() {
     },
     [],
   );
+
+  const scrollToPrev = useCallback(() => {
+    const prev = activeIndex - 1;
+    if (prev < 0) return;
+    flatListRef.current?.scrollToIndex({ index: prev, animated: true });
+    setActiveIndex(prev);
+  }, [activeIndex]);
+
+  const scrollToNext = useCallback(() => {
+    const next = activeIndex + 1;
+    if (next >= displayedPlaces.length) return;
+    flatListRef.current?.scrollToIndex({ index: next, animated: true });
+    setActiveIndex(next);
+  }, [activeIndex, displayedPlaces.length]);
 
   const renderPin = useCallback(
     ({ item }: { item: DirectusOrte }) => (
@@ -492,138 +500,167 @@ export default function ListeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-        {/* Logo + Slogan */}
-        <View style={styles.header}>
-          {einstellungen?.Logo ? (
-            <Image
-              source={{ uri: `${DIRECTUS_URL}/assets/${einstellungen.Logo}` }}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-          ) : (
-            <Text style={styles.logo}>FAIRFÜHRER</Text>
-          )}
-          {einstellungen?.Slogan ? (
-            <Text style={styles.tagline}>{einstellungen.Slogan}</Text>
-          ) : (
-            <Text style={styles.tagline}>
-              Der Audioguide für nachhaltiges Leben und Reisen
-            </Text>
-          )}
-        </View>
+      {/* Logo + Slogan */}
+      <View style={styles.header}>
+        {einstellungen?.Logo ? (
+          <Image
+            source={{ uri: `${DIRECTUS_URL}/assets/${einstellungen.Logo}` }}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+        ) : (
+          <Text style={styles.logo}>FAIRFÜHRER</Text>
+        )}
+        {einstellungen?.Slogan ? (
+          <Text style={styles.tagline}>{einstellungen.Slogan}</Text>
+        ) : (
+          <Text style={styles.tagline}>
+            Der Audioguide für nachhaltiges Leben und Reisen
+          </Text>
+        )}
+      </View>
 
-        {/* Karty — przewijane poziomo */}
-        <View style={styles.cardsArea}>
-          {displayedPlaces.length === 0 ? (
-            <View style={styles.centered}>
-              <Text style={styles.emptyText}>Keine Ergebnisse gefunden.</Text>
-            </View>
-          ) : (
-            <FlatList
-              ref={flatListRef}
-              data={displayedPlaces}
-              keyExtractor={(item) => String(item.id)}
-              renderItem={renderPin}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-              decelerationRate="fast"
+      {/* Zur Karte */}
+      <View style={styles.zurKarteBar}>
+        <Text style={styles.zurKarteText}>Zur Karte</Text>
+      </View>
+
+      {/* Karty — przewijane poziomo */}
+      <View style={styles.cardsArea}>
+        {displayedPlaces.length === 0 ? (
+          <View style={styles.centered}>
+            <Text style={styles.emptyText}>Keine Ergebnisse gefunden.</Text>
+          </View>
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={displayedPlaces}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={renderPin}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            decelerationRate="fast"
+            keyboardShouldPersistTaps="handled"
+            removeClippedSubviews
+            maxToRenderPerBatch={4}
+            windowSize={5}
+            initialNumToRender={3}
+          />
+        )}
+
+        {/* Strzałka lewa */}
+        {activeIndex > 0 && (
+          <TouchableOpacity
+            style={styles.cardArrowLeft}
+            onPress={scrollToPrev}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={["rgba(0,0,0,0.45)", "transparent"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.cardArrowGradient}
+            >
+              <Text style={styles.cardArrowText}>‹</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
+        {/* Strzałka prawa */}
+        {activeIndex < displayedPlaces.length - 1 && (
+          <TouchableOpacity
+            style={styles.cardArrowRight}
+            onPress={scrollToNext}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={["transparent", "rgba(0,0,0,0.45)"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.cardArrowGradient}
+            >
+              <Text style={styles.cardArrowText}>›</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Dolna sekcja — kategorie + sugestie + wyszukiwarka */}
+      <View style={styles.bottomSection}>
+        {/* Pasek kategorii */}
+        <KategorieBar
+          categories={allCategories}
+          selectedId={selectedCategoryId}
+          onSelect={toggleCategory}
+        />
+
+        {/* Sugestie — absolutnie nad wyszukiwarką, nie wpływają na layout */}
+        {showSuggestions && geoSuggestions.length > 0 && (
+          <View style={styles.suggestionsBox}>
+            <ScrollView
               keyboardShouldPersistTaps="handled"
-              removeClippedSubviews
-              maxToRenderPerBatch={4}
-              windowSize={5}
-              initialNumToRender={3}
-            />
-          )}
-        </View>
-
-        {/* Paginacja — kropki */}
-        {displayedPlaces.length > 1 && (
-          <View style={styles.pagination}>
-            {displayedPlaces.map((_, i) => (
-              <View
-                key={i}
-                style={[styles.dot, i === activeIndex && styles.dotActive]}
-              />
-            ))}
+              bounces={false}
+              style={styles.suggestionsScroll}
+            >
+              {geoSuggestions.map((s) => (
+                <TouchableOpacity
+                  key={String(s.place_id)}
+                  style={styles.suggestionItem}
+                  onPress={() => selectGeoSuggestion(s)}
+                >
+                  <Text style={styles.suggestionText}>
+                    {s.name || s.display_name}
+                  </Text>
+                  <Text style={styles.suggestionSubtext} numberOfLines={1}>
+                    {s.display_name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         )}
 
-        {/* Dolna sekcja — kategorie + sugestie + wyszukiwarka */}
-        <View style={styles.bottomSection}>
-          {/* Pasek kategorii */}
-          <KategorieBar
-            categories={allCategories}
-            selectedIds={selectedCategoryIds}
-            onToggle={toggleCategory}
+        {/* Pasek wyszukiwania */}
+        <View style={styles.searchBar}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Suche…"
+            placeholderTextColor="rgba(255,255,255,0.7)"
+            value={query}
+            onChangeText={(t) => {
+              setQuery(t);
+              fetchGeoSuggestions(t);
+            }}
+            onFocus={() => {
+              if (query.length >= 2 && geoSuggestions.length > 0)
+                setShowSuggestions(true);
+            }}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+            onSubmitEditing={() => {
+              if (geoSuggestions.length > 0)
+                selectGeoSuggestion(geoSuggestions[0]);
+              else setShowSuggestions(false);
+            }}
           />
-
-          {/* Sugestie — absolutnie nad wyszukiwarką, nie wpływają na layout */}
-          {showSuggestions && geoSuggestions.length > 0 && (
-            <View style={styles.suggestionsBox}>
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                bounces={false}
-                style={styles.suggestionsScroll}
-              >
-                {geoSuggestions.map((s) => (
-                  <TouchableOpacity
-                    key={String(s.place_id)}
-                    style={styles.suggestionItem}
-                    onPress={() => selectGeoSuggestion(s)}
-                  >
-                    <Text style={styles.suggestionText}>
-                      {s.name || s.display_name}
-                    </Text>
-                    <Text style={styles.suggestionSubtext} numberOfLines={1}>
-                      {s.display_name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* Pasek wyszukiwania */}
-          <View style={styles.searchBar}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Suche…"
-              placeholderTextColor="rgba(255,255,255,0.7)"
-              value={query}
-              onChangeText={(t) => {
-                setQuery(t);
-                fetchGeoSuggestions(t);
-              }}
-              onFocus={() => {
-                if (query.length >= 2 && geoSuggestions.length > 0)
-                  setShowSuggestions(true);
-              }}
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="search"
-              onSubmitEditing={() => {
-                if (geoSuggestions.length > 0)
-                  selectGeoSuggestion(geoSuggestions[0]);
-                else setShowSuggestions(false);
-              }}
+          {isGeocoding && (
+            <ActivityIndicator
+              size="small"
+              color="#fff"
+              style={{ marginLeft: 8 }}
             />
-            {isGeocoding && (
-              <ActivityIndicator
-                size="small"
-                color="#fff"
-                style={{ marginLeft: 8 }}
-              />
-            )}
-            {query.length > 0 && !isGeocoding && (
-              <TouchableOpacity onPress={clearSearch} style={styles.clearBtn}>
-                <Text style={styles.clearBtnText}>✕</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          )}
+          {query.length > 0 && !isGeocoding && (
+            <TouchableOpacity onPress={clearSearch} style={styles.clearBtn}>
+              <Text style={styles.clearBtnText}>✕</Text>
+            </TouchableOpacity>
+          )}
         </View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -663,43 +700,70 @@ const styles = StyleSheet.create({
     fontFamily: "FiraSansCondensed_400Regular",
     fontSize: 22,
     paddingVertical: 4,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
     color: "#fc6c14",
     textAlign: "center",
   },
   // Karty
   cardsArea: {
     flex: 1,
+    position: "relative",
   },
   cardWrapper: {
     width: SCREEN_WIDTH,
     flex: 1,
+  },
+  // Strzałki kart
+  cardArrowLeft: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 72,
+    zIndex: 10,
+    justifyContent: "center",
+  },
+  cardArrowRight: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 72,
+    zIndex: 10,
+    justifyContent: "center",
+  },
+  cardArrowGradient: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: CARD_SIDE_MARGIN,
   },
-  // Paginacja
-  pagination: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 8,
-    gap: 6,
-  },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "rgba(0,0,0,0.2)",
-  },
-  dotActive: {
-    backgroundColor: "#fc6c14",
-    width: 9,
-    height: 9,
+  cardArrowText: {
+    fontSize: 48,
+    color: "#fff",
+    lineHeight: 52,
+    includeFontPadding: false,
   },
   // Dolna sekcja
   bottomSection: {
     position: "relative",
+    zIndex: 10,
+  },
+  // Zur Karte
+  zurKarteBar: {
+    backgroundColor: "#000",
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "#000",
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === "ios" ? 12 : 10,
+    justifyContent: "center",
+  },
+  zurKarteText: {
+    fontSize: 20,
+    fontFamily: "FiraSansCondensed_700Bold",
+    color: "#fff",
+    letterSpacing: 1,
+    textAlign: "center",
   },
   // Pasek wyszukiwania
   searchBar: {
@@ -760,73 +824,82 @@ const styles = StyleSheet.create({
     fontFamily: "FiraSansCondensed_400Regular",
     marginTop: 1,
   },
-  // Pasek kategorii
+  // Pasek kategorii — trigger
   kategorieBar: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: "rgba(252, 108, 20, 0.1)",
     borderTopWidth: 1,
     borderColor: "#000",
-    position: "relative",
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === "ios" ? 12 : 10,
   },
-  kategorieScroll: {
-    flex: 1,
-  },
-  kategorieScrollContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  kategorieTab: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderColor: "#000",
-    backgroundColor: "transparent",
-  },
-  kategorieTabActive: {
-    backgroundColor: "#000",
-  },
-  kategorieTabText: {
+  kategorieBarText: {
     fontSize: 18,
     fontFamily: "FiraSansCondensed_600SemiBold",
     color: "#000",
+    flex: 1,
   },
-  kategorieTabTextActive: {
-    color: "#fff",
+  kategorieClearBtn: {
+    paddingLeft: 10,
   },
-  kategorieArrowLeft: {
+  kategorieClearText: {
+    fontSize: 16,
+    color: "#000",
+  },
+  // Wrapper dla triggera + menu
+  kategorieWrapper: {
+    position: "relative",
+  },
+  // Menu
+  kategorieBackdrop: {
+    position: "absolute",
+    top: -9999,
+    left: -9999,
+    right: -9999,
+    bottom: 0,
+    zIndex: 9,
+  },
+  kategorieMenu: {
     position: "absolute",
     left: 0,
-    top: 0,
-    bottom: 0,
-    zIndex: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#000",
-    width: 44,
-  },
-  kategorieArrowRight: {
-    position: "absolute",
     right: 0,
-    top: 0,
-    bottom: 0,
+    bottom: "100%",
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderColor: "#000",
     zIndex: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#000",
-    width: 44,
   },
-  kategorieArrowText: {
-    fontSize: 24,
+  kategorieMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  kategorieMenuItemActive: {
+    backgroundColor: "#000",
+  },
+  kategorieMenuIcon: {
+    fontSize: 22,
+    marginRight: 14,
+    width: 30,
+    textAlign: "center",
+  },
+  kategorieMenuText: {
+    fontSize: 20,
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    color: "#000",
+  },
+  kategorieMenuTextActive: {
     color: "#fff",
-    lineHeight: 24,
-    includeFontPadding: false,
-    textAlignVertical: "center",
   },
   // PinCard
   categoryChip: {
     paddingHorizontal: 9,
     paddingVertical: 4,
-    marginRight: 6,
     borderWidth: 1,
     borderColor: "#000",
   },
@@ -836,8 +909,6 @@ const styles = StyleSheet.create({
     fontFamily: "FiraSansCondensed_600SemiBold",
   },
   card: {
-    borderWidth: 4,
-    borderColor: "#000",
     overflow: "hidden",
     width: CARD_WIDTH,
     flex: 1,
@@ -845,7 +916,7 @@ const styles = StyleSheet.create({
   cardImage: {
     width: "100%",
     height: "100%",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     backgroundColor: "#ddd",
   },
   gradientTop: {
@@ -860,33 +931,32 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 80,
-  },
-  cardTopRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    padding: 10,
+    height: 200,
   },
   chipWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 6,
+    justifyContent: "center",
+    marginBottom: 6,
   },
   cardBottom: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 20,
     paddingVertical: 6,
   },
   cardName: {
-    fontSize: 24,
+    fontSize: 45,
     fontFamily: "FiraSansCondensed_700Bold",
     color: "#fff",
+    textAlign: "center",
   },
   cardLocation: {
-    fontSize: 13,
+    fontSize: 25,
     color: "#fff",
     fontFamily: "FiraSansCondensed_400Regular",
     marginTop: 2,
+    marginBottom: 4,
+    textAlign: "center",
   },
   errorText: {
     fontSize: 15,
