@@ -11,6 +11,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Platform,
+  Dimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
   Keyboard,
@@ -29,6 +30,10 @@ import type {
 
 const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const CARD_WIDTH = Math.round(SCREEN_WIDTH * 0.85);
+const CARD_SIDE_MARGIN = Math.round((SCREEN_WIDTH - CARD_WIDTH) / 2);
 
 function getImageUrl(place: DirectusOrte): string | null {
   if (place.Titelbild) return `${DIRECTUS_URL}/assets/${place.Titelbild}`;
@@ -93,8 +98,6 @@ const PinCard = memo(function PinCard({ place }: { place: DirectusOrte }) {
     </View>
   );
 });
-
-const ItemSeparator = () => <View style={{ height: 12 }} />;
 
 // ─── KategorieBar ────────────────────────────────────────────────────────────
 
@@ -261,6 +264,7 @@ export default function ListeScreen() {
   const [orderedIds, setOrderedIds] = useState<number[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const [query, setQuery] = useState("");
   const [geoSuggestions, setGeoSuggestions] = useState<
@@ -420,6 +424,7 @@ export default function ListeScreen() {
         });
         if (data) {
           setOrderedIds((data as { id: number }[]).map((r) => r.id));
+          setActiveIndex(0);
           flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
         }
       } catch {
@@ -435,6 +440,7 @@ export default function ListeScreen() {
     setGeoSuggestions([]);
     setShowSuggestions(false);
     setOrderedIds(gpsOrderedIdsRef.current);
+    setActiveIndex(0);
     flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   }, []);
 
@@ -447,36 +453,25 @@ export default function ListeScreen() {
         return [...prev, id];
       });
     }
+    setActiveIndex(0);
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, []);
 
-  const renderPin = useCallback(
-    ({ item }: { item: DirectusOrte }) => <PinCard place={item} />,
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+      setActiveIndex(index);
+    },
     [],
   );
 
-  // Logo + slogan — statyczne, bezpiecznie w ListHeaderComponent
-  const renderListHeader = useCallback(
-    () => (
-      <View style={styles.listHeader}>
-        {einstellungen?.Logo ? (
-          <Image
-            source={{ uri: `${DIRECTUS_URL}/assets/${einstellungen.Logo}` }}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-        ) : (
-          <Text style={styles.logo}>FAIRFÜHRER</Text>
-        )}
-        {einstellungen?.Slogan ? (
-          <Text style={styles.tagline}>{einstellungen.Slogan}</Text>
-        ) : (
-          <Text style={styles.tagline}>
-            Der Audioguide für nachhaltiges Leben und Reisen
-          </Text>
-        )}
+  const renderPin = useCallback(
+    ({ item }: { item: DirectusOrte }) => (
+      <View style={styles.cardWrapper}>
+        <PinCard place={item} />
       </View>
     ),
-    [einstellungen],
+    [],
   );
 
   if (isLoading) {
@@ -497,90 +492,138 @@ export default function ListeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* Pasek wyszukiwania — poza FlatList, nie remontuje się przy wpisywaniu */}
-      <View style={styles.searchBar}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Suche…"
-          placeholderTextColor="rgba(255,255,255,0.7)"
-          value={query}
-          onChangeText={(t) => {
-            setQuery(t);
-            fetchGeoSuggestions(t);
-          }}
-          onFocus={() => {
-            if (query.length >= 2 && geoSuggestions.length > 0)
-              setShowSuggestions(true);
-          }}
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="search"
-          onSubmitEditing={() => {
-            if (geoSuggestions.length > 0)
-              selectGeoSuggestion(geoSuggestions[0]);
-            else setShowSuggestions(false);
-          }}
-        />
-        {isGeocoding && (
-          <ActivityIndicator
-            size="small"
-            color="#fff"
-            style={{ marginLeft: 8 }}
-          />
-        )}
-        {query.length > 0 && !isGeocoding && (
-          <TouchableOpacity onPress={clearSearch} style={styles.clearBtn}>
-            <Text style={styles.clearBtnText}>✕</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Sugestie */}
-      {showSuggestions && geoSuggestions.length > 0 && (
-        <View style={styles.suggestionsBox}>
-          {geoSuggestions.map((s) => (
-            <TouchableOpacity
-              key={String(s.place_id)}
-              style={styles.suggestionItem}
-              onPress={() => selectGeoSuggestion(s)}
-            >
-              <Text style={styles.suggestionText}>
-                {s.name || s.display_name}
-              </Text>
-              <Text style={styles.suggestionSubtext} numberOfLines={1}>
-                {s.display_name}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        {/* Logo + Slogan */}
+        <View style={styles.header}>
+          {einstellungen?.Logo ? (
+            <Image
+              source={{ uri: `${DIRECTUS_URL}/assets/${einstellungen.Logo}` }}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          ) : (
+            <Text style={styles.logo}>FAIRFÜHRER</Text>
+          )}
+          {einstellungen?.Slogan ? (
+            <Text style={styles.tagline}>{einstellungen.Slogan}</Text>
+          ) : (
+            <Text style={styles.tagline}>
+              Der Audioguide für nachhaltiges Leben und Reisen
+            </Text>
+          )}
         </View>
-      )}
 
-      {/* Pasek kategorii */}
-      <KategorieBar
-        categories={allCategories}
-        selectedIds={selectedCategoryIds}
-        onToggle={toggleCategory}
-      />
+        {/* Karty — przewijane poziomo */}
+        <View style={styles.cardsArea}>
+          {displayedPlaces.length === 0 ? (
+            <View style={styles.centered}>
+              <Text style={styles.emptyText}>Keine Ergebnisse gefunden.</Text>
+            </View>
+          ) : (
+            <FlatList
+              ref={flatListRef}
+              data={displayedPlaces}
+              keyExtractor={(item) => String(item.id)}
+              renderItem={renderPin}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              decelerationRate="fast"
+              keyboardShouldPersistTaps="handled"
+              removeClippedSubviews
+              maxToRenderPerBatch={4}
+              windowSize={5}
+              initialNumToRender={3}
+            />
+          )}
+        </View>
 
-      <FlatList
-        ref={flatListRef}
-        data={displayedPlaces}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={renderPin}
-        ListHeaderComponent={renderListHeader}
-        ListEmptyComponent={
-          <View style={styles.centered}>
-            <Text style={styles.emptyText}>Keine Ergebnisse gefunden.</Text>
+        {/* Paginacja — kropki */}
+        {displayedPlaces.length > 1 && (
+          <View style={styles.pagination}>
+            {displayedPlaces.map((_, i) => (
+              <View
+                key={i}
+                style={[styles.dot, i === activeIndex && styles.dotActive]}
+              />
+            ))}
           </View>
-        }
-        ItemSeparatorComponent={ItemSeparator}
-        contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled"
-        removeClippedSubviews
-        maxToRenderPerBatch={8}
-        windowSize={5}
-        initialNumToRender={6}
-      />
+        )}
+
+        {/* Dolna sekcja — kategorie + sugestie + wyszukiwarka */}
+        <View style={styles.bottomSection}>
+          {/* Pasek kategorii */}
+          <KategorieBar
+            categories={allCategories}
+            selectedIds={selectedCategoryIds}
+            onToggle={toggleCategory}
+          />
+
+          {/* Sugestie — absolutnie nad wyszukiwarką, nie wpływają na layout */}
+          {showSuggestions && geoSuggestions.length > 0 && (
+            <View style={styles.suggestionsBox}>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                bounces={false}
+                style={styles.suggestionsScroll}
+              >
+                {geoSuggestions.map((s) => (
+                  <TouchableOpacity
+                    key={String(s.place_id)}
+                    style={styles.suggestionItem}
+                    onPress={() => selectGeoSuggestion(s)}
+                  >
+                    <Text style={styles.suggestionText}>
+                      {s.name || s.display_name}
+                    </Text>
+                    <Text style={styles.suggestionSubtext} numberOfLines={1}>
+                      {s.display_name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Pasek wyszukiwania */}
+          <View style={styles.searchBar}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Suche…"
+              placeholderTextColor="rgba(255,255,255,0.7)"
+              value={query}
+              onChangeText={(t) => {
+                setQuery(t);
+                fetchGeoSuggestions(t);
+              }}
+              onFocus={() => {
+                if (query.length >= 2 && geoSuggestions.length > 0)
+                  setShowSuggestions(true);
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+              onSubmitEditing={() => {
+                if (geoSuggestions.length > 0)
+                  selectGeoSuggestion(geoSuggestions[0]);
+                else setShowSuggestions(false);
+              }}
+            />
+            {isGeocoding && (
+              <ActivityIndicator
+                size="small"
+                color="#fff"
+                style={{ marginLeft: 8 }}
+              />
+            )}
+            {query.length > 0 && !isGeocoding && (
+              <TouchableOpacity onPress={clearSearch} style={styles.clearBtn}>
+                <Text style={styles.clearBtnText}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
     </SafeAreaView>
   );
 }
@@ -592,16 +635,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
+  flex: {
+    flex: 1,
+  },
   centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  listContent: {
-    paddingBottom: 24,
-  },
-  listHeader: {
+  // Header
+  header: {
     paddingTop: 8,
+    paddingBottom: 4,
   },
   logoImage: {
     width: "100%",
@@ -616,17 +661,50 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontFamily: "FiraSansCondensed_400Regular",
-    fontSize: 24,
-    paddingVertical: 5,
+    fontSize: 22,
+    paddingVertical: 4,
     paddingHorizontal: 20,
     color: "#fc6c14",
     textAlign: "center",
+  },
+  // Karty
+  cardsArea: {
+    flex: 1,
+  },
+  cardWrapper: {
+    width: SCREEN_WIDTH,
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: CARD_SIDE_MARGIN,
+  },
+  // Paginacja
+  pagination: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 8,
+    gap: 6,
+  },
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "rgba(0,0,0,0.2)",
+  },
+  dotActive: {
+    backgroundColor: "#fc6c14",
+    width: 9,
+    height: 9,
+  },
+  // Dolna sekcja
+  bottomSection: {
+    position: "relative",
   },
   // Pasek wyszukiwania
   searchBar: {
     backgroundColor: "#fc6c14",
     borderTopWidth: 1,
-    borderBottomWidth: 1,
     borderColor: "#000",
     flexDirection: "row",
     alignItems: "center",
@@ -650,11 +728,20 @@ const styles = StyleSheet.create({
   },
   // Sugestie
   suggestionsBox: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: "100%",
     backgroundColor: "#fff",
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderBottomWidth: 1,
+    borderTopWidth: 1,
     borderColor: "#000",
+    maxHeight: 280,
+    zIndex: 20,
+  },
+  suggestionsScroll: {
+    flexGrow: 0,
   },
   suggestionItem: {
     paddingHorizontal: 14,
@@ -678,10 +765,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(252, 108, 20, 0.1)",
-    borderBottomWidth: 1,
+    borderTopWidth: 1,
     borderColor: "#000",
     position: "relative",
-    marginBottom: 8,
   },
   kategorieScroll: {
     flex: 1,
@@ -707,7 +793,6 @@ const styles = StyleSheet.create({
   kategorieTabTextActive: {
     color: "#fff",
   },
-  // Strzałki jako overlay absolutny — nie wpływają na układ ScrollView
   kategorieArrowLeft: {
     position: "absolute",
     left: 0,
@@ -754,9 +839,8 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: "#000",
     overflow: "hidden",
-    width: 300,
-    height: 300,
-    alignSelf: "center",
+    width: CARD_WIDTH,
+    flex: 1,
   },
   cardImage: {
     width: "100%",
