@@ -37,7 +37,8 @@
       "expo-router",
       "expo-font",
       "expo-location",
-      "expo-audio"
+      "expo-audio",
+      "expo-asset"
     ]
   }
 }
