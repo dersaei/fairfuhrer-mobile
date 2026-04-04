@@ -93,7 +93,7 @@ export interface DirectusOrte {
   Link_URL?: string;
   Link_Text?: string;
   Galerie_Bilder?: string[];
-  Galerie?: string[];
+  Galerie?: { directus_files_id: string }[];
   Zertifizierungen?: DirectusZertifizierungItem[];
   Stadt?: string;
   Land?: string;

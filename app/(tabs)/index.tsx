@@ -25,6 +25,7 @@ import * as Location from "expo-location";
 import { readItems } from "@directus/sdk";
 import { supabase } from "@/lib/supabase";
 import { directus } from "@/lib/directus";
+import { PlaceInfoPanel } from "@/components/PlaceInfoPanel";
 import type {
   DirectusOrte,
   DirectusKategorie,
@@ -388,6 +389,8 @@ export default function ListeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [panelPlace, setPanelPlace] = useState<DirectusOrte | null>(null);
+  const [panelVisible, setPanelVisible] = useState(false);
 
   const [query, setQuery] = useState("");
   const [geoSuggestions, setGeoSuggestions] = useState<
@@ -427,12 +430,23 @@ export default function ListeScreen() {
                 "Adresse",
                 "Stadt",
                 "Land",
+                "Telefon",
+                "Vollbeschreibung",
                 "location",
                 "Hauptbild",
                 "Titelbild",
+                "Audio",
+                "Audio_Datei",
+                "Link_URL",
+                "Link_Text",
+                "Galerie.directus_files_id",
+                "Galerie_Bilder",
                 "Kategorie.Kategorie_id.id",
                 "Kategorie.Kategorie_id.Name",
                 "Kategorie.Kategorie_id.Farbe",
+                "Zertifizierungen.Zertifizierungen_id.id",
+                "Zertifizierungen.Zertifizierungen_id.Name",
+                "Zertifizierungen.Zertifizierungen_id.Image",
                 "Bearbeitungsstatus",
               ] as never[],
               limit: -1,
@@ -596,13 +610,26 @@ export default function ListeScreen() {
     setActiveIndex(next);
   }, [activeIndex, displayedPlaces.length]);
 
+  const openPanel = useCallback((place: DirectusOrte) => {
+    setPanelPlace(place);
+    setPanelVisible(true);
+  }, []);
+
+  const closePanel = useCallback(() => {
+    setPanelVisible(false);
+  }, []);
+
   const renderPin = useCallback(
     ({ item }: { item: DirectusOrte }) => (
-      <View style={styles.cardWrapper}>
+      <TouchableOpacity
+        style={styles.cardWrapper}
+        activeOpacity={0.95}
+        onPress={() => openPanel(item)}
+      >
         <PinCard place={item} />
-      </View>
+      </TouchableOpacity>
     ),
-    [],
+    [openPanel],
   );
 
   if (isLoading) {
@@ -792,6 +819,12 @@ export default function ListeScreen() {
           )}
         </View>
       </View>
+
+      <PlaceInfoPanel
+        place={panelPlace}
+        visible={panelVisible}
+        onClose={closePanel}
+      />
     </SafeAreaView>
   );
 }

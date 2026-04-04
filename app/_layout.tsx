@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { useFonts, Anton_400Regular } from '@expo-google-fonts/anton';
 import {
   FiraSansCondensed_400Regular,
+  FiraSansCondensed_500Medium,
   FiraSansCondensed_600SemiBold,
   FiraSansCondensed_700Bold,
 } from '@expo-google-fonts/fira-sans-condensed';
@@ -37,6 +38,7 @@ export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     Anton_400Regular,
     FiraSansCondensed_400Regular,
+    FiraSansCondensed_500Medium,
     FiraSansCondensed_600SemiBold,
     FiraSansCondensed_700Bold,
   });

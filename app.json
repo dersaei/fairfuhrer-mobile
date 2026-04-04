@@ -36,7 +36,8 @@
       "@rnmapbox/maps",
       "expo-router",
       "expo-font",
-      "expo-location"
+      "expo-location",
+      "expo-audio"
     ]
   }
 }
