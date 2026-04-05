@@ -395,52 +395,6 @@ export function PlaceInfoPanel({
 
   const handleClose = useCallback(() => onClose(), [onClose]);
 
-  // Gest zamykania przez ciągnięcie w dół gdy scroll jest na górze
-  const scrollY = useRef(0);
-  const dragAnim = useRef(new Animated.Value(0)).current;
-  const isDraggingToClose = useRef(false);
-
-  const dismissPanResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => {
-        // Przejmij gest tylko gdy: scroll na górze, ruch w dół (dy > 0), bardziej pionowy niż poziomy
-        return scrollY.current <= 0 && g.dy > 8 && Math.abs(g.dy) > Math.abs(g.dx);
-      },
-      onPanResponderGrant: () => {
-        isDraggingToClose.current = true;
-        dragAnim.setValue(0);
-      },
-      onPanResponderMove: (_, g) => {
-        if (g.dy > 0) dragAnim.setValue(g.dy);
-      },
-      onPanResponderRelease: (_, g) => {
-        isDraggingToClose.current = false;
-        if (g.dy > 100 || g.vy > 0.5) {
-          // Zamknij: dokończ animację do dołu ekranu i wywołaj onClose
-          Animated.timing(dragAnim, {
-            toValue: SCREEN_HEIGHT,
-            duration: 280,
-            easing: Easing.in(Easing.cubic),
-            useNativeDriver: true,
-          }).start(() => {
-            dragAnim.setValue(0);
-            onClose();
-          });
-        } else {
-          // Wróć na miejsce
-          Animated.spring(dragAnim, {
-            toValue: 0,
-            useNativeDriver: true,
-            bounciness: 6,
-          }).start();
-        }
-      },
-      onPanResponderTerminate: () => {
-        isDraggingToClose.current = false;
-        Animated.spring(dragAnim, { toValue: 0, useNativeDriver: true }).start();
-      },
-    })
-  ).current;
 
   const imageUrl = place ? getImageUrl(place) : null;
   const audioUrl = place ? getAudioUrl(place) : null;
@@ -479,8 +433,7 @@ export function PlaceInfoPanel({
       statusBarTranslucent
     >
       <Animated.View
-        style={[styles.panel, { transform: [{ translateY: Animated.add(slideAnim, dragAnim) }] }]}
-        {...dismissPanResponder.panHandlers}
+        style={[styles.panel, { transform: [{ translateY: slideAnim }] }]}
       >
         {/* ── Stały header: zdjęcie + audio ── */}
         {imageUrl && (
@@ -524,7 +477,6 @@ export function PlaceInfoPanel({
           showsVerticalScrollIndicator={false}
           bounces={false}
           keyboardShouldPersistTaps="handled"
-          onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
           scrollEventThrottle={16}
         >
           <View style={styles.content}>
@@ -834,4 +786,5 @@ const styles = StyleSheet.create({
     color: "#555",
     textAlign: "center",
   },
+
 });
