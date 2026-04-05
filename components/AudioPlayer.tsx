@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,14 +6,23 @@ import {
   StyleSheet,
   GestureResponderEvent,
   LayoutChangeEvent,
-  Animated,
 } from "react-native";
 import Svg, { Polygon, Rect, Circle } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withDelay,
+  Easing,
+  cancelAnimation,
+} from "react-native-reanimated";
 
-// ─── Ikony ────────────────────────────────────────────────────────────────────
+// ─── Ikony — identyczne z web AudioIcons.tsx ─────────────────────────────────
 
 function PlayIcon({ size = 24 }: { size?: number }) {
   return (
@@ -32,7 +41,6 @@ function PauseIcon({ size = 24 }: { size?: number }) {
   );
 }
 
-// Identyczne z web AudioIcons.tsx — pomarańczowe kółko + białe strzałki
 function SkipBackIcon({ size = 24 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -53,9 +61,9 @@ function SkipForwardIcon({ size = 24 }: { size?: number }) {
   );
 }
 
-// ─── Przycisk z animacją :active scale (odpowiednik CSS button:active) ────────
+// ─── Przycisk z animacją press (cubic-bezier jak w web :active) ───────────────
 
-function AnimatedButton({
+function PressButton({
   onPress,
   children,
   style,
@@ -64,17 +72,25 @@ function AnimatedButton({
   children: React.ReactNode;
   style?: object;
 }) {
-  const scale = useRef(new Animated.Value(1)).current;
+  const scale = useSharedValue(1);
 
-  const onPressIn = () =>
-    Animated.spring(scale, { toValue: 0.9, useNativeDriver: true, speed: 50, bounciness: 0 }).start();
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
-  const onPressOut = () =>
-    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 6 }).start();
+  const onPressIn = () => {
+    // scale(0.9) — odpowiednik CSS button:active { transform: scale(0.9) }
+    scale.value = withTiming(0.9, { duration: 100, easing: Easing.out(Easing.cubic) });
+  };
+
+  const onPressOut = () => {
+    // sprężynowy powrót — cubic-bezier(0.34, 1.56, 0.64, 1) z web
+    scale.value = withSpring(1, { damping: 10, stiffness: 200, mass: 0.5 });
+  };
 
   return (
     <TouchableOpacity activeOpacity={1} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
-      <Animated.View style={[style, { transform: [{ scale }] }]}>
+      <Animated.View style={[style, animStyle]}>
         {children}
       </Animated.View>
     </TouchableOpacity>
@@ -94,235 +110,200 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
   const [trackWidth, setTrackWidth] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState<SpeedOption>(1);
 
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const speedAnim    = useRef(new Animated.Value(0)).current;
-  const pulseAnim    = useRef(new Animated.Value(1)).current;
-  const pulseLoop    = useRef<Animated.CompositeAnimation | null>(null);
-
-  const player = useAudioPlayer(src);
-  const status = useAudioPlayerStatus(player);
-  const isPlaying  = status.playing;
+  const player  = useAudioPlayer(src);
+  const status  = useAudioPlayerStatus(player);
+  const isPlaying   = status.playing;
   const currentTime = status.currentTime ?? 0;
-  const duration    = status.duration   ?? 0;
+  const duration    = status.duration    ?? 0;
+  const progress    = duration > 0 ? currentTime / duration : 0;
+
+  // ── Shared values ─────────────────────────────────────────────────────────
+
+  // fadeSlideUp dla progress i speed (opacity 0→1 + translateY 10→0)
+  const progressOpacity   = useSharedValue(0);
+  const progressTranslateY = useSharedValue(10);
+  const speedOpacity      = useSharedValue(0);
+  const speedTranslateY   = useSharedValue(10);
+
+  // pulse dla play button gdy gra (scale 1→1.05→1, 2s loop)
+  const pulseScale = useSharedValue(1);
+
+  // ── Efekty ────────────────────────────────────────────────────────────────
 
   useEffect(() => { setAudioModeAsync({ playsInSilentMode: true }); }, []);
 
-  // fadeSlideUp — identyczne z web (delay 0.3s / 0.5s, duration 0.6s)
+  // fadeSlideUp — delay 0.3s dla progress, 0.5s dla speed (jak w web CSS animation)
   useEffect(() => {
-    Animated.sequence([Animated.delay(300), Animated.timing(progressAnim, { toValue: 1, duration: 600, useNativeDriver: true })]).start();
-    Animated.sequence([Animated.delay(500), Animated.timing(speedAnim,    { toValue: 1, duration: 600, useNativeDriver: true })]).start();
+    const ease = Easing.bezier(0.25, 0.46, 0.45, 0.94);
+
+    progressOpacity.value    = withDelay(300, withTiming(1,  { duration: 600, easing: ease }));
+    progressTranslateY.value = withDelay(300, withTiming(0,  { duration: 600, easing: ease }));
+    speedOpacity.value       = withDelay(500, withTiming(1,  { duration: 600, easing: ease }));
+    speedTranslateY.value    = withDelay(500, withTiming(0,  { duration: 600, easing: ease }));
   }, []);
 
-  // pulse 2s infinite — identyczne z web keyframes pulse (scale 1 → 1.05 → 1)
+  // pulse 2s infinite — identyczne z web @keyframes pulse (scale 1→1.05→1)
   useEffect(() => {
     if (isPlaying) {
-      pulseLoop.current = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.05, duration: 1000, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1,    duration: 1000, useNativeDriver: true }),
-        ])
+      pulseScale.value = withRepeat(
+        withSequence(
+          withTiming(1.05, { duration: 1000, easing: Easing.bezier(0.25, 0.46, 0.45, 0.94) }),
+          withTiming(1,    { duration: 1000, easing: Easing.bezier(0.25, 0.46, 0.45, 0.94) })
+        ),
+        -1 // nieskończony loop
       );
-      pulseLoop.current.start();
     } else {
-      pulseLoop.current?.stop();
-      Animated.timing(pulseAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+      cancelAnimation(pulseScale);
+      pulseScale.value = withTiming(1, { duration: 150 });
     }
   }, [isPlaying]);
 
-  const formatTime = (t: number) => {
-    const m = Math.floor(t / 60);
-    const s = Math.floor(t % 60);
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  };
+  // ── Animated styles ───────────────────────────────────────────────────────
 
-  const progress = duration > 0 ? currentTime / duration : 0;
+  const progressStyle = useAnimatedStyle(() => ({
+    opacity: progressOpacity.value,
+    transform: [{ translateY: progressTranslateY.value }],
+  }));
+
+  const speedStyle = useAnimatedStyle(() => ({
+    opacity: speedOpacity.value,
+    transform: [{ translateY: speedTranslateY.value }],
+  }));
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+  }));
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
+  const formatTime = (t: number) =>
+    `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
 
   const handleTrackPress = (e: GestureResponderEvent) => {
     if (!trackWidth || !duration) return;
     player.seekTo(Math.min(1, Math.max(0, e.nativeEvent.locationX / trackWidth)) * duration);
   };
 
-  const progressStyle = {
-    opacity: progressAnim,
-    transform: [{ translateY: progressAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
-  };
-  const speedStyle = {
-    opacity: speedAnim,
-    transform: [{ translateY: speedAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
-  };
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    /*
-     * Web: backdrop-filter: blur(10px) + linear-gradient(135deg, #f8f9fa, #e9ecef)
-     * intensity={10} = blur(10px), tint="default" = bez narzucanej bieli
-     * LinearGradient na wierzchu daje gradient z opacity < 1 by blur prześwitywał
-     */
-    <BlurView intensity={10} tint="default" style={styles.blurContainer}>
-      <LinearGradient
-        colors={["rgba(248,249,250,0.92)", "rgba(233,236,239,0.92)"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.audioPlayer}
-      >
+    <LinearGradient
+      colors={["#f8f9fa", "#e9ecef"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.audioPlayer}
+    >
 
-        {/* ── Kontrolki ─────────────────────────────────────────────────────── */}
-        <View style={styles.audioControls}>
+      {/* Kontrolki */}
+      <View style={styles.audioControls}>
 
-          {/*
-           * Skip back
-           * Web: .skipButton = białe kółko rgba(255,255,255,0.8) + blur(10px) + shadow
-           *      ikona w SVG = pomarańczowe kółko z białymi strzałkami (AudioIcons.tsx)
-           * Mobile: BlurView jako białe kółko (blur(10px)) + SVG z pomarańczowym kółkiem na środku
-           */}
-          <AnimatedButton onPress={() => player.seekTo(Math.max(0, currentTime - 5))}>
-            <BlurView intensity={10} tint="light" style={styles.skipButton}>
-              <SkipBackIcon size={32} />
-            </BlurView>
-          </AnimatedButton>
+        <PressButton onPress={() => player.seekTo(Math.max(0, currentTime - 5))}>
+          <View style={styles.skipButton}>
+            <SkipBackIcon size={32} />
+          </View>
+        </PressButton>
 
-          {/*
-           * Play / Pause
-           * Web: linear-gradient(135deg, orange→orange/0.9) + overflow:hidden + box-shadow orange
-           *      playing: gradient red + pulse animation
-           */}
-          <Animated.View style={[styles.playButtonShadow, { transform: [{ scale: pulseAnim }] }]}>
-            <AnimatedButton onPress={() => isPlaying ? player.pause() : player.play()}>
-              <LinearGradient
-                colors={isPlaying
-                  ? ["#dc3545", "#c82333"]
-                  : ["rgba(252,108,20,1)", "rgba(252,108,20,0.9)"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.playButton}
-              >
-                {isPlaying ? <PauseIcon size={26} /> : <PlayIcon size={26} />}
-              </LinearGradient>
-            </AnimatedButton>
-          </Animated.View>
-
-          {/* Skip forward */}
-          <AnimatedButton onPress={() => player.seekTo(Math.min(duration, currentTime + 5))}>
-            <BlurView intensity={10} tint="light" style={styles.skipButton}>
-              <SkipForwardIcon size={32} />
-            </BlurView>
-          </AnimatedButton>
-
-        </View>
-
-        {/* ── Progress bar — fadeSlideUp 0.3s ───────────────────────────────── */}
-        <Animated.View style={[styles.progressContainer, progressStyle]}>
-          <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
-          <TouchableOpacity
-            activeOpacity={1}
-            style={styles.trackTouchable}
-            onPress={handleTrackPress}
-            onLayout={(e: LayoutChangeEvent) => setTrackWidth(e.nativeEvent.layout.width)}
-          >
-            {/*
-             * Web: linear-gradient(90deg, #dee2e6, #ced4da) + inset shadow
-             * Mobile: LinearGradient jako tło toru
-             */}
+        {/* Play/Pause z pulse */}
+        <Animated.View style={[styles.playButtonShadow, pulseStyle]}>
+          <PressButton onPress={() => isPlaying ? player.pause() : player.play()}>
             <LinearGradient
-              colors={["#dee2e6", "#ced4da"]}
+              colors={isPlaying ? ["#dc3545", "#c82333"] : ["rgba(252,108,20,1)", "rgba(252,108,20,0.9)"]}
               start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.track}
+              end={{ x: 1, y: 1 }}
+              style={styles.playButton}
             >
-              <View style={[styles.trackFill, { width: `${progress * 100}%` }]} />
-              <View style={[styles.thumb, { left: `${progress * 100}%` }]} />
+              {isPlaying ? <PauseIcon size={26} /> : <PlayIcon size={26} />}
             </LinearGradient>
-          </TouchableOpacity>
-          <Text style={styles.timeText}>{formatTime(duration)}</Text>
+          </PressButton>
         </Animated.View>
 
-        {/* ── Speed buttons — fadeSlideUp 0.5s ──────────────────────────────── */}
-        <Animated.View style={[styles.speedControl, speedStyle]}>
-          {SPEED_OPTIONS.map((speed) => {
-            const isActive = playbackSpeed === speed;
-            return (
-              <TouchableOpacity
-                key={speed}
-                onPress={() => { setPlaybackSpeed(speed); player.setPlaybackRate(speed); }}
-                activeOpacity={0.75}
-              >
-                {/*
-                 * Web: backdrop-filter: blur(10px) + rgba(255,255,255,0.8) border + shadow
-                 * Active: linear-gradient orange + orange shadow
-                 */}
-                {isActive ? (
-                  <LinearGradient
-                    colors={["rgba(252,108,20,1)", "rgba(252,108,20,0.9)"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[styles.speedButton, styles.speedButtonActive]}
-                  >
-                    <Text style={[styles.speedButtonText, styles.speedButtonTextActive]}>{speed}x</Text>
-                  </LinearGradient>
-                ) : (
-                  <BlurView intensity={10} tint="light" style={styles.speedButton}>
-                    <Text style={styles.speedButtonText}>{speed}x</Text>
-                  </BlurView>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </Animated.View>
+        <PressButton onPress={() => player.seekTo(Math.min(duration, currentTime + 5))}>
+          <View style={styles.skipButton}>
+            <SkipForwardIcon size={32} />
+          </View>
+        </PressButton>
 
-      </LinearGradient>
-    </BlurView>
+      </View>
+
+      {/* Progress — fadeSlideUp 0.3s */}
+      <Animated.View style={[styles.progressContainer, progressStyle]}>
+        <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
+        <TouchableOpacity
+          activeOpacity={1}
+          style={styles.trackTouchable}
+          onPress={handleTrackPress}
+          onLayout={(e: LayoutChangeEvent) => setTrackWidth(e.nativeEvent.layout.width)}
+        >
+          <LinearGradient
+            colors={["#dee2e6", "#ced4da"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.track}
+          >
+            <View style={[styles.trackFill, { width: `${progress * 100}%` }]} />
+            <View style={[styles.thumb, { left: `${progress * 100}%` }]} />
+          </LinearGradient>
+        </TouchableOpacity>
+        <Text style={styles.timeText}>{formatTime(duration)}</Text>
+      </Animated.View>
+
+      {/* Speed — fadeSlideUp 0.5s */}
+      <Animated.View style={[styles.speedControl, speedStyle]}>
+        {SPEED_OPTIONS.map((speed) => {
+          const isActive = playbackSpeed === speed;
+          return (
+            <TouchableOpacity
+              key={speed}
+              onPress={() => { setPlaybackSpeed(speed); player.setPlaybackRate(speed); }}
+              activeOpacity={0.75}
+            >
+              {isActive ? (
+                <LinearGradient
+                  colors={["rgba(252,108,20,1)", "rgba(252,108,20,0.9)"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.speedButton, styles.speedButtonActive]}
+                >
+                  <Text style={[styles.speedButtonText, styles.speedButtonTextActive]}>{speed}x</Text>
+                </LinearGradient>
+              ) : (
+                <View style={styles.speedButton}>
+                  <Text style={styles.speedButtonText}>{speed}x</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </Animated.View>
+
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  // Zewnętrzny BlurView — backdrop-filter: blur(10px), overflow:hidden by border obcinał blur
-  blurContainer: {
-    overflow: "hidden",
-    // box-shadow: 0 4px 16px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06)
+  audioPlayer: {
+    padding: 19,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 16,
     elevation: 4,
   },
-
-  // Gradient na BlurView — padding: 1.2rem, border: 1px solid rgba(255,255,255,0.2)
-  audioPlayer: {
-    padding: 19,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-  },
-
-  // gap: 1.2rem ≈ 19px
   audioControls: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 19,
   },
-
-  /*
-   * Skip button
-   * Web: width/height 48px, border-radius 50%, rgba(255,255,255,0.8), blur(10px), shadow 0 2px 8px
-   * BlurView daje blur + lekko białe tło (tint="light"); SVG na środku = pomarańczowe kółko
-   */
   skipButton: {
     width: 48,
     height: 48,
-    borderRadius: 24,
-    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
+    marginHorizontal: 6,
   },
-
-  /*
-   * Play button shadow wrap
-   * Web: box-shadow 0 4px 16px rgba(252,108,20,0.3) + 0 2px 8px rgba(252,108,20,0.2)
-   */
   playButtonShadow: {
     borderRadius: 28,
     shadowColor: "rgba(252,108,20,1)",
@@ -331,11 +312,6 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 6,
   },
-
-  /*
-   * Play button
-   * Web: width/height 56px, border-radius 50%, overflow:hidden (by ikona nie wychodziła poza)
-   */
   playButton: {
     width: 56,
     height: 56,
@@ -344,30 +320,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
-  // gap: 1rem = 16px, padding-top: 2vh ≈ 15px, fadeSlideUp
   progressContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
     marginTop: 15,
   },
-
   trackTouchable: {
     flex: 1,
     height: 28,
     justifyContent: "center",
   },
-
-  // Web: linear-gradient(90deg, #dee2e6, #ced4da) + inset shadow + border-radius 4px
   track: {
     height: 8,
     borderRadius: 4,
     overflow: "visible",
-    position: "relative",
   },
-
-  // Pomarańczowe wypełnienie postępu
   trackFill: {
     position: "absolute",
     top: 0,
@@ -376,8 +344,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(252,108,20,1)",
     borderRadius: 4,
   },
-
-  // Web: thumb 20x20, orange gradient, border 2px white, shadow
   thumb: {
     position: "absolute",
     top: -6,
@@ -394,8 +360,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-
-  // font-size: 0.9rem, font-weight: 500, color: #495057
   timeText: {
     fontSize: 13,
     fontWeight: "500",
@@ -404,30 +368,20 @@ const styles = StyleSheet.create({
     width: 36,
     textAlign: "center",
   },
-
-  // gap: 0.4rem ≈ 6px, padding-top: 0.75rem ≈ 12px, fadeSlideUp
   speedControl: {
     flexDirection: "row",
     justifyContent: "center",
     gap: 6,
     marginTop: 12,
   },
-
-  /*
-   * Speed button
-   * Web: height 28px, min-width 38px, padding 0 8px, border-radius 20px
-   *      background rgba(255,255,255,0.8), border 1.5px rgba(252,108,20,0.25)
-   *      backdrop-filter blur(10px), box-shadow 0 1px 4px rgba(0,0,0,0.08)
-   * BlurView daje blur — backgroundColor na BlurView ignorowane, dlatego tint="light"
-   */
   speedButton: {
     height: 28,
     paddingHorizontal: 8,
     borderRadius: 20,
     borderWidth: 1.5,
     borderColor: "rgba(252,108,20,0.25)",
+    backgroundColor: "rgba(255,255,255,0.8)",
     minWidth: 38,
-    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -436,8 +390,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 1,
   },
-
-  // Active: linear-gradient orange (LinearGradient), border orange, shadow orange
   speedButtonActive: {
     borderColor: "rgba(252,108,20,1)",
     shadowColor: "rgba(252,108,20,1)",
@@ -446,16 +398,12 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 3,
   },
-
-  // font-size: 0.78rem, font-weight: 500, color: #495057
   speedButtonText: {
     fontSize: 11,
     fontWeight: "500",
     color: "#495057",
     fontFamily: "FiraSansCondensed_400Regular",
   },
-
-  // Active: white, font-weight 600
   speedButtonTextActive: {
     color: "#fff",
     fontFamily: "FiraSansCondensed_600SemiBold",
