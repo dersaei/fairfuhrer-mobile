@@ -30,6 +30,15 @@ function RootLayoutNav() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="(auth)" />
+      <Stack.Screen
+        name="place/[id]"
+        options={{
+          presentation: "modal",
+          animation: "slide_from_bottom",
+          gestureEnabled: true,
+          gestureDirection: "vertical",
+        }}
+      />
     </Stack>
   );
 }
