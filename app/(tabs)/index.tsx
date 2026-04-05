@@ -31,8 +31,10 @@ import type { DirectusOrte, DirectusKategorie } from "@/types";
 
 const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
+
 const CARD_PEEK = 44; // ile px sąsiedniej karty widać po bokach
 const CARD_GAP = 10; // odstęp między kartami
 const CARD_WIDTH = SCREEN_WIDTH - CARD_PEEK * 2 - CARD_GAP * 2;
@@ -416,60 +418,73 @@ export default function ListeScreen() {
 
   const [query, setQuery] = useState("");
   const [geoSuggestions, setGeoSuggestions] = useState<
-    {
-      place_id: number;
-      name: string;
-      display_name: string;
-      lat: string;
-      lon: string;
-    }[]
+    { name: string; place_formatted: string; lat: number; lon: number }[]
   >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
     null,
   );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gpsOrderedIdsRef = useRef<number[] | null>(null);
+  const allPlacesRef = useRef(allPlaces);
+  allPlacesRef.current = allPlaces;
+  const [bottomSectionHeight, setBottomSectionHeight] = useState(0);
 
   // Fetch danych przy pierwszym montowaniu
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
 
-  // Sortowanie GPS — uruchamiane po załadowaniu miejsc
+  // Sortowanie GPS — odpala się tylko raz gdy status zmienia się na success
   useEffect(() => {
     if (status !== "success") return;
 
     let mounted = true;
-    async function fetchGpsOrder() {
+    async function sortByGps() {
       try {
         const { status: locStatus } =
           await Location.requestForegroundPermissionsAsync();
-        if (locStatus === "granted" && mounted) {
-          const pos = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-          const { latitude: lat, longitude: lng } = pos.coords;
-          const { data } = await supabase.rpc("nearby_orte", {
-            user_lat: lat,
-            user_lng: lng,
-          });
-          if (data && mounted) {
-            const ids = (data as { id: number }[]).map((r) => r.id);
-            gpsOrderedIdsRef.current = ids;
-            setOrderedIds(ids);
-          }
+        if (locStatus !== "granted" || !mounted) return;
+        const pos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        const { latitude: lat, longitude: lng } = pos.coords;
+        const R = 6371;
+        const toRad = (d: number) => (d * Math.PI) / 180;
+        const dist = (pLat: number, pLng: number) => {
+          const dLat = toRad(pLat - lat);
+          const dLng = toRad(pLng - lng);
+          const a =
+            Math.sin(dLat / 2) ** 2 +
+            Math.cos(toRad(lat)) *
+              Math.cos(toRad(pLat)) *
+              Math.sin(dLng / 2) ** 2;
+          return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        };
+        const sorted = [...allPlacesRef.current].sort((a, b) => {
+          const [aLng, aLat] = a.location?.coordinates ?? [999, 999];
+          const [bLng, bLat] = b.location?.coordinates ?? [999, 999];
+          return dist(aLat, aLng) - dist(bLat, bLng);
+        });
+        const ids = sorted.map((p) => p.id);
+        if (mounted) {
+          gpsOrderedIdsRef.current = ids;
+          setOrderedIds(ids);
         }
       } catch {
-        // Location unavailable — display without distance sorting
+        // Location unavailable — display without sorting
       }
     }
-    fetchGpsOrder();
+    sortByGps();
     return () => {
       mounted = false;
     };
-  }, [status]);
+  }, [status]); // tylko status — nie allPlaces, żeby GPS nie nadpisywał wyboru z wyszukiwarki
+
+  // Klucz PagerView — wymusza pełne remontowanie gdy zmienia się kolejność
+  const pagerKey = orderedIds ? orderedIds.slice(0, 5).join(",") : "default";
 
   const displayedPlaces = useMemo(() => {
     let result = [...allPlaces];
@@ -497,40 +512,53 @@ export default function ListeScreen() {
     if (text.trim().length < 2) {
       setGeoSuggestions([]);
       setShowSuggestions(false);
+      setIsFetchingSuggestions(false);
       return;
     }
+    setIsFetchingSuggestions(true);
     debounceRef.current = setTimeout(async () => {
       try {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&limit=7&addressdetails=0&accept-language=de&featuretype=city,town,village,county,state,country`;
-        const res = await fetch(url, {
-          headers: { "User-Agent": "FairFuehrer/1.0" },
-        });
-        const data = await res.json();
-        setGeoSuggestions(data);
-        setShowSuggestions(data.length > 0);
+        const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(text)}&language=de&limit=7&types=country,region,district,place&autocomplete=true&access_token=${MAPBOX_TOKEN}`;
+        const res = await fetch(url);
+        const json = await res.json();
+        const suggestions = (json.features ?? []).map(
+          (f: Record<string, unknown>) => {
+            const props = f.properties as Record<string, unknown>;
+            const geom = f.geometry as { coordinates: [number, number] };
+            return {
+              name: props.name as string,
+              place_formatted: (props.place_formatted ?? "") as string,
+              lat: geom.coordinates[1],
+              lon: geom.coordinates[0],
+            };
+          },
+        );
+        setGeoSuggestions(suggestions);
+        setShowSuggestions(suggestions.length > 0);
       } catch {
         setGeoSuggestions([]);
+      } finally {
+        setIsFetchingSuggestions(false);
       }
-    }, 400);
+    }, 300);
   }, []);
 
   const selectGeoSuggestion = useCallback(
     async (item: {
-      place_id: number;
       name: string;
-      display_name: string;
-      lat: string;
-      lon: string;
+      place_formatted: string;
+      lat: number;
+      lon: number;
     }) => {
-      setQuery(item.name || item.display_name);
+      setQuery(item.name);
       setShowSuggestions(false);
       setGeoSuggestions([]);
       Keyboard.dismiss();
       setIsGeocoding(true);
       try {
         const { data } = await supabase.rpc("nearby_orte", {
-          user_lat: parseFloat(item.lat),
-          user_lng: parseFloat(item.lon),
+          user_lat: item.lat,
+          user_lng: item.lon,
         });
         if (data) {
           setOrderedIds((data as { id: number }[]).map((r) => r.id));
@@ -547,7 +575,12 @@ export default function ListeScreen() {
     setQuery("");
     setGeoSuggestions([]);
     setShowSuggestions(false);
-    setOrderedIds(gpsOrderedIdsRef.current);
+    setIsFetchingSuggestions(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    // Resetuj kolejność w następnej klatce, żeby UI nie blokował
+    requestAnimationFrame(() => {
+      setOrderedIds(gpsOrderedIdsRef.current);
+    });
   }, []);
 
   const toggleCategory = useCallback((id: number | null) => {
@@ -592,19 +625,6 @@ export default function ListeScreen() {
         )}
       </View>
 
-      {/* Zur Karte */}
-      <View style={styles.zurKarteBar}>
-        <TouchableOpacity style={styles.zurKarteBtn} activeOpacity={0.7}>
-          <Text style={styles.zurKarteText}>Zur Karte</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.zurKarteBtn} activeOpacity={0.7}>
-          <Text style={styles.zurKarteText}>Hilfe</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.zurKarteBtn} activeOpacity={0.7}>
-          <Text style={styles.zurKarteText}>Anmelden</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Karty — przewijane poziomo */}
       <View style={styles.cardsArea}>
         {displayedPlaces.length === 0 ? (
@@ -613,6 +633,7 @@ export default function ListeScreen() {
           </View>
         ) : (
           <PagerView
+            key={pagerKey}
             style={styles.pagerView}
             initialPage={0}
             overdrag
@@ -633,40 +654,17 @@ export default function ListeScreen() {
         )}
       </View>
 
-      {/* Dolna sekcja — kategorie + sugestie + wyszukiwarka */}
-      <View style={styles.bottomSection}>
+      {/* Dolna sekcja — kategorie + wyszukiwarka */}
+      <View
+        style={styles.bottomSection}
+        onLayout={(e) => setBottomSectionHeight(e.nativeEvent.layout.height)}
+      >
         {/* Pasek kategorii */}
         <KategorieBar
           categories={allCategories}
           selectedId={selectedCategoryId}
           onSelect={toggleCategory}
         />
-
-        {/* Sugestie — absolutnie nad wyszukiwarką, nie wpływają na layout */}
-        {showSuggestions && geoSuggestions.length > 0 && (
-          <View style={styles.suggestionsBox}>
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              bounces={false}
-              style={styles.suggestionsScroll}
-            >
-              {geoSuggestions.map((s) => (
-                <TouchableOpacity
-                  key={String(s.place_id)}
-                  style={styles.suggestionItem}
-                  onPress={() => selectGeoSuggestion(s)}
-                >
-                  <Text style={styles.suggestionText}>
-                    {s.name || s.display_name}
-                  </Text>
-                  <Text style={styles.suggestionSubtext} numberOfLines={1}>
-                    {s.display_name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
 
         {/* Pasek wyszukiwania */}
         <View style={styles.searchBar}>
@@ -692,20 +690,44 @@ export default function ListeScreen() {
               else setShowSuggestions(false);
             }}
           />
-          {isGeocoding && (
+          {(isGeocoding || isFetchingSuggestions) && (
             <ActivityIndicator
               size="small"
               color="#fff"
               style={{ marginLeft: 8 }}
             />
           )}
-          {query.length > 0 && !isGeocoding && (
+          {query.length > 0 && !isGeocoding && !isFetchingSuggestions && (
             <TouchableOpacity onPress={clearSearch} style={styles.clearBtn}>
               <Text style={styles.clearBtnText}>✕</Text>
             </TouchableOpacity>
           )}
         </View>
       </View>
+
+      {/* Sugestie — absolute nad bottomSection, poza jego drzewem */}
+      {showSuggestions && geoSuggestions.length > 0 && (
+        <View style={[styles.suggestionsBox, { bottom: bottomSectionHeight }]}>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
+            style={styles.suggestionsScroll}
+          >
+            {geoSuggestions.map((s, i) => (
+              <TouchableOpacity
+                key={`${s.name}-${i}`}
+                style={styles.suggestionItem}
+                onPress={() => selectGeoSuggestion(s)}
+              >
+                <Text style={styles.suggestionText}>{s.name}</Text>
+                <Text style={styles.suggestionSubtext} numberOfLines={1}>
+                  {s.place_formatted}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -779,24 +801,7 @@ const styles = StyleSheet.create({
   bottomSection: {
     position: "relative",
     zIndex: 10,
-  },
-  // Zur Karte
-  zurKarteBar: {
-    backgroundColor: "#fc6c14",
-    flexDirection: "row",
-  },
-  zurKarteBtn: {
-    flex: 1,
-    paddingHorizontal: 14,
-    paddingVertical: Platform.OS === "ios" ? 12 : 10,
-    alignItems: "center",
-  },
-  zurKarteText: {
-    fontSize: 20,
-    fontFamily: "FiraSansCondensed_700Bold",
-    color: "#fff",
-    letterSpacing: 1,
-    textAlign: "center",
+    overflow: "visible",
   },
   // Pasek wyszukiwania
   searchBar: {
@@ -821,19 +826,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#fff",
   },
-  // Sugestie
+  // Sugestie — absolute nad bottomSection (bottom ustawiany dynamicznie)
   suggestionsBox: {
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: "100%",
     backgroundColor: "#fff",
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
     borderTopWidth: 1,
     borderColor: "#000",
-    maxHeight: 280,
-    zIndex: 20,
+    maxHeight: 360,
+    zIndex: 100,
+    elevation: 10,
   },
   suggestionsScroll: {
     flexGrow: 0,
