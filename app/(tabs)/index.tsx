@@ -3,35 +3,39 @@ import {
   View,
   Text,
   TextInput,
-  FlatList,
   TouchableOpacity,
   ImageBackground,
   Image,
   ScrollView,
   StyleSheet,
   ActivityIndicator,
+  Modal,
   Platform,
   Dimensions,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
   Keyboard,
   Animated,
   Easing,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import Svg, { Circle, G, Path } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import { usePlacesStore } from "@/stores/placesStore";
+import PagerView from "react-native-pager-view";
 import type { DirectusOrte, DirectusKategorie } from "@/types";
 
 const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const CARD_WIDTH = SCREEN_WIDTH;
+const CARD_PEEK = 44; // ile px sąsiedniej karty widać po bokach
+const CARD_GAP = 10; // odstęp między kartami
+const CARD_WIDTH = SCREEN_WIDTH - CARD_PEEK * 2 - CARD_GAP * 2;
 
 function getImageUrl(place: DirectusOrte): string | null {
   if (place.Titelbild) return `${DIRECTUS_URL}/assets/${place.Titelbild}`;
@@ -212,12 +216,21 @@ function KategorieBar({
   selectedId: number | null;
   onSelect: (id: number | null) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const insets = useSafeAreaInsets();
   const selectedCat = categories.find((c) => c.id === selectedId) ?? null;
+  const barColor = selectedCat
+    ? (CATEGORY_COLORS[selectedCat.id] ?? "#fc6c14")
+    : "#000";
 
   const openMenu = useCallback(() => {
-    setOpen(true);
+    slideAnim.setValue(0);
+    setModalVisible(true);
+  }, [slideAnim]);
+
+  // Animacja startuje dopiero gdy Modal jest już wyrenderowany
+  const handleModalShow = useCallback(() => {
     Animated.timing(slideAnim, {
       toValue: 1,
       duration: 250,
@@ -234,42 +247,57 @@ function KategorieBar({
         easing: Easing.in(Easing.quad),
         useNativeDriver: true,
       }).start(() => {
-        setOpen(false);
+        setModalVisible(false);
         if (id !== "cancel") onSelect(id);
       });
     },
     [slideAnim, onSelect],
   );
 
-  const translateY = slideAnim.interpolate({
+  const menuTranslateY = slideAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [20, 0],
   });
-
-  const menuOpacity = slideAnim.interpolate({
+  const backdropOpacity = slideAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 1],
+    outputRange: [0, 0.4],
   });
 
   return (
-    <View style={styles.kategorieWrapper}>
-      {/* Backdrop pokrywający cały ekran powyżej bottomSection */}
-      {open && (
-        <TouchableOpacity
-          style={styles.kategorieBackdrop}
-          activeOpacity={1}
-          onPress={() => closeMenu("cancel")}
-        />
-      )}
+    <View>
+      {/* ── Modal z backdropem i menu ── */}
+      <Modal
+        transparent
+        visible={modalVisible}
+        animationType="none"
+        onShow={handleModalShow}
+        onRequestClose={() => closeMenu("cancel")}
+        statusBarTranslucent
+      >
+        {/* Backdrop — prawdziwy fullscreen, zamyka tapem */}
+        <Animated.View
+          style={[styles.kategorieBackdrop, { opacity: backdropOpacity }]}
+          pointerEvents="box-none"
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => closeMenu("cancel")}
+          />
+        </Animated.View>
 
-      {/* Menu wyrasta ku górze */}
-      {open && (
+        {/* Menu — wyrasta od dołu ekranu */}
         <Animated.View
           style={[
             styles.kategorieMenu,
-            { opacity: menuOpacity, transform: [{ translateY }] },
+            {
+              opacity: slideAnim,
+              transform: [{ translateY: menuTranslateY }],
+              paddingBottom: insets.bottom,
+            },
           ]}
         >
+          {/* "Alle" */}
           <TouchableOpacity
             style={[
               styles.kategorieMenuItem,
@@ -279,7 +307,10 @@ function KategorieBar({
             activeOpacity={0.7}
           >
             <View style={styles.kategorieMenuIcon}>
-              <CategoryIcon categoryId={null} color="#000" />
+              <CategoryIcon
+                categoryId={null}
+                color={selectedId === null ? "#fff" : "#000"}
+              />
             </View>
             <Text
               style={[
@@ -291,6 +322,7 @@ function KategorieBar({
             </Text>
           </TouchableOpacity>
 
+          {/* Kategorie */}
           {categories.map((cat) => {
             const isActive = cat.id === selectedId;
             return (
@@ -323,52 +355,45 @@ function KategorieBar({
             );
           })}
         </Animated.View>
-      )}
+      </Modal>
 
-      {/* Trigger */}
-      {(() => {
-        const barColor = selectedCat
-          ? (CATEGORY_COLORS[selectedCat.id] ?? "#fc6c14")
-          : "#000";
-        return (
-          <TouchableOpacity
-            style={[styles.kategorieBar, { backgroundColor: barColor }]}
-            onPress={openMenu}
-            activeOpacity={0.85}
-          >
-            {selectedCat ? (
-              <>
-                <View style={styles.kategorieBarIcon}>
-                  <CategoryIcon
-                    categoryId={selectedCat.id}
-                    color={barColor}
-                    size={28}
-                  />
-                </View>
-                <Text style={[styles.kategorieBarText, { color: "#fff" }]}>
-                  {selectedCat.Name}
-                </Text>
-                <TouchableOpacity
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    onSelect(null);
-                  }}
-                  style={styles.kategorieClearBtn}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Text style={[styles.kategorieClearText, { color: "#fff" }]}>
-                    ✕
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <Text style={[styles.kategorieBarText, { color: "#fff" }]}>
-                Kategorie wählen ›
+      {/* ── Trigger bar ── */}
+      <TouchableOpacity
+        style={[styles.kategorieBar, { backgroundColor: barColor }]}
+        onPress={openMenu}
+        activeOpacity={0.85}
+      >
+        {selectedCat ? (
+          <>
+            <View style={styles.kategorieBarIcon}>
+              <CategoryIcon
+                categoryId={selectedCat.id}
+                color={barColor}
+                size={28}
+              />
+            </View>
+            <Text style={[styles.kategorieBarText, { color: "#fff" }]}>
+              {selectedCat.Name}
+            </Text>
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                onSelect(null);
+              }}
+              style={styles.kategorieClearBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={[styles.kategorieClearText, { color: "#fff" }]}>
+                ✕
               </Text>
-            )}
-          </TouchableOpacity>
-        );
-      })()}
+            </TouchableOpacity>
+          </>
+        ) : (
+          <Text style={[styles.kategorieBarText, { color: "#fff" }]}>
+            Kategorie wählen ›
+          </Text>
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
@@ -377,11 +402,17 @@ function KategorieBar({
 
 export default function ListeScreen() {
   const router = useRouter();
-  const { places: allPlaces, categories: allCategories, einstellungen, status, error, fetchAll } = usePlacesStore();
+  const {
+    places: allPlaces,
+    categories: allCategories,
+    einstellungen,
+    status,
+    error,
+    fetchAll,
+  } = usePlacesStore();
   const isLoading = status === "loading" || status === "idle";
 
   const [orderedIds, setOrderedIds] = useState<number[] | null>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
 
   const [query, setQuery] = useState("");
   const [geoSuggestions, setGeoSuggestions] = useState<
@@ -400,7 +431,6 @@ export default function ListeScreen() {
   );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gpsOrderedIdsRef = useRef<number[] | null>(null);
-  const flatListRef = useRef<FlatList<DirectusOrte>>(null);
 
   // Fetch danych przy pierwszym montowaniu
   useEffect(() => {
@@ -414,7 +444,8 @@ export default function ListeScreen() {
     let mounted = true;
     async function fetchGpsOrder() {
       try {
-        const { status: locStatus } = await Location.requestForegroundPermissionsAsync();
+        const { status: locStatus } =
+          await Location.requestForegroundPermissionsAsync();
         if (locStatus === "granted" && mounted) {
           const pos = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.Balanced,
@@ -435,7 +466,9 @@ export default function ListeScreen() {
       }
     }
     fetchGpsOrder();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [status]);
 
   const displayedPlaces = useMemo(() => {
@@ -501,8 +534,6 @@ export default function ListeScreen() {
         });
         if (data) {
           setOrderedIds((data as { id: number }[]).map((r) => r.id));
-          setActiveIndex(0);
-          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
         }
       } catch {
         // fallback — zostają GPS orderedIds
@@ -517,50 +548,11 @@ export default function ListeScreen() {
     setGeoSuggestions([]);
     setShowSuggestions(false);
     setOrderedIds(gpsOrderedIdsRef.current);
-    setActiveIndex(0);
-    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   }, []);
 
   const toggleCategory = useCallback((id: number | null) => {
     setSelectedCategoryId(id);
-    setActiveIndex(0);
-    flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, []);
-
-  const handleScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-      setActiveIndex(index);
-    },
-    [],
-  );
-
-  const scrollToPrev = useCallback(() => {
-    const prev = activeIndex - 1;
-    if (prev < 0) return;
-    flatListRef.current?.scrollToIndex({ index: prev, animated: true });
-    setActiveIndex(prev);
-  }, [activeIndex]);
-
-  const scrollToNext = useCallback(() => {
-    const next = activeIndex + 1;
-    if (next >= displayedPlaces.length) return;
-    flatListRef.current?.scrollToIndex({ index: next, animated: true });
-    setActiveIndex(next);
-  }, [activeIndex, displayedPlaces.length]);
-
-  const renderPin = useCallback(
-    ({ item }: { item: DirectusOrte }) => (
-      <TouchableOpacity
-        style={styles.cardWrapper}
-        activeOpacity={0.95}
-        onPress={() => router.push(`/place/${item.id}`)}
-      >
-        <PinCard place={item} />
-      </TouchableOpacity>
-    ),
-    [router],
-  );
 
   if (isLoading) {
     return (
@@ -620,59 +612,24 @@ export default function ListeScreen() {
             <Text style={styles.emptyText}>Keine Ergebnisse gefunden.</Text>
           </View>
         ) : (
-          <FlatList
-            ref={flatListRef}
-            data={displayedPlaces}
-            keyExtractor={(item) => String(item.id)}
-            renderItem={renderPin}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            decelerationRate="fast"
-            keyboardShouldPersistTaps="handled"
-            removeClippedSubviews
-            maxToRenderPerBatch={4}
-            windowSize={5}
-            initialNumToRender={3}
-          />
-        )}
-
-        {/* Strzałka lewa */}
-        {activeIndex > 0 && (
-          <TouchableOpacity
-            style={styles.cardArrowLeft}
-            onPress={scrollToPrev}
-            activeOpacity={0.8}
+          <PagerView
+            style={styles.pagerView}
+            initialPage={0}
+            overdrag
+            pageMargin={CARD_GAP * 2}
           >
-            <LinearGradient
-              colors={["rgba(0,0,0,0.45)", "transparent"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.cardArrowGradient}
-            >
-              <Text style={styles.cardArrowText}>‹</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
-
-        {/* Strzałka prawa */}
-        {activeIndex < displayedPlaces.length - 1 && (
-          <TouchableOpacity
-            style={styles.cardArrowRight}
-            onPress={scrollToNext}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={["transparent", "rgba(0,0,0,0.45)"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.cardArrowGradient}
-            >
-              <Text style={styles.cardArrowText}>›</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+            {displayedPlaces.map((place) => (
+              <View key={String(place.id)} style={styles.pagerPage}>
+                <TouchableOpacity
+                  style={styles.cardWrapper}
+                  activeOpacity={0.95}
+                  onPress={() => router.push(`/place/${place.id}`)}
+                >
+                  <PinCard place={place} />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </PagerView>
         )}
       </View>
 
@@ -749,7 +706,6 @@ export default function ListeScreen() {
           )}
         </View>
       </View>
-
     </SafeAreaView>
   );
 }
@@ -796,41 +752,28 @@ const styles = StyleSheet.create({
   // Karty
   cardsArea: {
     flex: 1,
-    position: "relative",
+    justifyContent: "center",
+    overflow: "hidden",
   },
-  cardWrapper: {
-    width: SCREEN_WIDTH,
+  pagerView: {
     flex: 1,
   },
-  // Strzałki kart
-  cardArrowLeft: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 72,
-    zIndex: 10,
-    justifyContent: "center",
-  },
-  cardArrowRight: {
-    position: "absolute",
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 72,
-    zIndex: 10,
-    justifyContent: "center",
-  },
-  cardArrowGradient: {
+  pagerPage: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: CARD_PEEK,
   },
-  cardArrowText: {
-    fontSize: 48,
-    color: "#fff",
-    lineHeight: 52,
-    includeFontPadding: false,
+  cardWrapper: {
+    width: CARD_WIDTH,
+    height: SCREEN_WIDTH * 0.85,
+    borderRadius: 12,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 6,
   },
   // Dolna sekcja
   bottomSection: {
@@ -839,7 +782,7 @@ const styles = StyleSheet.create({
   },
   // Zur Karte
   zurKarteBar: {
-    backgroundColor: "#000",
+    backgroundColor: "#fc6c14",
     flexDirection: "row",
   },
   zurKarteBtn: {
@@ -939,25 +882,26 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   // Wrapper dla triggera + menu
-  kategorieWrapper: {
-    position: "relative",
-  },
-  // Menu
+  // Menu (Modal)
   kategorieBackdrop: {
     position: "absolute",
-    top: -9999,
-    left: -9999,
-    right: -9999,
+    top: 0,
+    left: 0,
+    right: 0,
     bottom: 0,
-    zIndex: 9,
+    backgroundColor: "#000",
   },
   kategorieMenu: {
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: "100%",
+    bottom: 0,
     backgroundColor: "#fff",
-    zIndex: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 20,
   },
   kategorieMenuItem: {
     flexDirection: "row",
@@ -985,8 +929,6 @@ const styles = StyleSheet.create({
   },
   // PinCard
   card: {
-    overflow: "hidden",
-    width: CARD_WIDTH,
     flex: 1,
   },
   cardImage: {
@@ -1021,13 +963,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   cardName: {
-    fontSize: 40,
+    fontSize: 30,
     fontFamily: "FiraSansCondensed_700Bold",
     color: "#fff",
     textAlign: "center",
   },
   cardLocation: {
-    fontSize: 25,
+    fontSize: 20,
     color: "#fff",
     fontFamily: "FiraSansCondensed_400Regular",
     marginTop: 2,

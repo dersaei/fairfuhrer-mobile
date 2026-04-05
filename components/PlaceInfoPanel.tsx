@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Line } from "react-native-svg";
 import { AudioPlayer } from "./AudioPlayer";
+import ReactNativeHapticFeedback from "react-native-haptic-feedback";
 import type { DirectusOrte, DirectusKategorie } from "@/types";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
@@ -393,7 +394,10 @@ export function PlaceInfoPanel({
     }
   }, [place?.id, visible]);
 
-  const handleClose = useCallback(() => onClose(), [onClose]);
+  const handleClose = useCallback(() => {
+    ReactNativeHapticFeedback.trigger("impactLight", { enableVibrateFallback: true });
+    onClose();
+  }, [onClose]);
 
 
   const imageUrl = place ? getImageUrl(place) : null;
@@ -506,7 +510,10 @@ export function PlaceInfoPanel({
                 ) : null}
                 {place.Telefon ? (
                   <TouchableOpacity
-                    onPress={() => Linking.openURL(`tel:${place.Telefon}`)}
+                    onPress={() => {
+                      ReactNativeHapticFeedback.trigger("impactMedium", { enableVibrateFallback: true });
+                      Linking.openURL(`tel:${place.Telefon}`);
+                    }}
                   >
                     <Text style={styles.placePhone}>📞 {place.Telefon}</Text>
                   </TouchableOpacity>
@@ -528,9 +535,10 @@ export function PlaceInfoPanel({
               <View style={styles.infoSection}>
                 <TouchableOpacity
                   style={styles.externalLink}
-                  onPress={() =>
-                    place.Link_URL && Linking.openURL(place.Link_URL)
-                  }
+                  onPress={() => {
+                    ReactNativeHapticFeedback.trigger("notificationSuccess", { enableVibrateFallback: true });
+                    place.Link_URL && Linking.openURL(place.Link_URL);
+                  }}
                   activeOpacity={0.85}
                 >
                   <Text style={styles.externalLinkText}>
