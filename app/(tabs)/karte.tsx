@@ -311,6 +311,7 @@ export default function KarteScreen() {
   const [cameraCenter, setCameraCenter] =
     useState<[number, number]>(DEFAULT_CENTER);
   const [cameraZoom, setCameraZoom] = useState(DEFAULT_ZOOM);
+  const userLocationRef = useRef<[number, number] | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shapeSourceRef = useRef<ComponentRef<typeof ShapeSource>>(null);
   const cameraRef = useRef<Camera>(null);
@@ -483,6 +484,7 @@ export default function KarteScreen() {
           <MapView
             style={styles.map}
             styleURL={Mapbox.StyleURL.Street}
+            localizeLabels={{ locale: "de" }}
             compassEnabled
           >
             <Camera
@@ -492,7 +494,15 @@ export default function KarteScreen() {
               animationMode="flyTo"
               animationDuration={800}
             />
-            <UserLocation visible />
+            <UserLocation
+              visible
+              onUpdate={(loc) => {
+                userLocationRef.current = [
+                  loc.coords.longitude,
+                  loc.coords.latitude,
+                ];
+              }}
+            />
 
             {/* Jeden source dla wszystkich miejsc — klastry natywnie w GPU */}
             <ShapeSource
@@ -559,6 +569,24 @@ export default function KarteScreen() {
           </MapView>
         )}
       </View>
+
+      {/* Przycisk powrotu do lokalizacji */}
+      <TouchableOpacity
+        style={styles.gpsBtn}
+        onPress={() => {
+          if (userLocationRef.current) {
+            cameraRef.current?.setCamera({
+              centerCoordinate: userLocationRef.current,
+              zoomLevel: 13,
+              animationMode: "flyTo",
+              animationDuration: 600,
+            });
+          }
+        }}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.gpsBtnText}>⊕</Text>
+      </TouchableOpacity>
 
       {/* Dolna sekcja — tylko wyszukiwarka */}
       <View
@@ -761,4 +789,24 @@ const styles = StyleSheet.create({
   },
   kategorieClearBtn: { paddingLeft: 10 },
   kategorieClearText: { fontSize: 16, color: "#000" },
+  gpsBtn: {
+    position: "absolute",
+    right: 14,
+    bottom: 120,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    zIndex: 20,
+  },
+  gpsBtnText: { fontSize: 26, color: "#fc6c14", lineHeight: 26 },
 });

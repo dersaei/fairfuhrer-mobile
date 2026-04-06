@@ -10,13 +10,6 @@ import {
 import Svg, { Polygon, Rect, Circle } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
-import ReactNativeHapticFeedback from "react-native-haptic-feedback";
-
-const haptic = {
-  light:     () => ReactNativeHapticFeedback.trigger("impactLight",     { enableVibrateFallback: true }),
-  medium:    () => ReactNativeHapticFeedback.trigger("impactMedium",    { enableVibrateFallback: true }),
-  selection: () => ReactNativeHapticFeedback.trigger("selection",       { enableVibrateFallback: true }),
-};
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -204,7 +197,7 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
       {/* Kontrolki */}
       <View style={styles.audioControls}>
 
-        <PressButton onPress={() => { haptic.light(); player.seekTo(Math.max(0, currentTime - 5)); }}>
+        <PressButton onPress={() => player.seekTo(Math.max(0, currentTime - 5))}>
           <View style={styles.skipButton}>
             <SkipBackIcon size={32} />
           </View>
@@ -212,10 +205,7 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
 
         {/* Play/Pause z pulse */}
         <Animated.View style={[styles.playButtonShadow, pulseStyle]}>
-          <PressButton onPress={() => {
-            isPlaying ? haptic.light() : haptic.medium();
-            isPlaying ? player.pause() : player.play();
-          }}>
+          <PressButton onPress={() => isPlaying ? player.pause() : player.play()}>
             <LinearGradient
               colors={isPlaying ? ["#dc3545", "#c82333"] : ["rgba(252,108,20,1)", "rgba(252,108,20,0.9)"]}
               start={{ x: 0, y: 0 }}
@@ -227,7 +217,7 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
           </PressButton>
         </Animated.View>
 
-        <PressButton onPress={() => { haptic.light(); player.seekTo(Math.min(duration, currentTime + 5)); }}>
+        <PressButton onPress={() => player.seekTo(Math.min(duration, currentTime + 5))}>
           <View style={styles.skipButton}>
             <SkipForwardIcon size={32} />
           </View>
@@ -264,7 +254,7 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
           return (
             <TouchableOpacity
               key={speed}
-              onPress={() => { haptic.selection(); setPlaybackSpeed(speed); player.setPlaybackRate(speed); }}
+              onPress={() => { setPlaybackSpeed(speed); player.setPlaybackRate(speed); }}
               activeOpacity={0.75}
             >
               {isActive ? (
