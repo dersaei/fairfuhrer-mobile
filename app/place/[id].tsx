@@ -53,49 +53,47 @@ function getCategories(place: DirectusOrte): DirectusKategorie[] {
 }
 
 function htmlToText(html: string): string {
-  return (
-    html
-      .replace(/<\/(p|h[1-6]|div|li)[^>]*>/gi, "\n")
-      .replace(/<(br|hr)[^>]*\/?>/gi, "\n")
-      .replace(/<(p|h[1-6]|div|li|ul|ol)[^>]*>/gi, "")
-      .replace(/<[^>]+>/g, "")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/&apos;/g, "'")
-      .replace(/&rsquo;/g, "\u2019")
-      .replace(/&lsquo;/g, "\u2018")
-      .replace(/&rdquo;/g, "\u201D")
-      .replace(/&ldquo;/g, "\u201C")
-      .replace(/&bdquo;/g, "\u201E")
-      .replace(/&sbquo;/g, "\u201A")
-      .replace(/&ndash;/g, "\u2013")
-      .replace(/&mdash;/g, "\u2014")
-      .replace(/&hellip;/g, "\u2026")
-      .replace(/&euro;/g, "\u20AC")
-      .replace(/&times;/g, "\u00D7")
-      .replace(/&copy;/g, "\u00A9")
-      .replace(/&reg;/g, "\u00AE")
-      .replace(/&trade;/g, "\u2122")
-      .replace(/&laquo;/g, "\u00AB")
-      .replace(/&raquo;/g, "\u00BB")
-      .replace(/&auml;/g, "ä")
-      .replace(/&ouml;/g, "ö")
-      .replace(/&uuml;/g, "ü")
-      .replace(/&Auml;/g, "Ä")
-      .replace(/&Ouml;/g, "Ö")
-      .replace(/&Uuml;/g, "Ü")
-      .replace(/&szlig;/g, "ß")
-      .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
-      .replace(/&#x([0-9a-fA-F]+);/g, (_, h) =>
-        String.fromCharCode(parseInt(h, 16)),
-      )
-      .replace(/\n+/g, "\n")
-      .trim()
-  );
+  return html
+    .replace(/<\/(p|h[1-6]|div|li)[^>]*>/gi, "\n")
+    .replace(/<(br|hr)[^>]*\/?>/gi, "\n")
+    .replace(/<(p|h[1-6]|div|li|ul|ol)[^>]*>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&rsquo;/g, "\u2019")
+    .replace(/&lsquo;/g, "\u2018")
+    .replace(/&rdquo;/g, "\u201D")
+    .replace(/&ldquo;/g, "\u201C")
+    .replace(/&bdquo;/g, "\u201E")
+    .replace(/&sbquo;/g, "\u201A")
+    .replace(/&ndash;/g, "\u2013")
+    .replace(/&mdash;/g, "\u2014")
+    .replace(/&hellip;/g, "\u2026")
+    .replace(/&euro;/g, "\u20AC")
+    .replace(/&times;/g, "\u00D7")
+    .replace(/&copy;/g, "\u00A9")
+    .replace(/&reg;/g, "\u00AE")
+    .replace(/&trade;/g, "\u2122")
+    .replace(/&laquo;/g, "\u00AB")
+    .replace(/&raquo;/g, "\u00BB")
+    .replace(/&auml;/g, "ä")
+    .replace(/&ouml;/g, "ö")
+    .replace(/&uuml;/g, "ü")
+    .replace(/&Auml;/g, "Ä")
+    .replace(/&Ouml;/g, "Ö")
+    .replace(/&Uuml;/g, "Ü")
+    .replace(/&szlig;/g, "ß")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) =>
+      String.fromCharCode(parseInt(h, 16)),
+    )
+    .replace(/\n+/g, "\n")
+    .trim();
 }
 
 // ── Ikony ─────────────────────────────────────────────────────────────────────
@@ -103,8 +101,24 @@ function htmlToText(html: string): string {
 function CloseIcon({ color = "#fc6c14" }: { color?: string }) {
   return (
     <Svg width={35} height={35} viewBox="0 0 24 24" fill="none">
-      <Line x1="18" y1="6" x2="6" y2="18" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
-      <Line x1="6" y1="6" x2="18" y2="18" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+      <Line
+        x1="18"
+        y1="6"
+        x2="6"
+        y2="18"
+        stroke={color}
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+      <Line
+        x1="6"
+        y1="6"
+        x2="18"
+        y2="18"
+        stroke={color}
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
     </Svg>
   );
 }
@@ -147,7 +161,8 @@ function GalleryViewer({ images, initialIndex, onClose }: GalleryViewerProps) {
       onMoveShouldSetPanResponder: (_, g) =>
         Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy),
       onPanResponderRelease: (_, g) => {
-        if (g.dx < -50 && currentIndex < images.length - 1) goTo(currentIndex + 1);
+        if (g.dx < -50 && currentIndex < images.length - 1)
+          goTo(currentIndex + 1);
         else if (g.dx > 50 && currentIndex > 0) goTo(currentIndex - 1);
       },
     }),
@@ -158,7 +173,8 @@ function GalleryViewer({ images, initialIndex, onClose }: GalleryViewerProps) {
       onMoveShouldSetPanResponder: (_, g) =>
         Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy),
       onPanResponderRelease: (_, g) => {
-        if (g.dx < -50 && currentIndex < images.length - 1) goTo(currentIndex + 1);
+        if (g.dx < -50 && currentIndex < images.length - 1)
+          goTo(currentIndex + 1);
         else if (g.dx > 50 && currentIndex > 0) goTo(currentIndex - 1);
       },
     });
@@ -192,8 +208,24 @@ function GalleryViewer({ images, initialIndex, onClose }: GalleryViewerProps) {
           activeOpacity={0.7}
         >
           <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
-            <Line x1="15" y1="6" x2="9" y2="12" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
-            <Line x1="9" y1="12" x2="15" y2="18" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+            <Line
+              x1="15"
+              y1="6"
+              x2="9"
+              y2="12"
+              stroke="#fff"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+            <Line
+              x1="9"
+              y1="12"
+              x2="15"
+              y2="18"
+              stroke="#fff"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
           </Svg>
         </TouchableOpacity>
       )}
@@ -204,8 +236,24 @@ function GalleryViewer({ images, initialIndex, onClose }: GalleryViewerProps) {
           activeOpacity={0.7}
         >
           <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
-            <Line x1="9" y1="6" x2="15" y2="12" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
-            <Line x1="15" y1="12" x2="9" y2="18" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+            <Line
+              x1="9"
+              y1="6"
+              x2="15"
+              y2="12"
+              stroke="#fff"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+            <Line
+              x1="15"
+              y1="12"
+              x2="9"
+              y2="18"
+              stroke="#fff"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
           </Svg>
         </TouchableOpacity>
       )}
@@ -305,7 +353,8 @@ export default function PlaceScreen() {
       ? AUDIO_HEIGHT
       : 0;
 
-  const directusGallery = place.Galerie?.filter((g) => g?.directus_files_id) ?? [];
+  const directusGallery =
+    place.Galerie?.filter((g) => g?.directus_files_id) ?? [];
   const supabaseGallery = place.Galerie_Bilder ?? [];
   const galleryImages =
     directusGallery.length > 0
@@ -323,7 +372,11 @@ export default function PlaceScreen() {
       {/* ── Stały header: zdjęcie + audio ── */}
       {imageUrl && (
         <View style={styles.imageSection} pointerEvents="box-none">
-          <Image source={{ uri: imageUrl }} style={styles.mainImage} resizeMode="cover" />
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.mainImage}
+            resizeMode="cover"
+          />
           {audioUrl && (
             <View style={styles.audioOverlay}>
               <AudioPlayer src={audioUrl} />
@@ -365,7 +418,10 @@ export default function PlaceScreen() {
               {categories.map((cat) => (
                 <View
                   key={cat.id}
-                  style={[styles.categoryBadge, { backgroundColor: cat.Farbe ?? "#999" }]}
+                  style={[
+                    styles.categoryBadge,
+                    { backgroundColor: cat.Farbe ?? "#999" },
+                  ]}
                 >
                   <Text style={styles.categoryBadgeText}>{cat.Name}</Text>
                 </View>
@@ -380,7 +436,9 @@ export default function PlaceScreen() {
               <Text style={styles.placeAddress}>{place.Adresse}</Text>
             ) : null}
             {place.Telefon ? (
-              <TouchableOpacity onPress={() => Linking.openURL(`tel:${place.Telefon}`)}>
+              <TouchableOpacity
+                onPress={() => Linking.openURL(`tel:${place.Telefon}`)}
+              >
                 <Text style={styles.placePhone}>📞 {place.Telefon}</Text>
               </TouchableOpacity>
             ) : null}
@@ -400,7 +458,9 @@ export default function PlaceScreen() {
             <View style={styles.infoSection}>
               <TouchableOpacity
                 style={styles.externalLink}
-                onPress={() => place.Link_URL && Linking.openURL(place.Link_URL)}
+                onPress={() =>
+                  place.Link_URL && Linking.openURL(place.Link_URL)
+                }
                 activeOpacity={0.85}
               >
                 <Text style={styles.externalLinkText}>
@@ -444,7 +504,9 @@ export default function PlaceScreen() {
                     <View key={item.id} style={styles.zertItem}>
                       {item.Image ? (
                         <Image
-                          source={{ uri: `${DIRECTUS_URL}/assets/${item.Image}` }}
+                          source={{
+                            uri: `${DIRECTUS_URL}/assets/${item.Image}`,
+                          }}
                           style={styles.zertLogo}
                           resizeMode="contain"
                         />
@@ -591,7 +653,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontStyle: "italic",
     marginTop: 8,
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
   },
   placePhone: {
     fontFamily: "FiraSansCondensed_400Regular",

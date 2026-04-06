@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ImageBackground,
   Image,
+  FlatList,
   ScrollView,
   StyleSheet,
   ActivityIndicator,
@@ -24,9 +25,9 @@ import Svg, { Circle, G, Path } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
-import { supabase } from "@/lib/supabase";
+import { useIsFocused } from "@react-navigation/native";
 import { usePlacesStore } from "@/stores/placesStore";
-import PagerView from "react-native-pager-view";
+import { supabase } from "@/lib/supabase";
 import type { DirectusOrte, DirectusKategorie } from "@/types";
 
 const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
@@ -35,9 +36,20 @@ const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
-const CARD_PEEK = 44; // ile px sąsiedniej karty widać po bokach
-const CARD_GAP = 10; // odstęp między kartami
-const CARD_WIDTH = SCREEN_WIDTH - CARD_PEEK * 2 - CARD_GAP * 2;
+const CARD_GAP = 12; // odstęp między kartami i od lewej krawędzi
+const CARD_PEEK = 44; // ile px następnej karty widać po prawej
+const CARD_WIDTH = SCREEN_WIDTH - CARD_GAP * 2 - CARD_PEEK;
+// Każda karta zajmuje swoją szerokość + gap po prawej
+const CARD_STEP = CARD_WIDTH + CARD_GAP;
+
+// Stałe poza komponentem — nie tworzą nowych obiektów przy każdym renderze
+const FLATLIST_HEADER = <View style={{ width: CARD_GAP }} />;
+const keyExtractor = (id: number) => String(id);
+const getItemLayout = (_: unknown, index: number) => ({
+  length: CARD_STEP,
+  offset: CARD_GAP + CARD_STEP * index,
+  index,
+});
 
 function getImageUrl(place: DirectusOrte): string | null {
   if (place.Titelbild) return `${DIRECTUS_URL}/assets/${place.Titelbild}`;
@@ -165,12 +177,22 @@ function CategoryIcon({
 
 // ─── PinCard ────────────────────────────────────────────────────────────────
 
-const PinCard = memo(function PinCard({ place }: { place: DirectusOrte }) {
-  const imageUrl = getImageUrl(place);
-  const categories = getCategoriesFromPlace(place);
+const PinCard = memo(function PinCard({ placeId }: { placeId: number }) {
+  const router = useRouter();
+  const place = usePlacesStore((s) => s.getPlaceById(placeId));
+  const imageUrl = place ? getImageUrl(place) : null;
+  const categories = place ? getCategoriesFromPlace(place) : [];
+  const handlePress = useCallback(
+    () => router.push(`/place/${placeId}`),
+    [router, placeId],
+  );
 
   return (
-    <View style={styles.card}>
+    <TouchableOpacity
+      style={styles.card}
+      activeOpacity={0.95}
+      onPress={handlePress}
+    >
       <ImageBackground
         source={imageUrl ? { uri: imageUrl } : undefined}
         style={styles.cardImage}
@@ -196,14 +218,14 @@ const PinCard = memo(function PinCard({ place }: { place: DirectusOrte }) {
             ))}
           </View>
           <Text style={styles.cardName} numberOfLines={3}>
-            {place.Name}
+            {place?.Name}
           </Text>
           <Text style={styles.cardLocation} numberOfLines={1}>
-            {[place.Stadt, place.Land].filter(Boolean).join(", ")}
+            {[place?.Stadt, place?.Land].filter(Boolean).join(", ")}
           </Text>
         </View>
       </ImageBackground>
-    </View>
+    </TouchableOpacity>
   );
 });
 
@@ -403,7 +425,6 @@ function KategorieBar({
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function ListeScreen() {
-  const router = useRouter();
   const {
     places: allPlaces,
     categories: allCategories,
@@ -421,25 +442,28 @@ export default function ListeScreen() {
     { name: string; place_formatted: string; lat: number; lon: number }[]
   >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isGeocoding, setIsGeocoding] = useState(false);
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
     null,
   );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gpsOrderedIdsRef = useRef<number[] | null>(null);
+  const flatListRef = useRef<FlatList<number>>(null);
   const allPlacesRef = useRef(allPlaces);
   allPlacesRef.current = allPlaces;
   const [bottomSectionHeight, setBottomSectionHeight] = useState(0);
+  const isFocused = useIsFocused();
+  const gpsDoneRef = useRef(false);
 
   // Fetch danych przy pierwszym montowaniu
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
 
-  // Sortowanie GPS — odpala się tylko raz gdy status zmienia się na success
+  // Sortowanie GPS — tylko raz, gdy dane gotowe i ekran aktywny
   useEffect(() => {
-    if (status !== "success") return;
+    if (status !== "success" || !isFocused || gpsDoneRef.current) return;
+    gpsDoneRef.current = true;
 
     let mounted = true;
     async function sortByGps() {
@@ -451,28 +475,14 @@ export default function ListeScreen() {
           accuracy: Location.Accuracy.Balanced,
         });
         const { latitude: lat, longitude: lng } = pos.coords;
-        const R = 6371;
-        const toRad = (d: number) => (d * Math.PI) / 180;
-        const dist = (pLat: number, pLng: number) => {
-          const dLat = toRad(pLat - lat);
-          const dLng = toRad(pLng - lng);
-          const a =
-            Math.sin(dLat / 2) ** 2 +
-            Math.cos(toRad(lat)) *
-              Math.cos(toRad(pLat)) *
-              Math.sin(dLng / 2) ** 2;
-          return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        };
-        const sorted = [...allPlacesRef.current].sort((a, b) => {
-          const [aLng, aLat] = a.location?.coordinates ?? [999, 999];
-          const [bLng, bLat] = b.location?.coordinates ?? [999, 999];
-          return dist(aLat, aLng) - dist(bLat, bLng);
+        const { data, error } = await supabase.rpc("nearby_orte", {
+          user_lat: lat,
+          user_lng: lng,
         });
-        const ids = sorted.map((p) => p.id);
-        if (mounted) {
-          gpsOrderedIdsRef.current = ids;
-          setOrderedIds(ids);
-        }
+        if (error || !data || !mounted) return;
+        const ids = (data as { id: number }[]).map((p) => p.id);
+        gpsOrderedIdsRef.current = ids;
+        setOrderedIds(ids);
       } catch {
         // Location unavailable — display without sorting
       }
@@ -481,12 +491,9 @@ export default function ListeScreen() {
     return () => {
       mounted = false;
     };
-  }, [status]); // tylko status — nie allPlaces, żeby GPS nie nadpisywał wyboru z wyszukiwarki
+  }, [status, isFocused]);
 
-  // Klucz PagerView — wymusza pełne remontowanie gdy zmienia się kolejność
-  const pagerKey = orderedIds ? orderedIds.slice(0, 5).join(",") : "default";
-
-  const displayedPlaces = useMemo(() => {
+  const displayedIds = useMemo(() => {
     let result = [...allPlaces];
 
     if (selectedCategoryId !== null) {
@@ -504,7 +511,7 @@ export default function ListeScreen() {
       );
     }
 
-    return result;
+    return result.map((p) => p.id);
   }, [allPlaces, selectedCategoryId, orderedIds]);
 
   const fetchGeoSuggestions = useCallback((text: string) => {
@@ -554,19 +561,14 @@ export default function ListeScreen() {
       setShowSuggestions(false);
       setGeoSuggestions([]);
       Keyboard.dismiss();
-      setIsGeocoding(true);
-      try {
-        const { data } = await supabase.rpc("nearby_orte", {
-          user_lat: item.lat,
-          user_lng: item.lon,
-        });
-        if (data) {
-          setOrderedIds((data as { id: number }[]).map((r) => r.id));
-        }
-      } catch {
-        // fallback — zostają GPS orderedIds
-      }
-      setIsGeocoding(false);
+      const { data, error } = await supabase.rpc("nearby_orte", {
+        user_lat: item.lat,
+        user_lng: item.lon,
+      });
+      if (error || !data) return;
+      const ids = (data as { id: number }[]).map((p) => p.id);
+      setOrderedIds(ids);
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
     },
     [],
   );
@@ -580,12 +582,24 @@ export default function ListeScreen() {
     // Resetuj kolejność w następnej klatce, żeby UI nie blokował
     requestAnimationFrame(() => {
       setOrderedIds(gpsOrderedIdsRef.current);
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
     });
   }, []);
 
   const toggleCategory = useCallback((id: number | null) => {
     setSelectedCategoryId(id);
   }, []);
+
+  const renderCard = useCallback(
+    ({ item: placeId }: { item: number }) => (
+      <View style={styles.cardWrapperOuter}>
+        <View style={styles.cardWrapper}>
+          <PinCard placeId={placeId} />
+        </View>
+      </View>
+    ),
+    [],
+  );
 
   if (isLoading) {
     return (
@@ -627,45 +641,37 @@ export default function ListeScreen() {
 
       {/* Karty — przewijane poziomo */}
       <View style={styles.cardsArea}>
-        {displayedPlaces.length === 0 ? (
+        {displayedIds.length === 0 ? (
           <View style={styles.centered}>
             <Text style={styles.emptyText}>Keine Ergebnisse gefunden.</Text>
           </View>
         ) : (
-          <PagerView
-            key={pagerKey}
-            style={styles.pagerView}
-            initialPage={0}
-            overdrag
-            pageMargin={CARD_GAP * 2}
-          >
-            {displayedPlaces.map((place) => (
-              <View key={String(place.id)} style={styles.pagerPage}>
-                <TouchableOpacity
-                  style={styles.cardWrapper}
-                  activeOpacity={0.95}
-                  onPress={() => router.push(`/place/${place.id}`)}
-                >
-                  <PinCard place={place} />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </PagerView>
+          <FlatList
+            ref={flatListRef}
+            data={displayedIds}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={CARD_STEP}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            style={styles.flatList}
+            ListHeaderComponent={FLATLIST_HEADER}
+            initialNumToRender={3}
+            maxToRenderPerBatch={2}
+            windowSize={3}
+            removeClippedSubviews
+            keyExtractor={keyExtractor}
+            getItemLayout={getItemLayout}
+            renderItem={renderCard}
+          />
         )}
       </View>
 
-      {/* Dolna sekcja — kategorie + wyszukiwarka */}
+      {/* Dolna sekcja — wyszukiwarka + kategorie */}
       <View
         style={styles.bottomSection}
         onLayout={(e) => setBottomSectionHeight(e.nativeEvent.layout.height)}
       >
-        {/* Pasek kategorii */}
-        <KategorieBar
-          categories={allCategories}
-          selectedId={selectedCategoryId}
-          onSelect={toggleCategory}
-        />
-
         {/* Pasek wyszukiwania */}
         <View style={styles.searchBar}>
           <TextInput
@@ -690,19 +696,25 @@ export default function ListeScreen() {
               else setShowSuggestions(false);
             }}
           />
-          {(isGeocoding || isFetchingSuggestions) && (
+          {isFetchingSuggestions && (
             <ActivityIndicator
               size="small"
               color="#fff"
               style={{ marginLeft: 8 }}
             />
           )}
-          {query.length > 0 && !isGeocoding && !isFetchingSuggestions && (
+          {query.length > 0 && !isFetchingSuggestions && (
             <TouchableOpacity onPress={clearSearch} style={styles.clearBtn}>
               <Text style={styles.clearBtnText}>✕</Text>
             </TouchableOpacity>
           )}
         </View>
+        {/* Pasek kategorii — pod wyszukiwarką */}
+        <KategorieBar
+          categories={allCategories}
+          selectedId={selectedCategoryId}
+          onSelect={toggleCategory}
+        />
       </View>
 
       {/* Sugestie — absolute nad bottomSection, poza jego drzewem */}
@@ -777,14 +789,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
   },
-  pagerView: {
-    flex: 1,
+  flatList: {
+    flexGrow: 0,
   },
-  pagerPage: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: CARD_PEEK,
+  // Outer: karta + gap po prawej stronie (tworzy odstęp między kartami)
+  cardWrapperOuter: {
+    width: CARD_STEP,
+    paddingRight: CARD_GAP,
   },
   cardWrapper: {
     width: CARD_WIDTH,
@@ -801,6 +812,7 @@ const styles = StyleSheet.create({
   bottomSection: {
     position: "relative",
     zIndex: 10,
+    elevation: 10,
     overflow: "visible",
   },
   // Pasek wyszukiwania
@@ -813,7 +825,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     paddingVertical: Platform.OS === "ios" ? 12 : 10,
-    fontSize: 20,
+    fontSize: 25,
     fontFamily: "FiraSansCondensed_700Bold",
     color: "#fff",
     letterSpacing: 1,
@@ -835,8 +847,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: "#000",
     maxHeight: 360,
-    zIndex: 100,
-    elevation: 10,
+    zIndex: 200,
+    elevation: 20,
   },
   suggestionsScroll: {
     flexGrow: 0,

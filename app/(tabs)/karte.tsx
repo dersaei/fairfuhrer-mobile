@@ -14,8 +14,11 @@ import {
   Animated,
   Easing,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle, G, Path } from "react-native-svg";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import Svg, { Circle } from "react-native-svg";
 import Mapbox, {
   Camera,
   MapView,
@@ -24,9 +27,10 @@ import Mapbox, {
   CircleLayer,
   SymbolLayer,
 } from "@rnmapbox/maps";
-import type { ElementRef } from "react";
+import type { ComponentRef } from "react";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
+import { useIsFocused } from "@react-navigation/native";
 import { usePlacesStore } from "@/stores/placesStore";
 import type { DirectusOrte, DirectusKategorie } from "@/types";
 
@@ -35,7 +39,6 @@ const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
 
 Mapbox.setAccessToken(MAPBOX_TOKEN);
 Mapbox.setTelemetryEnabled(false);
-
 
 // ─── Kategorie helpers ────────────────────────────────────────────────────────
 
@@ -66,7 +69,10 @@ function placesToGeoJSON(places: DirectusOrte[]): GeoJSON.FeatureCollection {
           },
           properties: {
             placeId: p.id,
-            categoryColor: catId !== null ? (CATEGORY_COLORS[catId] ?? DEFAULT_COLOR) : DEFAULT_COLOR,
+            categoryColor:
+              catId !== null
+                ? (CATEGORY_COLORS[catId] ?? DEFAULT_COLOR)
+                : DEFAULT_COLOR,
           },
         };
       }),
@@ -88,7 +94,9 @@ function KategorieBar({
   const slideAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
   const selectedCat = categories.find((c) => c.id === selectedId) ?? null;
-  const barColor = selectedCat ? (CATEGORY_COLORS[selectedCat.id] ?? DEFAULT_COLOR) : "#000";
+  const barColor = selectedCat
+    ? (CATEGORY_COLORS[selectedCat.id] ?? DEFAULT_COLOR)
+    : "#000";
 
   const openMenu = useCallback(() => {
     slideAnim.setValue(0);
@@ -119,11 +127,23 @@ function KategorieBar({
     [slideAnim, onSelect],
   );
 
-  const menuTranslateY = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] });
-  const backdropOpacity = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.4] });
+  const menuTranslateY = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [20, 0],
+  });
+  const backdropOpacity = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.4],
+  });
 
   // Ikona SVG dla paska kategorii
-  const CatIcon = ({ catId, color }: { catId: number | null; color: string }) => (
+  const CatIcon = ({
+    catId,
+    color,
+  }: {
+    catId: number | null;
+    color: string;
+  }) => (
     <Svg width={28} height={28} viewBox="0 0 24 24">
       <Circle cx="12" cy="12" r="11" fill={color} />
     </Svg>
@@ -143,22 +163,46 @@ function KategorieBar({
           style={[styles.kategorieBackdrop, { opacity: backdropOpacity }]}
           pointerEvents="box-none"
         >
-          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => closeMenu("cancel")} />
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => closeMenu("cancel")}
+          />
         </Animated.View>
         <Animated.View
-          style={[styles.kategorieMenu, { opacity: slideAnim, transform: [{ translateY: menuTranslateY }], paddingBottom: insets.bottom }]}
+          style={[
+            styles.kategorieMenu,
+            {
+              opacity: slideAnim,
+              transform: [{ translateY: menuTranslateY }],
+              paddingBottom: insets.bottom,
+            },
+          ]}
         >
           <TouchableOpacity
-            style={[styles.kategorieMenuItem, selectedId === null && styles.kategorieMenuItemActive]}
+            style={[
+              styles.kategorieMenuItem,
+              selectedId === null && styles.kategorieMenuItemActive,
+            ]}
             onPress={() => closeMenu(null)}
             activeOpacity={0.7}
           >
             <View style={styles.kategorieMenuIcon}>
               <Svg width={36} height={36} viewBox="0 0 24 24">
-                <Circle cx="12" cy="12" r="11" fill={selectedId === null ? "#fff" : "#000"} />
+                <Circle
+                  cx="12"
+                  cy="12"
+                  r="11"
+                  fill={selectedId === null ? "#fff" : "#000"}
+                />
               </Svg>
             </View>
-            <Text style={[styles.kategorieMenuText, selectedId === null && styles.kategorieMenuTextActive]}>
+            <Text
+              style={[
+                styles.kategorieMenuText,
+                selectedId === null && styles.kategorieMenuTextActive,
+              ]}
+            >
               Alle
             </Text>
           </TouchableOpacity>
@@ -167,16 +211,33 @@ function KategorieBar({
             return (
               <TouchableOpacity
                 key={cat.id}
-                style={[styles.kategorieMenuItem, isActive && { backgroundColor: cat.Farbe ?? DEFAULT_COLOR }]}
+                style={[
+                  styles.kategorieMenuItem,
+                  isActive && { backgroundColor: cat.Farbe ?? DEFAULT_COLOR },
+                ]}
                 onPress={() => closeMenu(cat.id)}
                 activeOpacity={0.7}
               >
                 <View style={styles.kategorieMenuIcon}>
                   <Svg width={36} height={36} viewBox="0 0 24 24">
-                    <Circle cx="12" cy="12" r="11" fill={isActive ? "#fff" : (CATEGORY_COLORS[cat.id] ?? DEFAULT_COLOR)} />
+                    <Circle
+                      cx="12"
+                      cy="12"
+                      r="11"
+                      fill={
+                        isActive
+                          ? "#fff"
+                          : (CATEGORY_COLORS[cat.id] ?? DEFAULT_COLOR)
+                      }
+                    />
                   </Svg>
                 </View>
-                <Text style={[styles.kategorieMenuText, isActive && styles.kategorieMenuTextActive]}>
+                <Text
+                  style={[
+                    styles.kategorieMenuText,
+                    isActive && styles.kategorieMenuTextActive,
+                  ]}
+                >
                   {cat.Name}
                 </Text>
               </TouchableOpacity>
@@ -195,17 +256,26 @@ function KategorieBar({
             <View style={styles.kategorieBarIcon}>
               <CatIcon catId={selectedCat.id} color={barColor} />
             </View>
-            <Text style={[styles.kategorieBarText, { color: "#fff" }]}>{selectedCat.Name}</Text>
+            <Text style={[styles.kategorieBarText, { color: "#fff" }]}>
+              {selectedCat.Name}
+            </Text>
             <TouchableOpacity
-              onPress={(e) => { e.stopPropagation(); onSelect(null); }}
+              onPress={(e) => {
+                e.stopPropagation();
+                onSelect(null);
+              }}
               style={styles.kategorieClearBtn}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={[styles.kategorieClearText, { color: "#fff" }]}>✕</Text>
+              <Text style={[styles.kategorieClearText, { color: "#fff" }]}>
+                ✕
+              </Text>
             </TouchableOpacity>
           </>
         ) : (
-          <Text style={[styles.kategorieBarText, { color: "#fff" }]}>Kategorie wählen ›</Text>
+          <Text style={[styles.kategorieBarText, { color: "#fff" }]}>
+            Kategorie wählen ›
+          </Text>
         )}
       </TouchableOpacity>
     </View>
@@ -219,10 +289,18 @@ const DEFAULT_ZOOM = 5;
 
 export default function KarteScreen() {
   const router = useRouter();
-  const { places: allPlaces, categories: allCategories, einstellungen, status, fetchAll } = usePlacesStore();
+  const {
+    places: allPlaces,
+    categories: allCategories,
+    einstellungen,
+    status,
+    fetchAll,
+  } = usePlacesStore();
   const isLoading = status === "loading" || status === "idle";
 
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
+    null,
+  );
   const [query, setQuery] = useState("");
   const [geoSuggestions, setGeoSuggestions] = useState<
     { name: string; place_formatted: string; lat: number; lon: number }[]
@@ -230,35 +308,48 @@ export default function KarteScreen() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
   const [bottomSectionHeight, setBottomSectionHeight] = useState(0);
-  const [cameraCenter, setCameraCenter] = useState<[number, number]>(DEFAULT_CENTER);
+  const [cameraCenter, setCameraCenter] =
+    useState<[number, number]>(DEFAULT_CENTER);
   const [cameraZoom, setCameraZoom] = useState(DEFAULT_ZOOM);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const shapeSourceRef = useRef<ElementRef<typeof ShapeSource>>(null);
+  const shapeSourceRef = useRef<ComponentRef<typeof ShapeSource>>(null);
   const cameraRef = useRef<Camera>(null);
-
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  const isFocused = useIsFocused();
+  const gpsLocatedRef = useRef(false);
 
   useEffect(() => {
-    if (status !== "success") return;
+    fetchAll();
+  }, [fetchAll]);
+
+  // GPS tylko gdy tab jest aktywny i dane gotowe — nie przy starcie aplikacji
+  useEffect(() => {
+    if (status !== "success" || !isFocused || gpsLocatedRef.current) return;
+    gpsLocatedRef.current = true;
     (async () => {
       try {
-        const { status: locStatus } = await Location.requestForegroundPermissionsAsync();
+        const { status: locStatus } =
+          await Location.requestForegroundPermissionsAsync();
         if (locStatus === "granted") {
-          const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          const pos = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
           setCameraCenter([pos.coords.longitude, pos.coords.latitude]);
           setCameraZoom(10);
         }
-      } catch { /* zostaje domyślne centrum */ }
+      } catch {
+        /* zostaje domyślne centrum */
+      }
     })();
-  }, [status]);
+  }, [status, isFocused]);
 
   // GeoJSON — przeliczany tylko gdy zmienia się lista lub filtr
   const geoJSON = useMemo(() => {
-    const filtered = selectedCategoryId === null
-      ? allPlaces
-      : allPlaces.filter((p) =>
-          p.Kategorie?.some((k) => k.Kategorie_id?.id === selectedCategoryId),
-        );
+    const filtered =
+      selectedCategoryId === null
+        ? allPlaces
+        : allPlaces.filter((p) =>
+            p.Kategorie?.some((k) => k.Kategorie_id?.id === selectedCategoryId),
+          );
     return placesToGeoJSON(filtered);
   }, [allPlaces, selectedCategoryId]);
 
@@ -276,16 +367,18 @@ export default function KarteScreen() {
         const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(text)}&language=de&limit=7&types=country,region,district,place&autocomplete=true&access_token=${MAPBOX_TOKEN}`;
         const res = await fetch(url);
         const json = await res.json();
-        const suggestions = (json.features ?? []).map((f: Record<string, unknown>) => {
-          const props = f.properties as Record<string, unknown>;
-          const geom = f.geometry as { coordinates: [number, number] };
-          return {
-            name: props.name as string,
-            place_formatted: (props.place_formatted ?? "") as string,
-            lat: geom.coordinates[1],
-            lon: geom.coordinates[0],
-          };
-        });
+        const suggestions = (json.features ?? []).map(
+          (f: Record<string, unknown>) => {
+            const props = f.properties as Record<string, unknown>;
+            const geom = f.geometry as { coordinates: [number, number] };
+            return {
+              name: props.name as string,
+              place_formatted: (props.place_formatted ?? "") as string,
+              lat: geom.coordinates[1],
+              lon: geom.coordinates[0],
+            };
+          },
+        );
         setGeoSuggestions(suggestions);
         setShowSuggestions(suggestions.length > 0);
       } catch {
@@ -296,64 +389,87 @@ export default function KarteScreen() {
     }, 300);
   }, []);
 
-  const selectGeoSuggestion = useCallback(async (item: { name: string; place_formatted: string; lat: number; lon: number }) => {
-    setQuery(item.name);
-    setShowSuggestions(false);
-    setGeoSuggestions([]);
-    Keyboard.dismiss();
-    setCameraCenter([item.lon, item.lat]);
-    setCameraZoom(10);
-  }, []);
+  const selectGeoSuggestion = useCallback(
+    async (item: {
+      name: string;
+      place_formatted: string;
+      lat: number;
+      lon: number;
+    }) => {
+      setQuery(item.name);
+      setShowSuggestions(false);
+      setGeoSuggestions([]);
+      Keyboard.dismiss();
+      setCameraCenter([item.lon, item.lat]);
+      setCameraZoom(10);
+    },
+    [],
+  );
 
   const clearSearch = useCallback(() => {
-    setQuery(""); setGeoSuggestions([]); setShowSuggestions(false);
+    setQuery("");
+    setGeoSuggestions([]);
+    setShowSuggestions(false);
   }, []);
 
-  const handleMapPress = useCallback(async (event: { features: GeoJSON.Feature[] }) => {
-    const feature = event.features[0];
-    if (!feature?.properties) return;
+  const handleMapPress = useCallback(
+    async (event: { features: GeoJSON.Feature[] }) => {
+      const feature = event.features[0];
+      if (!feature?.properties) return;
 
-    const isCluster = feature.properties.cluster === true;
+      const isCluster = feature.properties.cluster === true;
 
-    if (isCluster) {
-      // Zoom do poziomu rozwinięcia klastra
-      const coords = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
-      try {
-        const zoom = await shapeSourceRef.current?.getClusterExpansionZoom(feature);
-        if (zoom != null) {
-          cameraRef.current?.setCamera({
-            centerCoordinate: coords,
-            zoomLevel: zoom,
-            animationDuration: 500,
-            animationMode: "flyTo",
-          });
+      if (isCluster) {
+        // Zoom do poziomu rozwinięcia klastra
+        const coords = (feature.geometry as GeoJSON.Point).coordinates as [
+          number,
+          number,
+        ];
+        try {
+          const zoom =
+            await shapeSourceRef.current?.getClusterExpansionZoom(feature);
+          if (zoom != null) {
+            cameraRef.current?.setCamera({
+              centerCoordinate: coords,
+              zoomLevel: zoom,
+              animationDuration: 500,
+              animationMode: "flyTo",
+            });
+          }
+        } catch {
+          // fallback — zoom o 2 poziomy
+          setCameraCenter(coords);
+          setCameraZoom((z) => Math.min(z + 2, 20));
         }
-      } catch {
-        // fallback — zoom o 2 poziomy
-        setCameraCenter(coords);
-        setCameraZoom((z) => Math.min(z + 2, 20));
+        return;
       }
-      return;
-    }
 
-    // Pojedynczy pin — otwórz szczegóły
-    const placeId = feature.properties.placeId as number;
-    if (placeId) router.push(`/place/${placeId}`);
-  }, [router]);
+      // Pojedynczy pin — otwórz szczegóły
+      const placeId = feature.properties.placeId as number;
+      if (placeId) router.push(`/place/${placeId}`);
+    },
+    [router],
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
       <View style={styles.header}>
         {einstellungen?.Logo ? (
-          <Image source={{ uri: `${DIRECTUS_URL}/assets/${einstellungen.Logo}` }} style={styles.logoImage} resizeMode="contain" />
+          <Image
+            source={{ uri: `${DIRECTUS_URL}/assets/${einstellungen.Logo}` }}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         ) : (
           <Text style={styles.logo}>FAIRFÜHRER</Text>
         )}
         {einstellungen?.Slogan ? (
           <Text style={styles.tagline}>{einstellungen.Slogan}</Text>
         ) : (
-          <Text style={styles.tagline}>Der Audioguide für nachhaltiges Leben und Reisen</Text>
+          <Text style={styles.tagline}>
+            Der Audioguide für nachhaltiges Leben und Reisen
+          </Text>
         )}
       </View>
 
@@ -364,7 +480,11 @@ export default function KarteScreen() {
             <ActivityIndicator size="large" color="#fc6c14" />
           </View>
         ) : (
-          <MapView style={styles.map} styleURL={Mapbox.StyleURL.Street} compassEnabled>
+          <MapView
+            style={styles.map}
+            styleURL={Mapbox.StyleURL.Street}
+            compassEnabled
+          >
             <Camera
               ref={cameraRef}
               centerCoordinate={cameraCenter}
@@ -390,12 +510,22 @@ export default function KarteScreen() {
                 filter={["has", "point_count"]}
                 style={{
                   circleColor: [
-                    "step", ["get", "point_count"],
-                    "#51bbd6", 10, "#f1f075", 30, "#f28cb1",
+                    "step",
+                    ["get", "point_count"],
+                    "#51bbd6",
+                    10,
+                    "#f1f075",
+                    30,
+                    "#f28cb1",
                   ],
                   circleRadius: [
-                    "step", ["get", "point_count"],
-                    20, 10, 30, 30, 40,
+                    "step",
+                    ["get", "point_count"],
+                    20,
+                    10,
+                    30,
+                    30,
+                    40,
                   ],
                   circleStrokeWidth: 2,
                   circleStrokeColor: "#fff",
@@ -430,30 +560,40 @@ export default function KarteScreen() {
         )}
       </View>
 
-      {/* Dolna sekcja */}
+      {/* Dolna sekcja — tylko wyszukiwarka */}
       <View
         style={styles.bottomSection}
         onLayout={(e) => setBottomSectionHeight(e.nativeEvent.layout.height)}
       >
-        <KategorieBar categories={allCategories} selectedId={selectedCategoryId} onSelect={setSelectedCategoryId} />
         <View style={styles.searchBar}>
           <TextInput
             style={styles.searchInput}
             placeholder="Suche…"
             placeholderTextColor="rgba(255,255,255,0.7)"
             value={query}
-            onChangeText={(t) => { setQuery(t); fetchGeoSuggestions(t); }}
-            onFocus={() => { if (query.length >= 2 && geoSuggestions.length > 0) setShowSuggestions(true); }}
+            onChangeText={(t) => {
+              setQuery(t);
+              fetchGeoSuggestions(t);
+            }}
+            onFocus={() => {
+              if (query.length >= 2 && geoSuggestions.length > 0)
+                setShowSuggestions(true);
+            }}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
             onSubmitEditing={() => {
-              if (geoSuggestions.length > 0) selectGeoSuggestion(geoSuggestions[0]);
+              if (geoSuggestions.length > 0)
+                selectGeoSuggestion(geoSuggestions[0]);
               else setShowSuggestions(false);
             }}
           />
           {isFetchingSuggestions && (
-            <ActivityIndicator size="small" color="#fff" style={{ marginLeft: 8 }} />
+            <ActivityIndicator
+              size="small"
+              color="#fff"
+              style={{ marginLeft: 8 }}
+            />
           )}
           {query.length > 0 && !isFetchingSuggestions && (
             <TouchableOpacity onPress={clearSearch} style={styles.clearBtn}>
@@ -461,6 +601,12 @@ export default function KarteScreen() {
             </TouchableOpacity>
           )}
         </View>
+        {/* Pasek kategorii — pod wyszukiwarką */}
+        <KategorieBar
+          categories={allCategories}
+          selectedId={selectedCategoryId}
+          onSelect={setSelectedCategoryId}
+        />
       </View>
 
       {/* Sugestie — absolute nad bottomSection, poza jego drzewem */}
@@ -468,9 +614,15 @@ export default function KarteScreen() {
         <View style={[styles.suggestionsBox, { bottom: bottomSectionHeight }]}>
           <ScrollView keyboardShouldPersistTaps="handled" bounces={false}>
             {geoSuggestions.map((s, i) => (
-              <TouchableOpacity key={`${s.name}-${i}`} style={styles.suggestionItem} onPress={() => selectGeoSuggestion(s)}>
+              <TouchableOpacity
+                key={`${s.name}-${i}`}
+                style={styles.suggestionItem}
+                onPress={() => selectGeoSuggestion(s)}
+              >
                 <Text style={styles.suggestionText}>{s.name}</Text>
-                <Text style={styles.suggestionSubtext} numberOfLines={1}>{s.place_formatted}</Text>
+                <Text style={styles.suggestionSubtext} numberOfLines={1}>
+                  {s.place_formatted}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -487,29 +639,126 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: "center", justifyContent: "center" },
   header: { paddingTop: 8, paddingBottom: 4 },
   logoImage: { width: "100%", height: 60 },
-  logo: { fontFamily: "Anton_400Regular", fontSize: 30, color: "#fc6c14", textAlign: "center", letterSpacing: 3 },
-  tagline: { fontFamily: "FiraSansCondensed_400Regular", fontSize: 21, paddingVertical: 4, paddingHorizontal: 40, color: "#fc6c14", textAlign: "center" },
+  logo: {
+    fontFamily: "Anton_400Regular",
+    fontSize: 30,
+    color: "#fc6c14",
+    textAlign: "center",
+    letterSpacing: 3,
+  },
+  tagline: {
+    fontFamily: "FiraSansCondensed_400Regular",
+    fontSize: 21,
+    paddingVertical: 4,
+    paddingHorizontal: 40,
+    color: "#fc6c14",
+    textAlign: "center",
+  },
   mapArea: { flex: 1 },
   map: { flex: 1 },
   bottomSection: { position: "relative", zIndex: 10 },
-  searchBar: { backgroundColor: "#fc6c14", flexDirection: "row", alignItems: "center", paddingHorizontal: 14 },
-  searchInput: { flex: 1, paddingVertical: Platform.OS === "ios" ? 12 : 10, fontSize: 20, fontFamily: "FiraSansCondensed_700Bold", color: "#fff", letterSpacing: 1 },
+  searchBar: {
+    backgroundColor: "#fc6c14",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: Platform.OS === "ios" ? 12 : 10,
+    fontSize: 25,
+    fontFamily: "FiraSansCondensed_700Bold",
+    color: "#fff",
+    letterSpacing: 1,
+  },
   clearBtn: { paddingLeft: 8, paddingVertical: 8 },
   clearBtnText: { fontSize: 18, color: "#fff" },
-  suggestionsBox: { position: "absolute", left: 0, right: 0, backgroundColor: "#fff", borderLeftWidth: 1, borderRightWidth: 1, borderTopWidth: 1, borderColor: "#000", maxHeight: 260, zIndex: 100, elevation: 10 },
-  suggestionItem: { paddingHorizontal: 14, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: "#eee" },
-  suggestionText: { fontSize: 16, color: "#000", fontFamily: "FiraSansCondensed_600SemiBold" },
-  suggestionSubtext: { fontSize: 12, color: "#555", fontFamily: "FiraSansCondensed_400Regular", marginTop: 1 },
-  kategorieBackdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#000" },
-  kategorieMenu: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: "#fff", shadowColor: "#000", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 20 },
-  kategorieMenuItem: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14 },
+  suggestionsBox: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    backgroundColor: "#fff",
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderTopWidth: 1,
+    borderColor: "#000",
+    maxHeight: 260,
+    zIndex: 100,
+    elevation: 10,
+  },
+  suggestionItem: {
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  suggestionText: {
+    fontSize: 16,
+    color: "#000",
+    fontFamily: "FiraSansCondensed_600SemiBold",
+  },
+  suggestionSubtext: {
+    fontSize: 12,
+    color: "#555",
+    fontFamily: "FiraSansCondensed_400Regular",
+    marginTop: 1,
+  },
+  kategorieBackdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#000",
+  },
+  kategorieMenu: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 20,
+  },
+  kategorieMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
   kategorieMenuItemActive: { backgroundColor: "#000" },
-  kategorieMenuIcon: { marginRight: 14, width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  kategorieMenuText: { fontSize: 20, fontFamily: "FiraSansCondensed_600SemiBold", color: "#000" },
+  kategorieMenuIcon: {
+    marginRight: 14,
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  kategorieMenuText: {
+    fontSize: 20,
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    color: "#000",
+  },
   kategorieMenuTextActive: { color: "#fff" },
-  kategorieBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 1, borderColor: "#000", paddingHorizontal: 14, paddingVertical: Platform.OS === "ios" ? 12 : 10 },
+  kategorieBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    borderColor: "#000",
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === "ios" ? 12 : 10,
+  },
   kategorieBarIcon: { marginRight: 10 },
-  kategorieBarText: { fontSize: 18, fontFamily: "FiraSansCondensed_600SemiBold", color: "#000", flex: 1 },
+  kategorieBarText: {
+    fontSize: 18,
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    color: "#000",
+    flex: 1,
+  },
   kategorieClearBtn: { paddingLeft: 10 },
   kategorieClearText: { fontSize: 16, color: "#000" },
 });

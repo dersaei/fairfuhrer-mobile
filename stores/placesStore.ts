@@ -10,10 +10,7 @@ interface PlacesState {
   status: "idle" | "loading" | "success" | "error";
   error: string | null;
 
-  // Selektory
   getPlaceById: (id: number) => DirectusOrte | undefined;
-
-  // Akcje
   fetchAll: () => Promise<void>;
 }
 
@@ -27,7 +24,6 @@ export const usePlacesStore = create<PlacesState>((set, get) => ({
   getPlaceById: (id) => get().places.find((p) => p.id === id),
 
   fetchAll: async () => {
-    // Nie fetchuj ponownie jeśli dane już są
     if (get().status === "loading" || get().status === "success") return;
 
     set({ status: "loading", error: null });
