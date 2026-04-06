@@ -496,6 +496,7 @@ export default function KarteScreen() {
             />
             <UserLocation
               visible
+              showsUserHeadingIndicator
               onUpdate={(loc) => {
                 userLocationRef.current = [
                   loc.coords.longitude,
@@ -548,9 +549,11 @@ export default function KarteScreen() {
                 filter={["has", "point_count"]}
                 style={{
                   textField: ["get", "point_count_abbreviated"],
-                  textSize: 13,
+                  textSize: 20,
                   textColor: "#fff",
                   textFont: ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+                  textHaloColor: "#000",
+                  textHaloWidth: 0.3,
                 }}
               />
 

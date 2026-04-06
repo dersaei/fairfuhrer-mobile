@@ -466,28 +466,34 @@ export default function ListeScreen() {
     gpsDoneRef.current = true;
 
     let mounted = true;
-    async function sortByGps() {
-      try {
-        const { status: locStatus } =
-          await Location.requestForegroundPermissionsAsync();
-        if (locStatus !== "granted" || !mounted) return;
-        const pos = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        const { latitude: lat, longitude: lng } = pos.coords;
-        const { data, error } = await supabase.rpc("nearby_orte", {
-          user_lat: lat,
-          user_lng: lng,
-        });
-        if (error || !data || !mounted) return;
-        const ids = (data as { id: number }[]).map((p) => p.id);
-        gpsOrderedIdsRef.current = ids;
-        setOrderedIds(ids);
-      } catch {
-        // Location unavailable — display without sorting
-      }
-    }
-    sortByGps();
+
+    // requestForegroundPermissionsAsync uruchamiamy najpierw bez blokowania
+    Location.requestForegroundPermissionsAsync().then(({ status: locStatus }) => {
+      if (locStatus !== "granted" || !mounted) return;
+      Location.getLastKnownPositionAsync().then((lastPos) => {
+        if (lastPos && mounted) {
+          const { latitude: lat, longitude: lng } = lastPos.coords;
+          supabase.rpc("nearby_orte", { user_lat: lat, user_lng: lng }).then(({ data, error }) => {
+            if (error || !data || !mounted) return;
+            const ids = (data as { id: number }[]).map((p) => p.id);
+            gpsOrderedIdsRef.current = ids;
+            setOrderedIds(ids);
+          });
+        }
+        // Odśwież z aktualną pozycją w tle
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).then((pos) => {
+          if (!mounted) return;
+          const { latitude: lat, longitude: lng } = pos.coords;
+          supabase.rpc("nearby_orte", { user_lat: lat, user_lng: lng }).then(({ data, error }) => {
+            if (error || !data || !mounted) return;
+            const ids = (data as { id: number }[]).map((p) => p.id);
+            gpsOrderedIdsRef.current = ids;
+            setOrderedIds(ids);
+          });
+        }).catch(() => {});
+      }).catch(() => {});
+    }).catch(() => {});
+
     return () => {
       mounted = false;
     };

@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 import { useFonts, Anton_400Regular } from '@expo-google-fonts/anton';
 import {
   FiraSansCondensed_400Regular,
@@ -10,36 +11,60 @@ import {
   FiraSansCondensed_700Bold,
 } from '@expo-google-fonts/fira-sans-condensed';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { usePlacesStore } from '@/stores/placesStore';
+import AnimatedSplash from '@/components/AnimatedSplash';
+
+SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
   const { session, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const { status, fetchAll } = usePlacesStore();
+  const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
+
+  useEffect(() => {
+    fetchAll();
+  }, []);
 
   useEffect(() => {
     if (isLoading) return;
-
     const inAuthGroup = segments[0] === '(auth)';
-
     if (session && inAuthGroup) {
       router.replace('/(tabs)');
+    } else if (!session && !inAuthGroup) {
+      router.replace('/(auth)/login');
     }
   }, [session, isLoading, segments, router]);
 
+  const dataReady = status === 'success' || status === 'error';
+
+  useEffect(() => {
+    if (dataReady && !isLoading) {
+      SplashScreen.hideAsync();
+    }
+  }, [dataReady, isLoading]);
+
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen
-        name="place/[id]"
-        options={{
-          presentation: "modal",
-          animation: "slide_from_bottom",
-          gestureEnabled: true,
-          gestureDirection: "vertical",
-        }}
-      />
-    </Stack>
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen
+          name="place/[id]"
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+            gestureEnabled: true,
+            gestureDirection: 'vertical',
+          }}
+        />
+      </Stack>
+
+      {showAnimatedSplash && dataReady && !isLoading && (
+        <AnimatedSplash onFinished={() => setShowAnimatedSplash(false)} />
+      )}
+    </>
   );
 }
 

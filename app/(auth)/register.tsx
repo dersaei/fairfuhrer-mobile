@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,37 +16,58 @@ import { supabase } from '@/lib/supabase';
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   const handleRegister = async () => {
-    if (!email || !password) {
-      setError('Bitte E-Mail und Passwort eingeben.');
+    setError(null);
+
+    if (!email || !username || !password || !confirmPassword) {
+      setError('Bitte alle Felder ausfüllen.');
+      return;
+    }
+    if (username.length < 3) {
+      setError('Benutzername muss mindestens 3 Zeichen lang sein.');
       return;
     }
     if (password.length < 8) {
       setError('Passwort muss mindestens 8 Zeichen lang sein.');
       return;
     }
+    if (password !== confirmPassword) {
+      setError('Passwörter stimmen nicht überein.');
+      return;
+    }
+
     setIsLoading(true);
-    setError(null);
 
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        data: {
+          role: 'consumer',
+          username,
+        },
         emailRedirectTo: process.env.EXPO_PUBLIC_SITE_URL,
       },
     });
 
+    setIsLoading(false);
+
     if (error) {
-      setError(error.message);
+      if (error.message.includes('already registered')) {
+        setError('Diese E-Mail-Adresse ist bereits registriert.');
+      } else {
+        setError('Registrierung fehlgeschlagen. Bitte erneut versuchen.');
+      }
     } else {
       setSuccess(true);
     }
-    setIsLoading(false);
   };
 
   if (success) {
@@ -69,48 +91,73 @@ export default function RegisterScreen() {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.inner}
+        style={{ flex: 1 }}
       >
-        <Text style={styles.logo}>FAIRFÜHRER</Text>
-        <Text style={styles.title}>Registrieren</Text>
-
-        {error && <Text style={styles.error}>{error}</Text>}
-
-        <TextInput
-          style={styles.input}
-          placeholder="E-Mail"
-          placeholderTextColor="#aaa"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Passwort (min. 8 Zeichen)"
-          placeholderTextColor="#aaa"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoComplete="new-password"
-        />
-
-        <TouchableOpacity
-          style={[styles.button, isLoading && styles.buttonDisabled]}
-          onPress={handleRegister}
-          disabled={isLoading}
+        <ScrollView
+          contentContainerStyle={styles.inner}
+          keyboardShouldPersistTaps="handled"
         >
-          {isLoading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.buttonText}>Konto erstellen</Text>
-          }
-        </TouchableOpacity>
+          <Text style={styles.logo}>FAIRFÜHRER</Text>
+          <Text style={styles.title}>Registrieren</Text>
 
-        <Link href="/(auth)/login" style={styles.link}>
-          Bereits registriert? Anmelden
-        </Link>
+          {error && <Text style={styles.error}>{error}</Text>}
+
+          <TextInput
+            style={styles.input}
+            placeholder="E-Mail"
+            placeholderTextColor="#aaa"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoComplete="email"
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Benutzername (min. 3 Zeichen)"
+            placeholderTextColor="#aaa"
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+            autoComplete="username-new"
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Passwort (min. 8 Zeichen)"
+            placeholderTextColor="#aaa"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoComplete="new-password"
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Passwort wiederholen"
+            placeholderTextColor="#aaa"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+            autoComplete="new-password"
+          />
+
+          <TouchableOpacity
+            style={[styles.button, isLoading && styles.buttonDisabled]}
+            onPress={handleRegister}
+            disabled={isLoading}
+          >
+            {isLoading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.buttonText}>Konto erstellen</Text>
+            }
+          </TouchableOpacity>
+
+          <Link href="/(auth)/login" style={styles.link}>
+            Bereits registriert? Anmelden
+          </Link>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -122,10 +169,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   inner: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 24,
     justifyContent: 'center',
     gap: 16,
+    paddingVertical: 32,
   },
   logo: {
     fontFamily: 'Anton_400Regular',
