@@ -13,8 +13,10 @@ import {
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { usePlacesStore } from '@/stores/placesStore';
 import AnimatedSplash from '@/components/AnimatedSplash';
+import { initializePurchases } from '@/lib/revenuecat';
 
 SplashScreen.preventAutoHideAsync();
+initializePurchases();
 
 function RootLayoutNav() {
   const { session, isLoading } = useAuth();
@@ -32,8 +34,6 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === '(auth)';
     if (session && inAuthGroup) {
       router.replace('/(tabs)');
-    } else if (!session && !inAuthGroup) {
-      router.replace('/(auth)/login');
     }
   }, [session, isLoading, segments, router]);
 

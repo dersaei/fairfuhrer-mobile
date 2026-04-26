@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { identifyUser, resetUser, getCustomerInfo, hasPro } from '@/lib/revenuecat';
 
 export interface Profile {
   id: string;
@@ -18,18 +19,22 @@ interface AuthContextType {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
+  isPro: boolean;
   isLoading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  refreshPro: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   profile: null,
+  isPro: false,
   isLoading: true,
   signOut: async () => {},
   refreshProfile: async () => {},
+  refreshPro: async () => {},
 });
 
 async function fetchProfile(userId: string): Promise<Profile | null> {
@@ -45,14 +50,24 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isPro, setIsPro] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const checkPro = async () => {
+    const info = await getCustomerInfo();
+    setIsPro(hasPro(info));
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
-        const p = await fetchProfile(session.user.id);
+        const [p] = await Promise.all([
+          fetchProfile(session.user.id),
+          identifyUser(session.user.id),
+        ]);
         setProfile(p);
+        await checkPro();
       }
       setIsLoading(false);
     });
@@ -60,10 +75,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       if (session?.user) {
-        const p = await fetchProfile(session.user.id);
+        const [p] = await Promise.all([
+          fetchProfile(session.user.id),
+          identifyUser(session.user.id),
+        ]);
         setProfile(p);
+        await checkPro();
       } else {
         setProfile(null);
+        setIsPro(false);
+        await resetUser();
       }
     });
 
@@ -73,6 +94,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    setIsPro(false);
+    await resetUser();
   };
 
   const refreshProfile = async () => {
@@ -82,8 +105,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshPro = async () => {
+    await checkPro();
+  };
+
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, profile, isLoading, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{
+      session,
+      user: session?.user ?? null,
+      profile,
+      isPro,
+      isLoading,
+      signOut,
+      refreshProfile,
+      refreshPro,
+    }}>
       {children}
     </AuthContext.Provider>
   );
