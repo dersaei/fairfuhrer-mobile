@@ -25,7 +25,10 @@ export async function identifyUser(userId: string) {
 
 export async function resetUser() {
   try {
-    await Purchases.logOut();
+    const info = await Purchases.getCustomerInfo();
+    if (!info.originalAppUserId.startsWith('$RCAnonymous')) {
+      await Purchases.logOut();
+    }
   } catch (e) {
     console.error('[RevenueCat] resetUser error:', e);
   }

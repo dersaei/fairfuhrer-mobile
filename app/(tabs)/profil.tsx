@@ -170,7 +170,7 @@ function AuthScreen() {
             <TextInput
               style={s.input}
               placeholder="deine@email.de"
-              placeholderTextColor="rgba(252,108,20,0.4)"
+              placeholderTextColor="#181716"
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -185,7 +185,7 @@ function AuthScreen() {
               <TextInput
                 style={s.input}
                 placeholder="min. 3 Zeichen"
-                placeholderTextColor="rgba(252,108,20,0.4)"
+                placeholderTextColor="#181716"
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
@@ -199,7 +199,7 @@ function AuthScreen() {
             <TextInput
               style={s.input}
               placeholder="min. 8 Zeichen"
-              placeholderTextColor="rgba(252,108,20,0.4)"
+              placeholderTextColor="#181716"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -213,7 +213,7 @@ function AuthScreen() {
               <TextInput
                 style={s.input}
                 placeholder="Passwort bestätigen"
-                placeholderTextColor="rgba(252,108,20,0.4)"
+                placeholderTextColor="#181716"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
@@ -244,7 +244,8 @@ function AuthScreen() {
 // ─── Account Screen ──────────────────────────────────────────────────────────
 
 function AccountScreen() {
-  const { user, profile, isPro, signOut, refreshProfile, refreshPro } = useAuth();
+  const { user, profile, isPro, signOut, refreshProfile, refreshPro } =
+    useAuth();
   const [activeSection, setActiveSection] = useState<AccountSection>("profil");
 
   const displayName = profile?.username ?? user?.email ?? "";
@@ -617,7 +618,13 @@ function EinstellungenSection({ user, profile, signOut, refreshProfile }: any) {
 
 // ─── Premium Section ─────────────────────────────────────────────────────────
 
-function PremiumSection({ isPro, refreshPro }: { isPro: boolean; refreshPro: () => Promise<void> }) {
+function PremiumSection({
+  isPro,
+  refreshPro,
+}: {
+  isPro: boolean;
+  refreshPro: () => Promise<void>;
+}) {
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
 
@@ -631,7 +638,12 @@ function PremiumSection({ isPro, refreshPro }: { isPro: boolean; refreshPro: () 
 
   const plans = [
     { id: "monthly", label: "Kleine Unterstützung", price: "€4,99 / Monat" },
-    { id: "yearly", label: "Faire Unterstützung", price: "€9,99 / Monat", popular: true },
+    {
+      id: "yearly",
+      label: "Faire Unterstützung",
+      price: "€9,99 / Monat",
+      popular: true,
+    },
     { id: "lifetime", label: "Große Unterstützung", price: "€19,99 einmalig" },
   ];
 
@@ -641,7 +653,10 @@ function PremiumSection({ isPro, refreshPro }: { isPro: boolean; refreshPro: () 
       const result = await RevenueCatUI.presentPaywallIfNeeded({
         requiredEntitlementIdentifier: "Fairführer Pro",
       });
-      if (result === PAYWALL_RESULT.PURCHASED || result === PAYWALL_RESULT.RESTORED) {
+      if (
+        result === PAYWALL_RESULT.PURCHASED ||
+        result === PAYWALL_RESULT.RESTORED
+      ) {
         await refreshPro();
       }
     } catch (e) {
@@ -679,11 +694,15 @@ function PremiumSection({ isPro, refreshPro }: { isPro: boolean; refreshPro: () 
           <Text style={s.proActiveIcon}>★</Text>
           <Text style={s.proActiveTitle}>Fairführer+ aktiv</Text>
           <Text style={s.sectionHint}>
-            Du hast Zugang zu allen Premium-Funktionen. Vielen Dank für deine Unterstützung!
+            Du hast Zugang zu allen Premium-Funktionen. Vielen Dank für deine
+            Unterstützung!
           </Text>
         </View>
 
-        <TouchableOpacity style={s.buttonOutline} onPress={handleCustomerCenter}>
+        <TouchableOpacity
+          style={s.buttonOutline}
+          onPress={handleCustomerCenter}
+        >
           <Text style={s.buttonOutlineText}>Abonnement verwalten</Text>
         </TouchableOpacity>
       </View>
@@ -738,10 +757,11 @@ function PremiumSection({ isPro, refreshPro }: { isPro: boolean; refreshPro: () 
         onPress={handleRestore}
         disabled={restoring}
       >
-        {restoring
-          ? <ActivityIndicator color="#111" />
-          : <Text style={s.buttonOutlineText}>Käufe wiederherstellen</Text>
-        }
+        {restoring ? (
+          <ActivityIndicator color="#111" />
+        ) : (
+          <Text style={s.buttonOutlineText}>Käufe wiederherstellen</Text>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -943,7 +963,7 @@ const s = StyleSheet.create({
   input: {
     width: "100%",
     borderWidth: 1.5,
-    borderColor: "#fc6c14",
+    borderColor: "#000000",
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 13,
@@ -961,7 +981,8 @@ const s = StyleSheet.create({
   button: {
     width: "100%",
     backgroundColor: "#111",
-    paddingVertical: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
     borderRadius: 12,
     alignItems: "center",
     marginTop: 4,
@@ -969,7 +990,7 @@ const s = StyleSheet.create({
   buttonDisabled: { opacity: 0.4 },
   buttonText: {
     color: "#fc6c14",
-    fontSize: 16,
+    fontSize: 20,
     fontFamily: "FiraSansCondensed_700Bold",
     letterSpacing: 0.5,
   },

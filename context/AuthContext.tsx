@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       if (session?.user) {
         const [p] = await Promise.all([
@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ]);
         setProfile(p);
         await checkPro();
-      } else {
+      } else if (event === 'SIGNED_OUT') {
         setProfile(null);
         setIsPro(false);
         await resetUser();
@@ -93,9 +93,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    setProfile(null);
-    setIsPro(false);
-    await resetUser();
   };
 
   const refreshProfile = async () => {
