@@ -14,8 +14,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import Purchases, { PRODUCT_CATEGORY } from "react-native-purchases";
-import { RevenueCatUI, PAYWALL_RESULT } from "react-native-purchases-ui";
+import Purchases from "react-native-purchases";
+import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 
 type AuthView = "login" | "register";
 type AccountSection =
@@ -622,9 +622,9 @@ function PremiumSection({ isPro, refreshPro }: { isPro: boolean; refreshPro: () 
   const [restoring, setRestoring] = useState(false);
 
   const features = [
-    "100 % der Pins in der Kategorie „Sehenswertes"",
+    '100 % der Pins in der Kategorie „Sehenswertes"',
     "Offline-Karten für unterwegs",
-    "Funktion „Alle abspielen"",
+    'Funktion „Alle abspielen"',
     "Favoriten speichern",
     "Neue Orte vorschlagen",
   ];
@@ -635,7 +635,7 @@ function PremiumSection({ isPro, refreshPro }: { isPro: boolean; refreshPro: () 
     { id: "lifetime", label: "Große Unterstützung", price: "€19,99 einmalig" },
   ];
 
-  const handlePurchase = async (productId: string) => {
+  const handlePurchase = async (_productId: string) => {
     setPurchasing(true);
     try {
       const result = await RevenueCatUI.presentPaywallIfNeeded({
