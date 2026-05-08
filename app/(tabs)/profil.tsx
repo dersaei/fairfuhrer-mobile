@@ -11,13 +11,19 @@ import {
   ScrollView,
   Alert,
   ImageBackground,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import Purchases from "react-native-purchases";
 import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
+import MenuButton from "@/components/MenuButton";
+import { usePlacesStore } from "@/stores/placesStore";
+
+const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
 
 type AuthView = "welcome" | "login" | "register";
 type AccountSection =
@@ -30,6 +36,8 @@ type AccountSection =
 // Trzy widoki: welcome (landing) → login | register (formularz)
 
 function AuthScreen() {
+  const router = useRouter();
+  const { einstellungen } = usePlacesStore();
   const [view, setView] = useState<AuthView>("welcome");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -38,6 +46,7 @@ function AuthScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [registerSuccess, setRegisterSuccess] = useState(false);
+  const [consentAccepted, setConsentAccepted] = useState(false);
 
   const reset = () => {
     setEmail("");
@@ -69,6 +78,10 @@ function AuthScreen() {
     setError(null);
     if (!email || !username || !password || !confirmPassword) {
       setError("Bitte alle Felder ausfüllen.");
+      return;
+    }
+    if (!consentAccepted) {
+      setError("Bitte stimme den Nutzungsbedingungen und der Datenschutzerklärung zu.");
       return;
     }
     if (username.length < 3) {
@@ -125,7 +138,7 @@ function AuthScreen() {
   // ── Landing / Welcome ──
   if (view === "welcome") {
     return (
-      <SafeAreaView style={s.container} edges={["bottom"]}>
+      <SafeAreaView style={s.container} edges={["top"]}>
         <ScrollView
           contentContainerStyle={s.welcomeContent}
           keyboardShouldPersistTaps="handled"
@@ -141,6 +154,9 @@ function AuthScreen() {
               colors={["rgba(24,23,22,0.35)", "rgba(24,23,22,0.75)"]}
               style={StyleSheet.absoluteFill}
             />
+            <View style={s.welcomeMenuBtn}>
+              <MenuButton tint="#fff" />
+            </View>
             <View style={s.welcomeHeroContent}>
               <Text style={s.welcomeEyebrow}>DEIN FAIRFÜHRER-KONTO</Text>
               <Text style={s.welcomeHeadline}>{"ENTDECKE\nMEHR.\nBEWEGE\nMEHR."}</Text>
@@ -228,24 +244,41 @@ function AuthScreen() {
   // ── Formularz (login / register) ──
   const isReg = view === "register";
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={s.container} edges={["top"]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
+        {/* Header: Zurück | logo | Menu — identyczny układ jak na Liste i Karte */}
+        <View style={s.header}>
+          <View style={s.headerRow}>
+            <TouchableOpacity onPress={() => switchView("welcome")} style={s.headerSpacer} hitSlop={8}>
+              <Text style={s.backBtnText}>← Zurück</Text>
+            </TouchableOpacity>
+            {einstellungen?.Logo ? (
+              <Image
+                source={{ uri: `${DIRECTUS_URL}/assets/${einstellungen.Logo}` }}
+                style={s.logoImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <Text style={s.logo}>FAIRFÜHRER</Text>
+            )}
+            <View style={s.headerMenuSlot}>
+              <MenuButton />
+            </View>
+          </View>
+          {einstellungen?.Slogan ? (
+            <Text style={s.tagline}>{einstellungen.Slogan}</Text>
+          ) : (
+            <Text style={s.tagline}>Der Audioguide für nachhaltiges Leben und Reisen</Text>
+          )}
+        </View>
+
         <ScrollView
-          contentContainerStyle={s.centerContent}
+          contentContainerStyle={s.formContent}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Powrót */}
-          <TouchableOpacity
-            style={s.backBtn}
-            onPress={() => switchView("welcome")}
-          >
-            <Text style={s.backBtnText}>← Zurück</Text>
-          </TouchableOpacity>
-
-          <Text style={s.logo}>FAIRFÜHRER</Text>
           <Text style={s.formHeadline}>
             {isReg ? "Konto erstellen" : "Willkommen zurück"}
           </Text>
@@ -324,6 +357,30 @@ function AuthScreen() {
             </View>
           )}
 
+          {/* Checkbox zgody — tylko przy rejestracji */}
+          {isReg && (
+            <TouchableOpacity
+              style={s.consentRow}
+              onPress={() => setConsentAccepted((v) => !v)}
+              activeOpacity={0.7}
+            >
+              <View style={[s.checkbox, consentAccepted && s.checkboxChecked]}>
+                {consentAccepted && <Text style={s.checkmark}>✓</Text>}
+              </View>
+              <Text style={s.consentText}>
+                Ich habe die{" "}
+                <Text style={s.consentLink} onPress={() => router.push("/(drawer)/agb")}>
+                  Nutzungsbedingungen
+                </Text>
+                {" "}und die{" "}
+                <Text style={s.consentLink} onPress={() => router.push("/(drawer)/datenschutz")}>
+                  Datenschutzerklärung
+                </Text>
+                {" "}gelesen und stimme ihnen zu.
+              </Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={[s.button, isLoading && s.buttonDisabled]}
             onPress={isReg ? handleRegister : handleLogin}
@@ -353,7 +410,7 @@ function AccountScreen() {
   const displayName = profile?.username ?? user?.email ?? "";
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={s.container} edges={["top"]}>
       {/* Header */}
       <View style={s.accountHeader}>
         <View style={s.avatarPlaceholder}>
@@ -370,6 +427,7 @@ function AccountScreen() {
             </Text>
           </View>
         </View>
+        <MenuButton />
       </View>
 
       {/* Nav */}
@@ -1040,10 +1098,12 @@ const s = StyleSheet.create({
     gap: 16,
   },
   logo: {
+    flex: 1,
     fontFamily: "Anton_400Regular",
-    fontSize: 36,
+    fontSize: 30,
     color: "#fc6c14",
-    letterSpacing: 4,
+    textAlign: "center",
+    letterSpacing: 3,
   },
   roleLabel: {
     fontSize: 18,
@@ -1149,6 +1209,71 @@ const s = StyleSheet.create({
     color: "#c0392b",
     fontSize: 15,
     fontFamily: "FiraSansCondensed_600SemiBold",
+  },
+  // Form header (logo + tagline — jak na Liste/Karte)
+  header: { paddingTop: 8, paddingBottom: 4 },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+  },
+  headerSpacer: { width: 72, justifyContent: "center" },
+  headerMenuSlot: { width: 72, alignItems: "flex-end" },
+  logoImage: { flex: 1, height: 58 },
+  tagline: {
+    fontFamily: "Anton_400Regular",
+    fontSize: 16,
+    paddingVertical: 4,
+    paddingHorizontal: 20,
+    color: "#fc6c14",
+    textAlign: "center",
+  },
+  formContent: {
+    flexGrow: 1,
+    alignItems: "center",
+    paddingHorizontal: 28,
+    paddingVertical: 24,
+    gap: 16,
+  },
+  consentRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    width: "100%",
+    marginTop: 4,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: "#181716",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+    flexShrink: 0,
+  },
+  checkboxChecked: {
+    backgroundColor: "#fc6c14",
+    borderColor: "#fc6c14",
+  },
+  checkmark: {
+    color: "#fff",
+    fontSize: 13,
+    fontFamily: "FiraSansCondensed_700Bold",
+    lineHeight: 16,
+  },
+  consentText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#555",
+    fontFamily: "FiraSansCondensed_400Regular",
+    lineHeight: 19,
+  },
+  consentLink: {
+    color: "#fc6c14",
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    textDecorationLine: "underline",
   },
   link: {
     color: "#fc6c14",
@@ -1392,6 +1517,15 @@ const s = StyleSheet.create({
   welcomeHero: {
     minHeight: 420,
     justifyContent: "flex-end",
+  },
+  welcomeMenuBtn: {
+    position: "absolute",
+    top: 52,
+    right: 16,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 8,
+    padding: 6,
+    zIndex: 10,
   },
   welcomeHeroContent: {
     paddingHorizontal: 24,

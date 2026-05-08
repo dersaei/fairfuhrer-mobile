@@ -11,8 +11,10 @@ import {
   FiraSansCondensed_700Bold,
 } from '@expo-google-fonts/fira-sans-condensed';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { DrawerProvider, useDrawer } from '@/context/DrawerContext';
 import { usePlacesStore } from '@/stores/placesStore';
 import AnimatedSplash from '@/components/AnimatedSplash';
+import AppDrawer from '@/components/AppDrawer';
 import { initializePurchases } from '@/lib/revenuecat';
 
 SplashScreen.preventAutoHideAsync();
@@ -20,6 +22,7 @@ initializePurchases();
 
 function RootLayoutNav() {
   const { session, isLoading } = useAuth();
+  const { isOpen, closeDrawer } = useDrawer();
   const segments = useSegments();
   const router = useRouter();
   const { status, fetchAll } = usePlacesStore();
@@ -59,7 +62,25 @@ function RootLayoutNav() {
             gestureDirection: 'vertical',
           }}
         />
+        <Stack.Screen
+          name="(drawer)/datenschutz"
+          options={{ presentation: 'card', animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="(drawer)/agb"
+          options={{ presentation: 'card', animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="(drawer)/impressum"
+          options={{ presentation: 'card', animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="(drawer)/hilfe"
+          options={{ presentation: 'card', animation: 'slide_from_right' }}
+        />
       </Stack>
+
+      <AppDrawer visible={isOpen} onClose={closeDrawer} />
 
       {showAnimatedSplash && dataReady && !isLoading && (
         <AnimatedSplash onFinished={() => setShowAnimatedSplash(false)} />
@@ -83,8 +104,10 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <StatusBar style="auto" />
-      <RootLayoutNav />
+      <DrawerProvider>
+        <StatusBar style="auto" />
+        <RootLayoutNav />
+      </DrawerProvider>
     </AuthProvider>
   );
 }

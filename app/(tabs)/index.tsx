@@ -29,6 +29,7 @@ import { useIsFocused } from "@react-navigation/native";
 import { usePlacesStore } from "@/stores/placesStore";
 import { supabase } from "@/lib/supabase";
 import type { DirectusOrte, DirectusKategorie } from "@/types";
+import MenuButton from "@/components/MenuButton";
 
 const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
@@ -69,7 +70,7 @@ function getCategoriesFromPlace(place: DirectusOrte): DirectusKategorie[] {
 
 const CATEGORY_COLORS: Record<number, string> = {
   1: "#E45858", // Erlebnisse
-  2: "#6477E3", // Gastronomie & Übernachten
+  2: "#6477E3", // Essen & Übernachten
   3: "#F0873D", // Einkaufen
   5: "#42D742", // Engagement
   8: "#E0D12E", // Unternehmen
@@ -270,7 +271,10 @@ function KategorieBar({
       }).start(() => {
         setModalVisible(false);
         if (action === "cancel") return;
-        if (action === "all") { onToggle(null); return; }
+        if (action === "all") {
+          onToggle(null);
+          return;
+        }
         onToggle(action);
       });
     },
@@ -334,9 +338,17 @@ function KategorieBar({
             activeOpacity={0.7}
           >
             <View style={styles.kategorieMenuIcon}>
-              <CategoryIcon categoryId={null} color={!hasSelection ? "#fff" : "#000"} />
+              <CategoryIcon
+                categoryId={null}
+                color={!hasSelection ? "#fff" : "#000"}
+              />
             </View>
-            <Text style={[styles.kategorieMenuText, !hasSelection && styles.kategorieMenuTextActive]}>
+            <Text
+              style={[
+                styles.kategorieMenuText,
+                !hasSelection && styles.kategorieMenuTextActive,
+              ]}
+            >
               Alle
             </Text>
           </TouchableOpacity>
@@ -357,10 +369,17 @@ function KategorieBar({
                 <View style={styles.kategorieMenuIcon}>
                   <CategoryIcon
                     categoryId={cat.id}
-                    color={isActive ? "#fff" : (CATEGORY_COLORS[cat.id] ?? "#fc6c14")}
+                    color={
+                      isActive ? "#fff" : (CATEGORY_COLORS[cat.id] ?? "#fc6c14")
+                    }
                   />
                 </View>
-                <Text style={[styles.kategorieMenuText, isActive && styles.kategorieMenuTextActive]}>
+                <Text
+                  style={[
+                    styles.kategorieMenuText,
+                    isActive && styles.kategorieMenuTextActive,
+                  ]}
+                >
                   {cat.Name}
                 </Text>
               </TouchableOpacity>
@@ -389,11 +408,16 @@ function KategorieBar({
         </Text>
         {hasSelection && (
           <TouchableOpacity
-            onPress={(e) => { e.stopPropagation(); onToggle(null); }}
+            onPress={(e) => {
+              e.stopPropagation();
+              onToggle(null);
+            }}
             style={styles.kategorieClearBtn}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={[styles.kategorieClearText, { color: "#fff" }]}>✕</Text>
+            <Text style={[styles.kategorieClearText, { color: "#fff" }]}>
+              ✕
+            </Text>
           </TouchableOpacity>
         )}
       </TouchableOpacity>
@@ -423,7 +447,9 @@ export default function ListeScreen() {
     { name: string; place_formatted: string; lat: number; lon: number }[]
   >([]);
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<Set<number>>(new Set());
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<Set<number>>(
+    new Set(),
+  );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gpsOrderedIdsRef = useRef<number[] | null>(null);
   const flatListRef = useRef<FlatList<number>>(null);
@@ -449,31 +475,43 @@ export default function ListeScreen() {
     let mounted = true;
 
     // requestForegroundPermissionsAsync uruchamiamy najpierw bez blokowania
-    Location.requestForegroundPermissionsAsync().then(({ status: locStatus }) => {
-      if (locStatus !== "granted" || !mounted) return;
-      Location.getLastKnownPositionAsync().then((lastPos) => {
-        if (lastPos && mounted) {
-          const { latitude: lat, longitude: lng } = lastPos.coords;
-          supabase.rpc("nearby_orte", { user_lat: lat, user_lng: lng }).then(({ data, error }) => {
-            if (error || !data || !mounted) return;
-            const ids = (data as { id: number }[]).map((p) => p.id);
-            gpsOrderedIdsRef.current = ids;
-            setOrderedIds(ids);
-          });
-        }
-        // Odśwież z aktualną pozycją w tle
-        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).then((pos) => {
-          if (!mounted) return;
-          const { latitude: lat, longitude: lng } = pos.coords;
-          supabase.rpc("nearby_orte", { user_lat: lat, user_lng: lng }).then(({ data, error }) => {
-            if (error || !data || !mounted) return;
-            const ids = (data as { id: number }[]).map((p) => p.id);
-            gpsOrderedIdsRef.current = ids;
-            setOrderedIds(ids);
-          });
-        }).catch(() => {});
-      }).catch(() => {});
-    }).catch(() => {});
+    Location.requestForegroundPermissionsAsync()
+      .then(({ status: locStatus }) => {
+        if (locStatus !== "granted" || !mounted) return;
+        Location.getLastKnownPositionAsync()
+          .then((lastPos) => {
+            if (lastPos && mounted) {
+              const { latitude: lat, longitude: lng } = lastPos.coords;
+              supabase
+                .rpc("nearby_orte", { user_lat: lat, user_lng: lng })
+                .then(({ data, error }) => {
+                  if (error || !data || !mounted) return;
+                  const ids = (data as { id: number }[]).map((p) => p.id);
+                  gpsOrderedIdsRef.current = ids;
+                  setOrderedIds(ids);
+                });
+            }
+            // Odśwież z aktualną pozycją w tle
+            Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            })
+              .then((pos) => {
+                if (!mounted) return;
+                const { latitude: lat, longitude: lng } = pos.coords;
+                supabase
+                  .rpc("nearby_orte", { user_lat: lat, user_lng: lng })
+                  .then(({ data, error }) => {
+                    if (error || !data || !mounted) return;
+                    const ids = (data as { id: number }[]).map((p) => p.id);
+                    gpsOrderedIdsRef.current = ids;
+                    setOrderedIds(ids);
+                  });
+              })
+              .catch(() => {});
+          })
+          .catch(() => {});
+      })
+      .catch(() => {});
 
     return () => {
       mounted = false;
@@ -587,7 +625,13 @@ export default function ListeScreen() {
   type LocalResult =
     | { type: "place"; place: DirectusOrte }
     | { type: "category"; cat: DirectusKategorie }
-    | { type: "geo"; name: string; place_formatted: string; lat: number; lon: number };
+    | {
+        type: "geo";
+        name: string;
+        place_formatted: string;
+        lat: number;
+        lon: number;
+      };
 
   const localResults = useMemo((): LocalResult[] => {
     const q = query.trim().toLowerCase();
@@ -641,17 +685,23 @@ export default function ListeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* Logo + Slogan */}
+      {/* Logo + Menu */}
       <View style={styles.header}>
-        {einstellungen?.Logo ? (
-          <Image
-            source={{ uri: `${DIRECTUS_URL}/assets/${einstellungen.Logo}` }}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-        ) : (
-          <Text style={styles.logo}>FAIRFÜHRER</Text>
-        )}
+        <View style={styles.headerRow}>
+          <View style={styles.headerSpacer} />
+          {einstellungen?.Logo ? (
+            <Image
+              source={{ uri: `${DIRECTUS_URL}/assets/${einstellungen.Logo}` }}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          ) : (
+            <Text style={styles.logo}>FAIRFÜHRER</Text>
+          )}
+          <View style={styles.headerMenuSlot}>
+            <MenuButton />
+          </View>
+        </View>
         {einstellungen?.Slogan ? (
           <Text style={styles.tagline}>{einstellungen.Slogan}</Text>
         ) : (
@@ -695,11 +745,15 @@ export default function ListeScreen() {
         onLayout={(e) => setBottomSectionHeight(e.nativeEvent.layout.height)}
       >
         {/* Pasek wyszukiwania */}
-        <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
+        <View
+          style={[styles.searchBar, searchFocused && styles.searchBarFocused]}
+        >
           <TextInput
             style={[styles.searchInput, searchFocused && { color: "#181716" }]}
             placeholder="Orte, Städte, Kategorien…"
-            placeholderTextColor={searchFocused ? "rgba(24,23,22,0.4)" : "rgba(255,255,255,0.7)"}
+            placeholderTextColor={
+              searchFocused ? "rgba(24,23,22,0.4)" : "rgba(255,255,255,0.7)"
+            }
             value={query}
             onChangeText={(t) => {
               setQuery(t);
@@ -711,7 +765,8 @@ export default function ListeScreen() {
             autoCorrect={false}
             returnKeyType="search"
             onSubmitEditing={() => {
-              if (geoSuggestions.length > 0) selectGeoSuggestion(geoSuggestions[0]);
+              if (geoSuggestions.length > 0)
+                selectGeoSuggestion(geoSuggestions[0]);
             }}
           />
           {isFetchingSuggestions && (
@@ -723,7 +778,14 @@ export default function ListeScreen() {
           )}
           {(query.length > 0 || searchFocused) && !isFetchingSuggestions && (
             <TouchableOpacity onPress={clearSearch} style={styles.clearBtn}>
-              <Text style={[styles.clearBtnText, searchFocused && { color: "#888" }]}>✕</Text>
+              <Text
+                style={[
+                  styles.clearBtnText,
+                  searchFocused && { color: "#888" },
+                ]}
+              >
+                ✕
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -769,8 +831,17 @@ export default function ListeScreen() {
                         ]}
                         onPress={() => toggleCategory(cat.id)}
                       >
-                        <CategoryIcon categoryId={cat.id} color={isActive ? "#fff" : color} size={20} />
-                        <Text style={[styles.categoryChipText, isActive && { color: "#fff" }]}>
+                        <CategoryIcon
+                          categoryId={cat.id}
+                          color={isActive ? "#fff" : color}
+                          size={20}
+                        />
+                        <Text
+                          style={[
+                            styles.categoryChipText,
+                            isActive && { color: "#fff" },
+                          ]}
+                        >
                           {cat.Name?.split(" ")[0]}
                         </Text>
                       </TouchableOpacity>
@@ -778,7 +849,9 @@ export default function ListeScreen() {
                   })}
                 </ScrollView>
 
-                <Text style={[styles.suggestionsHeader, { marginTop: 8 }]}>Beliebt in deiner Nähe</Text>
+                <Text style={[styles.suggestionsHeader, { marginTop: 8 }]}>
+                  Beliebt in deiner Nähe
+                </Text>
                 {displayedIds.slice(0, 5).map((id) => {
                   const place = allPlaces.find((p) => p.id === id);
                   if (!place) return null;
@@ -799,11 +872,23 @@ export default function ListeScreen() {
                           style={styles.suggestionThumb}
                         />
                       ) : (
-                        <View style={[styles.suggestionThumb, { backgroundColor: "#f0e8e0" }]} />
+                        <View
+                          style={[
+                            styles.suggestionThumb,
+                            { backgroundColor: "#f0e8e0" },
+                          ]}
+                        />
                       )}
                       <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={styles.suggestionText} numberOfLines={1}>{place.Name}</Text>
-                        <Text style={styles.suggestionSubtext} numberOfLines={1}>{place.Stadt}</Text>
+                        <Text style={styles.suggestionText} numberOfLines={1}>
+                          {place.Name}
+                        </Text>
+                        <Text
+                          style={styles.suggestionSubtext}
+                          numberOfLines={1}
+                        >
+                          {place.Stadt}
+                        </Text>
                       </View>
                       {cats[0] && (
                         <CategoryIcon
@@ -820,11 +905,17 @@ export default function ListeScreen() {
               /* ── Jest query: wyniki lokalne + geo ── */
               <>
                 {/* Kategorie */}
-                {localResults.filter((r) => r.type === "category").length > 0 && (
+                {localResults.filter((r) => r.type === "category").length >
+                  0 && (
                   <>
                     <Text style={styles.suggestionsHeader}>Kategorien</Text>
                     {localResults
-                      .filter((r): r is { type: "category"; cat: DirectusKategorie } => r.type === "category")
+                      .filter(
+                        (
+                          r,
+                        ): r is { type: "category"; cat: DirectusKategorie } =>
+                          r.type === "category",
+                      )
                       .map((r) => {
                         const color = CATEGORY_COLORS[r.cat.id] ?? "#fc6c14";
                         return (
@@ -832,18 +923,38 @@ export default function ListeScreen() {
                             key={r.cat.id}
                             style={[
                               styles.suggestionItem,
-                              selectedCategoryIds.has(r.cat.id) && { backgroundColor: (CATEGORY_COLORS[r.cat.id] ?? "#fc6c14") + "18" },
+                              selectedCategoryIds.has(r.cat.id) && {
+                                backgroundColor:
+                                  (CATEGORY_COLORS[r.cat.id] ?? "#fc6c14") +
+                                  "18",
+                              },
                             ]}
                             onPress={() => toggleCategory(r.cat.id)}
                           >
                             <View style={styles.suggestionCatIcon}>
-                              <CategoryIcon categoryId={r.cat.id} color={color} size={32} />
+                              <CategoryIcon
+                                categoryId={r.cat.id}
+                                color={color}
+                                size={32}
+                              />
                             </View>
                             <View style={{ flex: 1 }}>
-                              <Text style={styles.suggestionText}>{r.cat.Name}</Text>
+                              <Text style={styles.suggestionText}>
+                                {r.cat.Name}
+                              </Text>
                             </View>
-                            <Text style={[styles.suggestionMeta, selectedCategoryIds.has(r.cat.id) && { color: "#fc6c14", fontFamily: "FiraSansCondensed_700Bold" }]}>
-                              {selectedCategoryIds.has(r.cat.id) ? "✓" : "Kategorie"}
+                            <Text
+                              style={[
+                                styles.suggestionMeta,
+                                selectedCategoryIds.has(r.cat.id) && {
+                                  color: "#fc6c14",
+                                  fontFamily: "FiraSansCondensed_700Bold",
+                                },
+                              ]}
+                            >
+                              {selectedCategoryIds.has(r.cat.id)
+                                ? "✓"
+                                : "Kategorie"}
                             </Text>
                           </TouchableOpacity>
                         );
@@ -856,7 +967,10 @@ export default function ListeScreen() {
                   <>
                     <Text style={styles.suggestionsHeader}>Orte</Text>
                     {localResults
-                      .filter((r): r is { type: "place"; place: DirectusOrte } => r.type === "place")
+                      .filter(
+                        (r): r is { type: "place"; place: DirectusOrte } =>
+                          r.type === "place",
+                      )
                       .map((r) => {
                         const cats = getCategoriesFromPlace(r.place);
                         const imageUrl = getImageUrl(r.place);
@@ -871,13 +985,31 @@ export default function ListeScreen() {
                             }}
                           >
                             {imageUrl ? (
-                              <Image source={{ uri: imageUrl }} style={styles.suggestionThumb} />
+                              <Image
+                                source={{ uri: imageUrl }}
+                                style={styles.suggestionThumb}
+                              />
                             ) : (
-                              <View style={[styles.suggestionThumb, { backgroundColor: "#f0e8e0" }]} />
+                              <View
+                                style={[
+                                  styles.suggestionThumb,
+                                  { backgroundColor: "#f0e8e0" },
+                                ]}
+                              />
                             )}
                             <View style={{ flex: 1, minWidth: 0 }}>
-                              <Text style={styles.suggestionText} numberOfLines={1}>{r.place.Name}</Text>
-                              <Text style={styles.suggestionSubtext} numberOfLines={1}>{r.place.Stadt}</Text>
+                              <Text
+                                style={styles.suggestionText}
+                                numberOfLines={1}
+                              >
+                                {r.place.Name}
+                              </Text>
+                              <Text
+                                style={styles.suggestionSubtext}
+                                numberOfLines={1}
+                              >
+                                {r.place.Stadt}
+                              </Text>
                             </View>
                             {cats[0] && (
                               <CategoryIcon
@@ -902,12 +1034,22 @@ export default function ListeScreen() {
                         style={styles.suggestionItem}
                         onPress={() => selectGeoSuggestion(s)}
                       >
-                        <View style={[styles.suggestionCatIcon, { backgroundColor: "#f0e8e0", borderRadius: 8 }]}>
+                        <View
+                          style={[
+                            styles.suggestionCatIcon,
+                            { backgroundColor: "#f0e8e0", borderRadius: 8 },
+                          ]}
+                        >
                           <Text style={{ fontSize: 16 }}>📍</Text>
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.suggestionText}>{s.name}</Text>
-                          <Text style={styles.suggestionSubtext} numberOfLines={1}>{s.place_formatted}</Text>
+                          <Text
+                            style={styles.suggestionSubtext}
+                            numberOfLines={1}
+                          >
+                            {s.place_formatted}
+                          </Text>
                         </View>
                       </TouchableOpacity>
                     ))}
@@ -915,11 +1057,15 @@ export default function ListeScreen() {
                 )}
 
                 {/* Brak wyników */}
-                {localResults.length === 0 && geoSuggestions.length === 0 && !isFetchingSuggestions && (
-                  <View style={styles.noResults}>
-                    <Text style={styles.noResultsText}>Keine Ergebnisse.</Text>
-                  </View>
-                )}
+                {localResults.length === 0 &&
+                  geoSuggestions.length === 0 &&
+                  !isFetchingSuggestions && (
+                    <View style={styles.noResults}>
+                      <Text style={styles.noResultsText}>
+                        Keine Ergebnisse.
+                      </Text>
+                    </View>
+                  )}
               </>
             )}
           </ScrollView>
@@ -949,9 +1095,21 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 4,
   },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+  },
+  headerSpacer: {
+    width: 36,
+  },
+  headerMenuSlot: {
+    width: 36,
+    alignItems: "flex-end",
+  },
   logoImage: {
-    width: "100%",
-    height: 60,
+    flex: 1,
+    height: 58,
   },
   logo: {
     fontFamily: "Anton_400Regular",
@@ -961,10 +1119,10 @@ const styles = StyleSheet.create({
     letterSpacing: 3,
   },
   tagline: {
-    fontFamily: "FiraSansCondensed_400Regular",
-    fontSize: 21,
+    fontFamily: "Anton_400Regular",
+    fontSize: 16,
     paddingVertical: 4,
-    paddingHorizontal: 40,
+    paddingHorizontal: 20,
     color: "#fc6c14",
     textAlign: "center",
   },

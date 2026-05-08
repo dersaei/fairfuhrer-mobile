@@ -33,6 +33,7 @@ import { useRouter } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
 import { usePlacesStore } from "@/stores/placesStore";
 import type { DirectusOrte, DirectusKategorie } from "@/types";
+import MenuButton from "@/components/MenuButton";
 
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
 const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
@@ -456,15 +457,21 @@ export default function KarteScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
       <View style={styles.header}>
-        {einstellungen?.Logo ? (
-          <Image
-            source={{ uri: `${DIRECTUS_URL}/assets/${einstellungen.Logo}` }}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-        ) : (
-          <Text style={styles.logo}>FAIRFÜHRER</Text>
-        )}
+        <View style={styles.headerRow}>
+          <View style={styles.headerSpacer} />
+          {einstellungen?.Logo ? (
+            <Image
+              source={{ uri: `${DIRECTUS_URL}/assets/${einstellungen.Logo}` }}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          ) : (
+            <Text style={styles.logo}>FAIRFÜHRER</Text>
+          )}
+          <View style={styles.headerMenuSlot}>
+            <MenuButton />
+          </View>
+        </View>
         {einstellungen?.Slogan ? (
           <Text style={styles.tagline}>{einstellungen.Slogan}</Text>
         ) : (
@@ -669,7 +676,14 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
   centered: { flex: 1, alignItems: "center", justifyContent: "center" },
   header: { paddingTop: 8, paddingBottom: 4 },
-  logoImage: { width: "100%", height: 60 },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+  },
+  headerSpacer: { width: 36 },
+  headerMenuSlot: { width: 36, alignItems: "flex-end" },
+  logoImage: { flex: 1, height: 58 },
   logo: {
     fontFamily: "Anton_400Regular",
     fontSize: 30,
@@ -678,10 +692,10 @@ const styles = StyleSheet.create({
     letterSpacing: 3,
   },
   tagline: {
-    fontFamily: "FiraSansCondensed_400Regular",
-    fontSize: 21,
+    fontFamily: "Anton_400Regular",
+    fontSize: 16,
     paddingVertical: 4,
-    paddingHorizontal: 40,
+    paddingHorizontal: 20,
     color: "#fc6c14",
     textAlign: "center",
   },

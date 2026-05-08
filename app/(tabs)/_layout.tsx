@@ -55,21 +55,21 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Liste',
+          tabBarLabel: 'Liste',
           tabBarIcon: ({ focused }) => <ListeIcon focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="karte"
         options={{
-          title: 'Karte',
+          tabBarLabel: 'Karte',
           tabBarIcon: ({ focused }) => <KarteIcon focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="profil"
         options={{
-          title: 'Profil',
+          tabBarLabel: 'Profil',
           tabBarIcon: ({ focused }) => <ProfilIcon focused={focused} />,
         }}
       />
