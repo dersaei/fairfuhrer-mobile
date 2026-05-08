@@ -233,27 +233,24 @@ const PinCard = memo(function PinCard({ placeId }: { placeId: number }) {
 
 function KategorieBar({
   categories,
-  selectedId,
-  onSelect,
+  selectedIds,
+  onToggle,
 }: {
   categories: DirectusKategorie[];
-  selectedId: number | null;
-  onSelect: (id: number | null) => void;
+  selectedIds: Set<number>;
+  onToggle: (id: number | null) => void;
 }) {
   const [modalVisible, setModalVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
-  const selectedCat = categories.find((c) => c.id === selectedId) ?? null;
-  const barColor = selectedCat
-    ? (CATEGORY_COLORS[selectedCat.id] ?? "#fc6c14")
-    : "#000";
+  const hasSelection = selectedIds.size > 0;
+  const barColor = hasSelection ? "#fc6c14" : "#000";
 
   const openMenu = useCallback(() => {
     slideAnim.setValue(0);
     setModalVisible(true);
   }, [slideAnim]);
 
-  // Animacja startuje dopiero gdy Modal jest już wyrenderowany
   const handleModalShow = useCallback(() => {
     Animated.timing(slideAnim, {
       toValue: 1,
@@ -264,7 +261,7 @@ function KategorieBar({
   }, [slideAnim]);
 
   const closeMenu = useCallback(
-    (id: number | null | "cancel") => {
+    (action: number | "all" | "cancel") => {
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 200,
@@ -272,10 +269,12 @@ function KategorieBar({
         useNativeDriver: true,
       }).start(() => {
         setModalVisible(false);
-        if (id !== "cancel") onSelect(id);
+        if (action === "cancel") return;
+        if (action === "all") { onToggle(null); return; }
+        onToggle(action);
       });
     },
-    [slideAnim, onSelect],
+    [slideAnim, onToggle],
   );
 
   const menuTranslateY = slideAnim.interpolate({
@@ -286,6 +285,12 @@ function KategorieBar({
     inputRange: [0, 1],
     outputRange: [0, 0.4],
   });
+
+  const barLabel = hasSelection
+    ? selectedIds.size === 1
+      ? (categories.find((c) => selectedIds.has(c.id))?.Name ?? "")
+      : `${selectedIds.size} Kategorien`
+    : "Kategorie wählen ›";
 
   return (
     <View>
@@ -298,7 +303,6 @@ function KategorieBar({
         onRequestClose={() => closeMenu("cancel")}
         statusBarTranslucent
       >
-        {/* Backdrop — prawdziwy fullscreen, zamyka tapem */}
         <Animated.View
           style={[styles.kategorieBackdrop, { opacity: backdropOpacity }]}
           pointerEvents="box-none"
@@ -310,7 +314,6 @@ function KategorieBar({
           />
         </Animated.View>
 
-        {/* Menu — wyrasta od dołu ekranu */}
         <Animated.View
           style={[
             styles.kategorieMenu,
@@ -325,30 +328,22 @@ function KategorieBar({
           <TouchableOpacity
             style={[
               styles.kategorieMenuItem,
-              selectedId === null && styles.kategorieMenuItemActive,
+              !hasSelection && styles.kategorieMenuItemActive,
             ]}
-            onPress={() => closeMenu(null)}
+            onPress={() => closeMenu("all")}
             activeOpacity={0.7}
           >
             <View style={styles.kategorieMenuIcon}>
-              <CategoryIcon
-                categoryId={null}
-                color={selectedId === null ? "#fff" : "#000"}
-              />
+              <CategoryIcon categoryId={null} color={!hasSelection ? "#fff" : "#000"} />
             </View>
-            <Text
-              style={[
-                styles.kategorieMenuText,
-                selectedId === null && styles.kategorieMenuTextActive,
-              ]}
-            >
+            <Text style={[styles.kategorieMenuText, !hasSelection && styles.kategorieMenuTextActive]}>
               Alle
             </Text>
           </TouchableOpacity>
 
-          {/* Kategorie */}
+          {/* Kategorie — każda niezależnie toggleowana, menu nie zamyka się */}
           {categories.map((cat) => {
-            const isActive = cat.id === selectedId;
+            const isActive = selectedIds.has(cat.id);
             return (
               <TouchableOpacity
                 key={cat.id}
@@ -356,23 +351,16 @@ function KategorieBar({
                   styles.kategorieMenuItem,
                   isActive && { backgroundColor: cat.Farbe ?? "#fc6c14" },
                 ]}
-                onPress={() => closeMenu(cat.id)}
+                onPress={() => onToggle(cat.id)}
                 activeOpacity={0.7}
               >
                 <View style={styles.kategorieMenuIcon}>
                   <CategoryIcon
                     categoryId={cat.id}
-                    color={
-                      isActive ? "#fff" : (CATEGORY_COLORS[cat.id] ?? "#fc6c14")
-                    }
+                    color={isActive ? "#fff" : (CATEGORY_COLORS[cat.id] ?? "#fc6c14")}
                   />
                 </View>
-                <Text
-                  style={[
-                    styles.kategorieMenuText,
-                    isActive && styles.kategorieMenuTextActive,
-                  ]}
-                >
+                <Text style={[styles.kategorieMenuText, isActive && styles.kategorieMenuTextActive]}>
                   {cat.Name}
                 </Text>
               </TouchableOpacity>
@@ -387,35 +375,26 @@ function KategorieBar({
         onPress={openMenu}
         activeOpacity={0.85}
       >
-        {selectedCat ? (
-          <>
-            <View style={styles.kategorieBarIcon}>
-              <CategoryIcon
-                categoryId={selectedCat.id}
-                color={barColor}
-                size={28}
-              />
-            </View>
-            <Text style={[styles.kategorieBarText, { color: "#fff" }]}>
-              {selectedCat.Name}
-            </Text>
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation();
-                onSelect(null);
-              }}
-              style={styles.kategorieClearBtn}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={[styles.kategorieClearText, { color: "#fff" }]}>
-                ✕
-              </Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <Text style={[styles.kategorieBarText, { color: "#fff" }]}>
-            Kategorie wählen ›
-          </Text>
+        {hasSelection && selectedIds.size === 1 && (
+          <View style={styles.kategorieBarIcon}>
+            <CategoryIcon
+              categoryId={[...selectedIds][0]}
+              color={barColor}
+              size={28}
+            />
+          </View>
+        )}
+        <Text style={[styles.kategorieBarText, { color: "#fff" }]}>
+          {barLabel}
+        </Text>
+        {hasSelection && (
+          <TouchableOpacity
+            onPress={(e) => { e.stopPropagation(); onToggle(null); }}
+            style={styles.kategorieClearBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={[styles.kategorieClearText, { color: "#fff" }]}>✕</Text>
+          </TouchableOpacity>
         )}
       </TouchableOpacity>
     </View>
@@ -438,19 +417,21 @@ export default function ListeScreen() {
   const [orderedIds, setOrderedIds] = useState<number[] | null>(null);
 
   const [query, setQuery] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
+  // geo suggestions from Mapbox
   const [geoSuggestions, setGeoSuggestions] = useState<
     { name: string; place_formatted: string; lat: number; lon: number }[]
   >([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
-    null,
-  );
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<Set<number>>(new Set());
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gpsOrderedIdsRef = useRef<number[] | null>(null);
   const flatListRef = useRef<FlatList<number>>(null);
   const allPlacesRef = useRef(allPlaces);
   allPlacesRef.current = allPlaces;
+  const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const [bottomSectionHeight, setBottomSectionHeight] = useState(0);
   const isFocused = useIsFocused();
   const gpsDoneRef = useRef(false);
@@ -502,10 +483,10 @@ export default function ListeScreen() {
   const displayedIds = useMemo(() => {
     let result = [...allPlaces];
 
-    if (selectedCategoryId !== null) {
+    if (selectedCategoryIds.size > 0) {
       result = result.filter((p) =>
         p.Kategorie?.some(
-          (k) => k.Kategorie_id && k.Kategorie_id.id === selectedCategoryId,
+          (k) => k.Kategorie_id && selectedCategoryIds.has(k.Kategorie_id.id),
         ),
       );
     }
@@ -518,20 +499,19 @@ export default function ListeScreen() {
     }
 
     return result.map((p) => p.id);
-  }, [allPlaces, selectedCategoryId, orderedIds]);
+  }, [allPlaces, selectedCategoryIds, orderedIds]);
 
   const fetchGeoSuggestions = useCallback((text: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (text.trim().length < 2) {
       setGeoSuggestions([]);
-      setShowSuggestions(false);
       setIsFetchingSuggestions(false);
       return;
     }
     setIsFetchingSuggestions(true);
     debounceRef.current = setTimeout(async () => {
       try {
-        const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(text)}&language=de&limit=7&types=country,region,district,place&autocomplete=true&access_token=${MAPBOX_TOKEN}`;
+        const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(text)}&language=de&limit=5&types=country,region,district,place&autocomplete=true&access_token=${MAPBOX_TOKEN}`;
         const res = await fetch(url);
         const json = await res.json();
         const suggestions = (json.features ?? []).map(
@@ -547,7 +527,6 @@ export default function ListeScreen() {
           },
         );
         setGeoSuggestions(suggestions);
-        setShowSuggestions(suggestions.length > 0);
       } catch {
         setGeoSuggestions([]);
       } finally {
@@ -564,7 +543,7 @@ export default function ListeScreen() {
       lon: number;
     }) => {
       setQuery(item.name);
-      setShowSuggestions(false);
+      setSearchFocused(false);
       setGeoSuggestions([]);
       Keyboard.dismiss();
       const { data, error } = await supabase.rpc("nearby_orte", {
@@ -581,11 +560,11 @@ export default function ListeScreen() {
 
   const clearSearch = useCallback(() => {
     setQuery("");
+    setSearchFocused(false);
     setGeoSuggestions([]);
-    setShowSuggestions(false);
     setIsFetchingSuggestions(false);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    // Resetuj kolejność w następnej klatce, żeby UI nie blokował
+    Keyboard.dismiss();
     requestAnimationFrame(() => {
       setOrderedIds(gpsOrderedIdsRef.current);
       flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
@@ -593,8 +572,45 @@ export default function ListeScreen() {
   }, []);
 
   const toggleCategory = useCallback((id: number | null) => {
-    setSelectedCategoryId(id);
+    if (id === null) {
+      setSelectedCategoryIds(new Set());
+      return;
+    }
+    setSelectedCategoryIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   }, []);
+
+  // Lokalne wyniki wyszukiwania — miejsca + kategorie dopasowane do query
+  type LocalResult =
+    | { type: "place"; place: DirectusOrte }
+    | { type: "category"; cat: DirectusKategorie }
+    | { type: "geo"; name: string; place_formatted: string; lat: number; lon: number };
+
+  const localResults = useMemo((): LocalResult[] => {
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) return [];
+    const results: LocalResult[] = [];
+
+    // Kategorie
+    allCategories.forEach((cat) => {
+      if (cat.Name?.toLowerCase().includes(q))
+        results.push({ type: "category", cat });
+    });
+
+    // Miejsca — po nazwie i mieście
+    allPlaces.forEach((p) => {
+      if (
+        p.Name?.toLowerCase().includes(q) ||
+        p.Stadt?.toLowerCase().includes(q)
+      )
+        results.push({ type: "place", place: p });
+    });
+
+    return results.slice(0, 12);
+  }, [query, allPlaces, allCategories]);
 
   const renderCard = useCallback(
     ({ item: placeId }: { item: number }) => (
@@ -679,70 +695,233 @@ export default function ListeScreen() {
         onLayout={(e) => setBottomSectionHeight(e.nativeEvent.layout.height)}
       >
         {/* Pasek wyszukiwania */}
-        <View style={styles.searchBar}>
+        <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
           <TextInput
-            style={styles.searchInput}
-            placeholder="Suche…"
-            placeholderTextColor="rgba(255,255,255,0.7)"
+            style={[styles.searchInput, searchFocused && { color: "#181716" }]}
+            placeholder="Orte, Städte, Kategorien…"
+            placeholderTextColor={searchFocused ? "rgba(24,23,22,0.4)" : "rgba(255,255,255,0.7)"}
             value={query}
             onChangeText={(t) => {
               setQuery(t);
               fetchGeoSuggestions(t);
             }}
-            onFocus={() => {
-              if (query.length >= 2 && geoSuggestions.length > 0)
-                setShowSuggestions(true);
-            }}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
             onSubmitEditing={() => {
-              if (geoSuggestions.length > 0)
-                selectGeoSuggestion(geoSuggestions[0]);
-              else setShowSuggestions(false);
+              if (geoSuggestions.length > 0) selectGeoSuggestion(geoSuggestions[0]);
             }}
           />
           {isFetchingSuggestions && (
             <ActivityIndicator
               size="small"
-              color="#fff"
+              color={searchFocused ? "#fc6c14" : "#fff"}
               style={{ marginLeft: 8 }}
             />
           )}
-          {query.length > 0 && !isFetchingSuggestions && (
+          {(query.length > 0 || searchFocused) && !isFetchingSuggestions && (
             <TouchableOpacity onPress={clearSearch} style={styles.clearBtn}>
-              <Text style={styles.clearBtnText}>✕</Text>
+              <Text style={[styles.clearBtnText, searchFocused && { color: "#888" }]}>✕</Text>
             </TouchableOpacity>
           )}
         </View>
-        {/* Pasek kategorii — pod wyszukiwarką */}
-        <KategorieBar
-          categories={allCategories}
-          selectedId={selectedCategoryId}
-          onSelect={toggleCategory}
-        />
+        {/* Pasek kategorii — ukryty gdy panel wyszukiwania jest otwarty */}
+        {!searchFocused && (
+          <KategorieBar
+            categories={allCategories}
+            selectedIds={selectedCategoryIds}
+            onToggle={toggleCategory}
+          />
+        )}
       </View>
 
-      {/* Sugestie — absolute nad bottomSection, poza jego drzewem */}
-      {showSuggestions && geoSuggestions.length > 0 && (
+      {/* Panel wyszukiwania — pojawia się nad bottomSection gdy searchFocused */}
+      {searchFocused && (
         <View style={[styles.suggestionsBox, { bottom: bottomSectionHeight }]}>
           <ScrollView
             keyboardShouldPersistTaps="handled"
             bounces={false}
             style={styles.suggestionsScroll}
           >
-            {geoSuggestions.map((s, i) => (
-              <TouchableOpacity
-                key={`${s.name}-${i}`}
-                style={styles.suggestionItem}
-                onPress={() => selectGeoSuggestion(s)}
-              >
-                <Text style={styles.suggestionText}>{s.name}</Text>
-                <Text style={styles.suggestionSubtext} numberOfLines={1}>
-                  {s.place_formatted}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {query.trim().length < 2 ? (
+              /* ── Pusty input: chipy kategorii + popularne miejsca ── */
+              <>
+                <Text style={styles.suggestionsHeader}>Kategorien</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.chipRow}
+                  contentContainerStyle={styles.chipRowContent}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {allCategories.map((cat) => {
+                    const color = CATEGORY_COLORS[cat.id] ?? "#fc6c14";
+                    const isActive = selectedCategoryIds.has(cat.id);
+                    return (
+                      <TouchableOpacity
+                        key={cat.id}
+                        style={[
+                          styles.categoryChip,
+                          { borderColor: color },
+                          isActive && { backgroundColor: color },
+                        ]}
+                        onPress={() => toggleCategory(cat.id)}
+                      >
+                        <CategoryIcon categoryId={cat.id} color={isActive ? "#fff" : color} size={20} />
+                        <Text style={[styles.categoryChipText, isActive && { color: "#fff" }]}>
+                          {cat.Name?.split(" ")[0]}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                <Text style={[styles.suggestionsHeader, { marginTop: 8 }]}>Beliebt in deiner Nähe</Text>
+                {displayedIds.slice(0, 5).map((id) => {
+                  const place = allPlaces.find((p) => p.id === id);
+                  if (!place) return null;
+                  const cats = getCategoriesFromPlace(place);
+                  const imageUrl = getImageUrl(place);
+                  return (
+                    <TouchableOpacity
+                      key={id}
+                      style={styles.suggestionItem}
+                      onPress={() => {
+                        clearSearch();
+                        routerRef.current?.push(`/place/${id}`);
+                      }}
+                    >
+                      {imageUrl ? (
+                        <Image
+                          source={{ uri: imageUrl }}
+                          style={styles.suggestionThumb}
+                        />
+                      ) : (
+                        <View style={[styles.suggestionThumb, { backgroundColor: "#f0e8e0" }]} />
+                      )}
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.suggestionText} numberOfLines={1}>{place.Name}</Text>
+                        <Text style={styles.suggestionSubtext} numberOfLines={1}>{place.Stadt}</Text>
+                      </View>
+                      {cats[0] && (
+                        <CategoryIcon
+                          categoryId={cats[0].id}
+                          color={CATEGORY_COLORS[cats[0].id] ?? "#fc6c14"}
+                          size={28}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </>
+            ) : (
+              /* ── Jest query: wyniki lokalne + geo ── */
+              <>
+                {/* Kategorie */}
+                {localResults.filter((r) => r.type === "category").length > 0 && (
+                  <>
+                    <Text style={styles.suggestionsHeader}>Kategorien</Text>
+                    {localResults
+                      .filter((r): r is { type: "category"; cat: DirectusKategorie } => r.type === "category")
+                      .map((r) => {
+                        const color = CATEGORY_COLORS[r.cat.id] ?? "#fc6c14";
+                        return (
+                          <TouchableOpacity
+                            key={r.cat.id}
+                            style={[
+                              styles.suggestionItem,
+                              selectedCategoryIds.has(r.cat.id) && { backgroundColor: (CATEGORY_COLORS[r.cat.id] ?? "#fc6c14") + "18" },
+                            ]}
+                            onPress={() => toggleCategory(r.cat.id)}
+                          >
+                            <View style={styles.suggestionCatIcon}>
+                              <CategoryIcon categoryId={r.cat.id} color={color} size={32} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.suggestionText}>{r.cat.Name}</Text>
+                            </View>
+                            <Text style={[styles.suggestionMeta, selectedCategoryIds.has(r.cat.id) && { color: "#fc6c14", fontFamily: "FiraSansCondensed_700Bold" }]}>
+                              {selectedCategoryIds.has(r.cat.id) ? "✓" : "Kategorie"}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                  </>
+                )}
+
+                {/* Miejsca */}
+                {localResults.filter((r) => r.type === "place").length > 0 && (
+                  <>
+                    <Text style={styles.suggestionsHeader}>Orte</Text>
+                    {localResults
+                      .filter((r): r is { type: "place"; place: DirectusOrte } => r.type === "place")
+                      .map((r) => {
+                        const cats = getCategoriesFromPlace(r.place);
+                        const imageUrl = getImageUrl(r.place);
+                        return (
+                          <TouchableOpacity
+                            key={r.place.id}
+                            style={styles.suggestionItem}
+                            onPress={() => {
+                              clearSearch();
+                              // push do /place/:id — używamy RouterPushRef poniżej
+                              routerRef.current?.push(`/place/${r.place.id}`);
+                            }}
+                          >
+                            {imageUrl ? (
+                              <Image source={{ uri: imageUrl }} style={styles.suggestionThumb} />
+                            ) : (
+                              <View style={[styles.suggestionThumb, { backgroundColor: "#f0e8e0" }]} />
+                            )}
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                              <Text style={styles.suggestionText} numberOfLines={1}>{r.place.Name}</Text>
+                              <Text style={styles.suggestionSubtext} numberOfLines={1}>{r.place.Stadt}</Text>
+                            </View>
+                            {cats[0] && (
+                              <CategoryIcon
+                                categoryId={cats[0].id}
+                                color={CATEGORY_COLORS[cats[0].id] ?? "#fc6c14"}
+                                size={28}
+                              />
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                  </>
+                )}
+
+                {/* Geo (Mapbox) */}
+                {geoSuggestions.length > 0 && (
+                  <>
+                    <Text style={styles.suggestionsHeader}>Städte</Text>
+                    {geoSuggestions.map((s, i) => (
+                      <TouchableOpacity
+                        key={`geo-${i}`}
+                        style={styles.suggestionItem}
+                        onPress={() => selectGeoSuggestion(s)}
+                      >
+                        <View style={[styles.suggestionCatIcon, { backgroundColor: "#f0e8e0", borderRadius: 8 }]}>
+                          <Text style={{ fontSize: 16 }}>📍</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.suggestionText}>{s.name}</Text>
+                          <Text style={styles.suggestionSubtext} numberOfLines={1}>{s.place_formatted}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </>
+                )}
+
+                {/* Brak wyników */}
+                {localResults.length === 0 && geoSuggestions.length === 0 && !isFetchingSuggestions && (
+                  <View style={styles.noResults}>
+                    <Text style={styles.noResultsText}>Keine Ergebnisse.</Text>
+                  </View>
+                )}
+              </>
+            )}
           </ScrollView>
         </View>
       )}
@@ -828,13 +1007,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 14,
   },
+  searchBarFocused: {
+    backgroundColor: "#fff",
+    borderTopWidth: 1.5,
+    borderTopColor: "#fc6c14",
+  },
   searchInput: {
     flex: 1,
     paddingVertical: Platform.OS === "ios" ? 12 : 10,
-    fontSize: 25,
-    fontFamily: "FiraSansCondensed_700Bold",
+    fontSize: 20,
+    fontFamily: "FiraSansCondensed_600SemiBold",
     color: "#fff",
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   clearBtn: {
     paddingLeft: 8,
@@ -844,37 +1028,104 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#fff",
   },
-  // Sugestie — absolute nad bottomSection (bottom ustawiany dynamicznie)
+  // Panel sugestii — absolute nad bottomSection (bottom ustawiany dynamicznie)
   suggestionsBox: {
     position: "absolute",
     left: 0,
     right: 0,
-    backgroundColor: "#fff",
+    backgroundColor: "#fafafa",
     borderTopWidth: 1,
-    borderColor: "#000",
-    maxHeight: 360,
+    borderColor: "#eee",
+    maxHeight: 420,
     zIndex: 200,
     elevation: 20,
   },
   suggestionsScroll: {
     flexGrow: 0,
   },
-  suggestionItem: {
+  suggestionsHeader: {
+    fontSize: 11,
+    fontFamily: "FiraSansCondensed_700Bold",
+    color: "#fc6c14",
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 8,
+  },
+  // Chipy kategorii (poziome przewijanie)
+  chipRow: {
+    flexGrow: 0,
+  },
+  chipRowContent: {
     paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingBottom: 14,
+    gap: 8,
+    flexDirection: "row",
+  },
+  categoryChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: "#fff",
+    borderWidth: 1.5,
+  },
+  categoryChipText: {
+    fontSize: 14,
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    color: "#181716",
+  },
+  // Wiersze sugestii
+  suggestionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
+    gap: 12,
+    backgroundColor: "#fff",
+  },
+  suggestionThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    flexShrink: 0,
+  },
+  suggestionCatIcon: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   },
   suggestionText: {
     fontSize: 16,
-    color: "#000",
+    color: "#181716",
     fontFamily: "FiraSansCondensed_600SemiBold",
   },
   suggestionSubtext: {
-    fontSize: 12,
-    color: "#555",
+    fontSize: 13,
+    color: "#666",
     fontFamily: "FiraSansCondensed_400Regular",
     marginTop: 1,
+  },
+  suggestionMeta: {
+    fontSize: 13,
+    color: "#999",
+    fontFamily: "FiraSansCondensed_400Regular",
+  },
+  noResults: {
+    padding: 40,
+    alignItems: "center",
+  },
+  noResultsText: {
+    fontSize: 16,
+    color: "#999",
+    fontFamily: "FiraSansCondensed_400Regular",
   },
   // Pasek kategorii — trigger
   kategorieBar: {

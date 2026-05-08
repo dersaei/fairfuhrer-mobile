@@ -10,24 +10,27 @@ import {
   Platform,
   ScrollView,
   Alert,
+  ImageBackground,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import Purchases from "react-native-purchases";
 import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 
-type AuthView = "login" | "register";
+type AuthView = "welcome" | "login" | "register";
 type AccountSection =
   | "profil"
   | "einstellungen"
   | "premium"
   | "ort-vorschlagen";
 
-// ─── Auth Screen ────────────────────────────────────────────────────────────
+// ─── Auth Screen ─────────────────────────────────────────────────────────────
+// Trzy widoki: welcome (landing) → login | register (formularz)
 
 function AuthScreen() {
-  const [view, setView] = useState<AuthView>("login");
+  const [view, setView] = useState<AuthView>("welcome");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -57,10 +60,7 @@ function AuthScreen() {
       return;
     }
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     setIsLoading(false);
     if (error) setError("E-Mail oder Passwort ist falsch.");
   };
@@ -104,12 +104,12 @@ function AuthScreen() {
     }
   };
 
+  // ── Bestätigung nach Registrierung ──
   if (registerSuccess) {
     return (
       <SafeAreaView style={s.container}>
         <View style={s.centerContent}>
           <Text style={s.logo}>FAIRFÜHRER</Text>
-          <Text style={s.roleLabel}>Reisender</Text>
           <Text style={s.successTitle}>Fast fertig!</Text>
           <Text style={s.successText}>
             Bitte prüfe deine E-Mails und bestätige deine Registrierung.
@@ -122,6 +122,111 @@ function AuthScreen() {
     );
   }
 
+  // ── Landing / Welcome ──
+  if (view === "welcome") {
+    return (
+      <SafeAreaView style={s.container} edges={["bottom"]}>
+        <ScrollView
+          contentContainerStyle={s.welcomeContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Hero z zdjęciem w tle */}
+          <ImageBackground
+            source={require("@/assets/images/fair-fuehrer-guide-hero.jpg")}
+            style={s.welcomeHero}
+            resizeMode="cover"
+          >
+            <LinearGradient
+              colors={["rgba(24,23,22,0.35)", "rgba(24,23,22,0.75)"]}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={s.welcomeHeroContent}>
+              <Text style={s.welcomeEyebrow}>DEIN FAIRFÜHRER-KONTO</Text>
+              <Text style={s.welcomeHeadline}>{"ENTDECKE\nMEHR.\nBEWEGE\nMEHR."}</Text>
+              <Text style={s.welcomeSubtitle}>
+                Kostenlos registrieren – Audio-Guides hören, faire Orte
+                entdecken und die Community mitgestalten.
+              </Text>
+
+              <TouchableOpacity
+                style={s.welcomeBtnPrimary}
+                onPress={() => switchView("register")}
+              >
+                <Text style={s.welcomeBtnPrimaryText}>Kostenlos registrieren</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={s.welcomeBtnSecondary}
+                onPress={() => switchView("login")}
+              >
+                <Text style={s.welcomeBtnSecondaryText}>Ich habe schon ein Konto</Text>
+              </TouchableOpacity>
+            </View>
+          </ImageBackground>
+
+          {/* Free vs. Premium Vergleich */}
+          <View style={s.welcomeValueSection}>
+            {/* Kostenlos */}
+            <View style={s.planCompareCard}>
+              <Text style={s.planCompareTitle}>Kostenlos</Text>
+              {[
+                "Audio-Guides zu allen Orten anhören",
+                "Alle Kategorien entdecken (Gastronomie, Einkaufen, Engagement …)",
+                "20 % der Pins in „Sehenswertes“",
+                "Karte & Ortsuche",
+              ].map((f) => (
+                <View key={f} style={s.planCompareRow}>
+                  <Text style={s.planCompareCheck}>✓</Text>
+                  <Text style={s.planCompareText}>{f}</Text>
+                </View>
+              ))}
+              {[
+                "100 % der Pins in „Sehenswertes“",
+                "Offline-Karten",
+                "Orte vorschlagen & Pins erstellen",
+              ].map((f) => (
+                <View key={f} style={s.planCompareRow}>
+                  <Text style={s.planCompareLock}>○</Text>
+                  <Text style={s.planCompareTextLocked}>{f}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Premium */}
+            <View style={[s.planCompareCard, s.planCompareCardPremium]}>
+              <View style={s.planCompareTitleRow}>
+                <Text style={[s.planCompareTitle, { color: "#fc6c14" }]}>Fairführer+</Text>
+                <View style={s.planCompareBadge}>
+                  <Text style={s.planCompareBadgeText}>★ PREMIUM</Text>
+                </View>
+              </View>
+              {[
+                "Alles aus der kostenlosen Version",
+                "100 % der Pins in „Sehenswertes“",
+                "Offline-Karten für unterwegs",
+                "Neue Orte vorschlagen & eigene Pins erstellen",
+                "Pins werden von unseren Redakteuren geprüft",
+              ].map((f) => (
+                <View key={f} style={s.planCompareRow}>
+                  <Text style={[s.planCompareCheck, { color: "#fc6c14" }]}>✓</Text>
+                  <Text style={s.planCompareText}>{f}</Text>
+                </View>
+              ))}
+              <TouchableOpacity
+                style={s.welcomeBtnPremium}
+                onPress={() => switchView("register")}
+              >
+                <Text style={s.welcomeBtnPremiumText}>Jetzt Fairführer+ holen</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // ── Formularz (login / register) ──
+  const isReg = view === "register";
   return (
     <SafeAreaView style={s.container}>
       <KeyboardAvoidingView
@@ -132,34 +237,31 @@ function AuthScreen() {
           contentContainerStyle={s.centerContent}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Powrót */}
+          <TouchableOpacity
+            style={s.backBtn}
+            onPress={() => switchView("welcome")}
+          >
+            <Text style={s.backBtnText}>← Zurück</Text>
+          </TouchableOpacity>
+
           <Text style={s.logo}>FAIRFÜHRER</Text>
-          <Text style={s.roleLabel}>Reisender</Text>
+          <Text style={s.formHeadline}>
+            {isReg ? "Konto erstellen" : "Willkommen zurück"}
+          </Text>
 
           <View style={s.tabRow}>
-            <TouchableOpacity
-              style={s.tabBtn}
-              onPress={() => switchView("login")}
-            >
-              <Text
-                style={[s.tabBtnText, view === "login" && s.tabBtnTextActive]}
-              >
+            <TouchableOpacity style={s.tabBtn} onPress={() => switchView("login")}>
+              <Text style={[s.tabBtnText, !isReg && s.tabBtnTextActive]}>
                 Anmelden
               </Text>
-              {view === "login" && <View style={s.tabUnderline} />}
+              {!isReg && <View style={s.tabUnderline} />}
             </TouchableOpacity>
-            <TouchableOpacity
-              style={s.tabBtn}
-              onPress={() => switchView("register")}
-            >
-              <Text
-                style={[
-                  s.tabBtnText,
-                  view === "register" && s.tabBtnTextActive,
-                ]}
-              >
+            <TouchableOpacity style={s.tabBtn} onPress={() => switchView("register")}>
+              <Text style={[s.tabBtnText, isReg && s.tabBtnTextActive]}>
                 Registrieren
               </Text>
-              {view === "register" && <View style={s.tabUnderline} />}
+              {isReg && <View style={s.tabUnderline} />}
             </TouchableOpacity>
           </View>
 
@@ -179,7 +281,7 @@ function AuthScreen() {
             />
           </View>
 
-          {view === "register" && (
+          {isReg && (
             <View style={s.fieldGroup}>
               <Text style={s.fieldLabel}>Benutzername</Text>
               <TextInput
@@ -203,11 +305,11 @@ function AuthScreen() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              autoComplete={view === "login" ? "password" : "new-password"}
+              autoComplete={isReg ? "new-password" : "password"}
             />
           </View>
 
-          {view === "register" && (
+          {isReg && (
             <View style={s.fieldGroup}>
               <Text style={s.fieldLabel}>Passwort wiederholen</Text>
               <TextInput
@@ -224,14 +326,14 @@ function AuthScreen() {
 
           <TouchableOpacity
             style={[s.button, isLoading && s.buttonDisabled]}
-            onPress={view === "login" ? handleLogin : handleRegister}
+            onPress={isReg ? handleRegister : handleLogin}
             disabled={isLoading}
           >
             {isLoading ? (
               <ActivityIndicator color="#fc6c14" />
             ) : (
               <Text style={s.buttonText}>
-                {view === "login" ? "Anmelden" : "Konto erstellen"}
+                {isReg ? "Konto erstellen" : "Anmelden"}
               </Text>
             )}
           </TouchableOpacity>
@@ -628,23 +730,15 @@ function PremiumSection({
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
 
-  const features = [
-    '100 % der Pins in der Kategorie „Sehenswertes"',
-    "Offline-Karten für unterwegs",
-    'Funktion „Alle abspielen"',
-    "Favoriten speichern",
-    "Neue Orte vorschlagen",
-  ];
-
   const plans = [
-    { id: "monthly", label: "Kleine Unterstützung", price: "€4,99 / Monat" },
+    { id: "monthly", label: "Kleine Unterstützung", price: "€4,99" },
     {
       id: "yearly",
       label: "Faire Unterstützung",
-      price: "€9,99 / Monat",
+      price: "€9,99",
       popular: true,
     },
-    { id: "lifetime", label: "Große Unterstützung", price: "€19,99 einmalig" },
+    { id: "lifetime", label: "Große Unterstützung", price: "€19,99" },
   ];
 
   const handlePurchase = async (_productId: string) => {
@@ -709,47 +803,83 @@ function PremiumSection({
     );
   }
 
+  const freeFeatures: { text: string; locked?: boolean }[] = [
+    { text: "Audio-Guides zu allen Orten anhören" },
+    { text: "Alle Kategorien entdecken" },
+    { text: "20 % der Pins in „Sehenswertes“" },
+    { text: "Karte & Ortsuche" },
+    { text: '100 % der Pins in „Sehenswertes“', locked: true },
+    { text: "Offline-Karten", locked: true },
+    { text: "Orte vorschlagen & Pins erstellen", locked: true },
+  ];
+
+  const premiumFeatures = [
+    "Alles aus der kostenlosen Version",
+    '100 % der Pins in „Sehenswertes“',
+    "Offline-Karten für unterwegs",
+    "Neue Orte vorschlagen & eigene Pins erstellen",
+    "Redaktionelle Prüfung deiner Pins vor Veröffentlichung",
+  ];
+
   return (
     <View style={s.section}>
-      <Text style={s.sectionTitle}>Fairführer+</Text>
-      <Text style={s.sectionHint}>
-        Schalte alle Funktionen frei und unterstütze ein unabhängiges Projekt.
-      </Text>
-
-      <View style={s.featureList}>
-        {features.map((f) => (
-          <View key={f} style={s.featureRow}>
-            <Text style={s.featureDot}>●</Text>
-            <Text style={s.featureText}>{f}</Text>
+      {/* Was du jetzt hast */}
+      <Text style={s.sectionTitle}>Dein aktueller Plan</Text>
+      <View style={s.planCompareCard}>
+        <Text style={[s.planCompareTitle, { marginBottom: 12 }]}>Kostenlos</Text>
+        {freeFeatures.map((f) => (
+          <View key={f.text} style={s.planCompareRow}>
+            <Text style={f.locked ? s.planCompareLock : s.planCompareCheck}>
+              {f.locked ? "○" : "✓"}
+            </Text>
+            <Text style={f.locked ? s.planCompareTextLocked : s.planCompareText}>
+              {f.text}
+            </Text>
           </View>
         ))}
       </View>
 
-      <View style={s.plansContainer}>
-        {plans.map((plan) => (
-          <TouchableOpacity
-            key={plan.id}
-            style={[s.planButton, plan.popular && s.planButtonPopular]}
-            onPress={() => handlePurchase(plan.id)}
-            disabled={purchasing}
-          >
-            <View style={s.planButtonInner}>
-              <View>
-                <Text style={[s.planLabel, plan.popular && s.planLabelPopular]}>
-                  {plan.label}
-                </Text>
-                <Text style={[s.planPrice, plan.popular && s.planPricePopular]}>
-                  {plan.price}
-                </Text>
-              </View>
-              {plan.popular && (
-                <View style={s.popularBadge}>
-                  <Text style={s.popularBadgeText}>Beliebt</Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
+      {/* Premium upgrade */}
+      <View style={[s.planCompareCard, s.planCompareCardPremium]}>
+        <View style={s.planCompareTitleRow}>
+          <Text style={[s.planCompareTitle, { color: "#fc6c14" }]}>Fairführer+</Text>
+          <View style={s.planCompareBadge}>
+            <Text style={s.planCompareBadgeText}>★ PREMIUM</Text>
+          </View>
+        </View>
+        {premiumFeatures.map((f) => (
+          <View key={f} style={s.planCompareRow}>
+            <Text style={[s.planCompareCheck, { color: "#fc6c14" }]}>✓</Text>
+            <Text style={s.planCompareText}>{f}</Text>
+          </View>
         ))}
+
+        <View style={[s.plansContainer, { marginTop: 16 }]}>
+          {plans.map((plan) => (
+            <TouchableOpacity
+              key={plan.id}
+              style={[s.planButton, plan.popular && s.planButtonPopular]}
+              onPress={() => handlePurchase(plan.id)}
+              disabled={purchasing}
+            >
+              <View style={s.planButtonInner}>
+                <View>
+                  <Text style={[s.planLabel, plan.popular && s.planLabelPopular]}>
+                    {plan.label}
+                  </Text>
+                  <Text style={[s.planPrice, plan.popular && s.planPricePopular]}>
+                    {plan.price}
+                  </Text>
+                </View>
+                {plan.popular && (
+                  <View style={s.popularBadge}>
+                    <Text style={s.popularBadgeText}>★ Beliebt</Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       <TouchableOpacity
@@ -1167,15 +1297,6 @@ const s = StyleSheet.create({
   },
 
   // Premium
-  featureList: { gap: 8, marginTop: 4 },
-  featureRow: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
-  featureDot: { color: "#fc6c14", fontSize: 15, marginTop: 3 },
-  featureText: {
-    fontSize: 18,
-    fontFamily: "FiraSansCondensed_400Regular",
-    color: "#333",
-    flex: 1,
-  },
   proActiveBox: {
     backgroundColor: "#fff5ef",
     borderRadius: 12,
@@ -1263,4 +1384,173 @@ const s = StyleSheet.create({
     lineHeight: 18,
   },
   successBox: { backgroundColor: "#f0faf5", borderRadius: 12, padding: 16 },
+
+  // Welcome / Landing
+  welcomeContent: {
+    paddingBottom: 48,
+  },
+  welcomeHero: {
+    minHeight: 420,
+    justifyContent: "flex-end",
+  },
+  welcomeHeroContent: {
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 32,
+    gap: 14,
+  },
+  welcomeEyebrow: {
+    fontSize: 11,
+    fontFamily: "FiraSansCondensed_700Bold",
+    color: "#fc6c14",
+    letterSpacing: 2.5,
+  },
+  welcomeHeadline: {
+    fontFamily: "Anton_400Regular",
+    fontSize: 52,
+    color: "#fff",
+    lineHeight: 54,
+    letterSpacing: 1,
+  },
+  welcomeSubtitle: {
+    fontSize: 16,
+    fontFamily: "FiraSansCondensed_400Regular",
+    color: "rgba(255,255,255,0.85)",
+    lineHeight: 22,
+  },
+  welcomeBtnPrimary: {
+    backgroundColor: "#fc6c14",
+    borderRadius: 12,
+    paddingTop: 12,
+    paddingBottom: 16,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  welcomeBtnPrimaryText: {
+    color: "#fff",
+    fontSize: 20,
+    fontFamily: "FiraSansCondensed_700Bold",
+    letterSpacing: 0.5,
+  },
+  welcomeBtnSecondary: {
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.4)",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  welcomeBtnSecondaryText: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 16,
+    fontFamily: "FiraSansCondensed_600SemiBold",
+  },
+  welcomeValueSection: {
+    paddingHorizontal: 20,
+    paddingTop: 28,
+    gap: 16,
+  },
+
+  // Plan comparison cards (used in welcome + PremiumSection)
+  planCompareCard: {
+    borderWidth: 1.5,
+    borderColor: "#e8e0d8",
+    borderRadius: 16,
+    padding: 20,
+    gap: 10,
+    backgroundColor: "#fafaf9",
+  },
+  planCompareCardPremium: {
+    borderColor: "#fc6c14",
+    backgroundColor: "#fff9f5",
+  },
+  planCompareTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  planCompareTitle: {
+    fontSize: 20,
+    fontFamily: "FiraSansCondensed_700Bold",
+    color: "#111",
+  },
+  planCompareBadge: {
+    backgroundColor: "#fc6c14",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  planCompareBadgeText: {
+    fontSize: 11,
+    fontFamily: "FiraSansCondensed_700Bold",
+    color: "#fff",
+    letterSpacing: 0.5,
+  },
+  planCompareRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  planCompareCheck: {
+    fontSize: 15,
+    color: "#2D6A4F",
+    fontFamily: "FiraSansCondensed_700Bold",
+    lineHeight: 22,
+    width: 18,
+  },
+  planCompareLock: {
+    fontSize: 15,
+    color: "#ccc",
+    fontFamily: "FiraSansCondensed_400Regular",
+    lineHeight: 22,
+    width: 18,
+  },
+  planCompareText: {
+    fontSize: 15,
+    fontFamily: "FiraSansCondensed_400Regular",
+    color: "#333",
+    flex: 1,
+    lineHeight: 22,
+  },
+  planCompareTextLocked: {
+    fontSize: 15,
+    fontFamily: "FiraSansCondensed_400Regular",
+    color: "#bbb",
+    flex: 1,
+    lineHeight: 22,
+  },
+  welcomeBtnPremium: {
+    backgroundColor: "#181716",
+    borderRadius: 12,
+    paddingTop: 12,
+    paddingBottom: 16,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  welcomeBtnPremiumText: {
+    color: "#fc6c14",
+    fontSize: 20,
+    fontFamily: "FiraSansCondensed_700Bold",
+    letterSpacing: 0.5,
+  },
+
+  // Back button & form headline (login/register)
+  backBtn: {
+    alignSelf: "flex-start",
+    paddingVertical: 6,
+    paddingHorizontal: 2,
+    marginBottom: 8,
+  },
+  backBtnText: {
+    fontSize: 15,
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    color: "#fc6c14",
+  },
+  formHeadline: {
+    fontSize: 28,
+    fontFamily: "Anton_400Regular",
+    color: "#111",
+    letterSpacing: 1,
+    alignSelf: "center",
+  },
 });
