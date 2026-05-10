@@ -1,0 +1,452 @@
+diff --git a/app/(tabs)/index.tsx b/app/(tabs)/index.tsx
+index 4fb0edd..88eb8dd 100644
+--- a/app/(tabs)/index.tsx
++++ b/app/(tabs)/index.tsx
+@@ -27,6 +27,7 @@ import * as Location from "expo-location";
+ import { useRouter } from "expo-router";
+ import { useIsFocused } from "@react-navigation/native";
+ import { usePlacesStore } from "@/stores/placesStore";
++import { useAuth } from "@/context/AuthContext";
+ import { supabase } from "@/lib/supabase";
+ import type { DirectusOrte, DirectusKategorie } from "@/types";
+ import MenuButton from "@/components/MenuButton";
+@@ -429,13 +430,20 @@ function KategorieBar({
+ 
+ export default function ListeScreen() {
+   const {
+-    places: allPlaces,
++    places: rawPlaces,
+     categories: allCategories,
+     einstellungen,
+     status,
+     error,
+     fetchAll,
++    getVisiblePlaces,
+   } = usePlacesStore();
++  const { isPro } = useAuth();
++  // Free users see ~20 % of Sehenswürdigkeiten pins; premium sees 100 %.
++  const allPlaces = useMemo(
++    () => getVisiblePlaces(isPro),
++    [getVisiblePlaces, isPro, rawPlaces],
++  );
+   const isLoading = status === "loading" || status === "idle";
+ 
+   const [orderedIds, setOrderedIds] = useState<number[] | null>(null);
+diff --git a/app/(tabs)/karte.tsx b/app/(tabs)/karte.tsx
+index f325510..1c4c6e7 100644
+--- a/app/(tabs)/karte.tsx
++++ b/app/(tabs)/karte.tsx
+@@ -32,6 +32,7 @@ import * as Location from "expo-location";
+ import { useRouter } from "expo-router";
+ import { useIsFocused } from "@react-navigation/native";
+ import { usePlacesStore } from "@/stores/placesStore";
++import { useAuth } from "@/context/AuthContext";
+ import type { DirectusOrte, DirectusKategorie } from "@/types";
+ import MenuButton from "@/components/MenuButton";
+ 
+@@ -291,12 +292,19 @@ const DEFAULT_ZOOM = 5;
+ export default function KarteScreen() {
+   const router = useRouter();
+   const {
+-    places: allPlaces,
++    places: rawPlaces,
+     categories: allCategories,
+     einstellungen,
+     status,
+     fetchAll,
++    getVisiblePlaces,
+   } = usePlacesStore();
++  const { isPro } = useAuth();
++  // Free users see ~20 % of Sehenswürdigkeiten pins; premium sees 100 %.
++  const allPlaces = useMemo(
++    () => getVisiblePlaces(isPro),
++    [getVisiblePlaces, isPro, rawPlaces],
++  );
+   const isLoading = status === "loading" || status === "idle";
+ 
+   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
+diff --git a/app/(tabs)/profil.tsx b/app/(tabs)/profil.tsx
+index 0c7775b..3b9bc40 100644
+--- a/app/(tabs)/profil.tsx
++++ b/app/(tabs)/profil.tsx
+@@ -22,6 +22,7 @@ import Purchases from "react-native-purchases";
+ import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
+ import MenuButton from "@/components/MenuButton";
+ import { usePlacesStore } from "@/stores/placesStore";
++import { ENTITLEMENT_ID } from "@/lib/revenuecat";
+ 
+ const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
+ 
+@@ -788,22 +789,15 @@ function PremiumSection({
+   const [purchasing, setPurchasing] = useState(false);
+   const [restoring, setRestoring] = useState(false);
+ 
+-  const plans = [
+-    { id: "monthly", label: "Kleine Unterstützung", price: "€4,99" },
+-    {
+-      id: "yearly",
+-      label: "Faire Unterstützung",
+-      price: "€9,99",
+-      popular: true,
+-    },
+-    { id: "lifetime", label: "Große Unterstützung", price: "€19,99" },
+-  ];
++  // Plans (and prices) live in the RevenueCat dashboard — all 3 yearly
++  // products are mapped to the same `ENTITLEMENT_ID`. We keep only the
++  // marketing copy here; the actual purchase UI is the dashboard paywall.
+ 
+-  const handlePurchase = async (_productId: string) => {
++  const handlePurchase = async () => {
+     setPurchasing(true);
+     try {
+       const result = await RevenueCatUI.presentPaywallIfNeeded({
+-        requiredEntitlementIdentifier: "Fairführer Pro",
++        requiredEntitlementIdentifier: ENTITLEMENT_ID,
+       });
+       if (
+         result === PAYWALL_RESULT.PURCHASED ||
+@@ -913,30 +907,23 @@ function PremiumSection({
+         ))}
+ 
+         <View style={[s.plansContainer, { marginTop: 16 }]}>
+-          {plans.map((plan) => (
+-            <TouchableOpacity
+-              key={plan.id}
+-              style={[s.planButton, plan.popular && s.planButtonPopular]}
+-              onPress={() => handlePurchase(plan.id)}
+-              disabled={purchasing}
+-            >
+-              <View style={s.planButtonInner}>
+-                <View>
+-                  <Text style={[s.planLabel, plan.popular && s.planLabelPopular]}>
+-                    {plan.label}
+-                  </Text>
+-                  <Text style={[s.planPrice, plan.popular && s.planPricePopular]}>
+-                    {plan.price}
+-                  </Text>
+-                </View>
+-                {plan.popular && (
+-                  <View style={s.popularBadge}>
+-                    <Text style={s.popularBadgeText}>★ Beliebt</Text>
+-                  </View>
+-                )}
++          <TouchableOpacity
++            style={[s.planButton, s.planButtonPopular]}
++            onPress={handlePurchase}
++            disabled={purchasing}
++          >
++            <View style={s.planButtonInner}>
++              <View style={{ flex: 1 }}>
++                <Text style={[s.planLabel, s.planLabelPopular]}>
++                  Fairführer+ aktivieren
++                </Text>
++                <Text style={[s.planPrice, s.planPricePopular]}>
++                  Pläne & Preise im nächsten Schritt
++                </Text>
+               </View>
+-            </TouchableOpacity>
+-          ))}
++              {purchasing && <ActivityIndicator color="#fff" />}
++            </View>
++          </TouchableOpacity>
+         </View>
+       </View>
+ 
+diff --git a/context/AuthContext.tsx b/context/AuthContext.tsx
+index ebb5d54..22a476b 100644
+--- a/context/AuthContext.tsx
++++ b/context/AuthContext.tsx
+@@ -1,7 +1,14 @@
+-import React, { createContext, useContext, useEffect, useState } from 'react';
++import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+ import { Session, User } from '@supabase/supabase-js';
+ import { supabase } from '@/lib/supabase';
+-import { identifyUser, resetUser, getCustomerInfo, hasPro } from '@/lib/revenuecat';
++import {
++  identifyUser,
++  resetUser,
++  getCustomerInfo,
++  hasPro,
++  setUserEmail,
++  addCustomerInfoListener,
++} from '@/lib/revenuecat';
+ 
+ export interface Profile {
+   id: string;
+@@ -58,13 +65,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
+     setIsPro(hasPro(info));
+   };
+ 
++  // Identify the user in RC and propagate the email as a subscriber attribute.
++  const identifyAndAttachEmail = async (user: User) => {
++    await identifyUser(user.id);
++    await setUserEmail(user.email);
++  };
++
++  // Reactive RC customer info — premium toggles take effect without polling.
++  const listenerCleanupRef = useRef<(() => void) | null>(null);
++  useEffect(() => {
++    listenerCleanupRef.current = addCustomerInfoListener((info) => {
++      setIsPro(hasPro(info));
++    });
++    return () => {
++      listenerCleanupRef.current?.();
++      listenerCleanupRef.current = null;
++    };
++  }, []);
++
+   useEffect(() => {
+     supabase.auth.getSession().then(async ({ data: { session } }) => {
+       setSession(session);
+       if (session?.user) {
+         const [p] = await Promise.all([
+           fetchProfile(session.user.id),
+-          identifyUser(session.user.id),
++          identifyAndAttachEmail(session.user),
+         ]);
+         setProfile(p);
+         await checkPro();
+@@ -77,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
+       if (session?.user) {
+         const [p] = await Promise.all([
+           fetchProfile(session.user.id),
+-          identifyUser(session.user.id),
++          identifyAndAttachEmail(session.user),
+         ]);
+         setProfile(p);
+         await checkPro();
+diff --git a/lib/revenuecat.ts b/lib/revenuecat.ts
+index d890529..1a6237d 100644
+--- a/lib/revenuecat.ts
++++ b/lib/revenuecat.ts
+@@ -1,20 +1,54 @@
+ import { Platform } from 'react-native';
+ import Purchases, { LOG_LEVEL, CustomerInfo } from 'react-native-purchases';
+ 
+-const API_KEY_IOS = 'test_xldOopxcqijWSVcxYwaAdxnykjl';
+-const API_KEY_ANDROID = 'test_xldOopxcqijWSVcxYwaAdxnykjl';
++// ─── API keys ────────────────────────────────────────────────────────────────
++// RevenueCat public SDK keys are safe to ship in the client, but we still
++// load them from env (Doppler / Expo public env) so we never hard-code a
++// production secret and so each platform / environment can use its own key.
++//
++// Order of resolution per platform:
++//   1. Platform-specific public key  (EXPO_PUBLIC_RC_KEY_IOS / _ANDROID)
++//   2. Generic test/dev key          (EXPO_PUBLIC_RC_KEY_TEST)
++//   3. Hard-coded RC sandbox test key fallback (only for `expo start` /
++//      detached dev clients without env wiring — RevenueCat's published
++//      "test_" prefixed key is safe for development).
++const FALLBACK_TEST_KEY = 'test_xldOopxcqijWSVcxYwaAdxnykjl';
+ 
+-export const ENTITLEMENT_ID = 'Fairführer Pro';
++function resolveApiKey(): string {
++  const iosKey = process.env.EXPO_PUBLIC_RC_KEY_IOS;
++  const androidKey = process.env.EXPO_PUBLIC_RC_KEY_ANDROID;
++  const testKey = process.env.EXPO_PUBLIC_RC_KEY_TEST;
++
++  if (Platform.OS === 'ios' && iosKey) return iosKey;
++  if (Platform.OS === 'android' && androidKey) return androidKey;
++  if (testKey) return testKey;
++  return FALLBACK_TEST_KEY;
++}
++
++// ─── Entitlement ────────────────────────────────────────────────────────────
++// Stable ASCII identifier as the source of truth. Must match the entitlement
++// configured in the RevenueCat dashboard. All 3 yearly products are mapped
++// to this single entitlement on the dashboard side.
++//
++// Historically the codebase used the German label "Fairführer Pro" as the
++// entitlement key. We keep both forms in `KNOWN_ENTITLEMENT_IDS` so an
++// existing dashboard configuration with the legacy ID continues to grant
++// premium until the dashboard is migrated to the canonical ASCII ID.
++export const ENTITLEMENT_ID = 'fairfuehrer_pro';
++export const LEGACY_ENTITLEMENT_ID = 'Fairführer Pro';
++const KNOWN_ENTITLEMENT_IDS = [ENTITLEMENT_ID, LEGACY_ENTITLEMENT_ID];
++
++// ─── Initialization ─────────────────────────────────────────────────────────
+ 
+ export function initializePurchases() {
+   if (__DEV__) {
+     Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+   }
+-
+-  const apiKey = Platform.OS === 'ios' ? API_KEY_IOS : API_KEY_ANDROID;
+-  Purchases.configure({ apiKey });
++  Purchases.configure({ apiKey: resolveApiKey() });
+ }
+ 
++// ─── Identity ───────────────────────────────────────────────────────────────
++
+ export async function identifyUser(userId: string) {
+   try {
+     await Purchases.logIn(userId);
+@@ -23,6 +57,17 @@ export async function identifyUser(userId: string) {
+   }
+ }
+ 
++export async function setUserEmail(email: string | null | undefined) {
++  if (!email) return;
++  try {
++    // Available since react-native-purchases 4.x; passes through to the
++    // native SubscriberAttributes API.
++    await Purchases.setEmail(email);
++  } catch (e) {
++    console.error('[RevenueCat] setUserEmail error:', e);
++  }
++}
++
+ export async function resetUser() {
+   try {
+     const info = await Purchases.getCustomerInfo();
+@@ -34,6 +79,8 @@ export async function resetUser() {
+   }
+ }
+ 
++// ─── Customer info ──────────────────────────────────────────────────────────
++
+ export async function getCustomerInfo(): Promise<CustomerInfo | null> {
+   try {
+     return await Purchases.getCustomerInfo();
+@@ -45,5 +92,20 @@ export async function getCustomerInfo(): Promise<CustomerInfo | null> {
+ 
+ export function hasPro(customerInfo: CustomerInfo | null): boolean {
+   if (!customerInfo) return false;
+-  return ENTITLEMENT_ID in customerInfo.entitlements.active;
++  return KNOWN_ENTITLEMENT_IDS.some(
++    (id) => id in customerInfo.entitlements.active,
++  );
++}
++
++export type CustomerInfoListener = (info: CustomerInfo) => void;
++
++export function addCustomerInfoListener(listener: CustomerInfoListener): () => void {
++  Purchases.addCustomerInfoUpdateListener(listener);
++  return () => {
++    try {
++      Purchases.removeCustomerInfoUpdateListener(listener);
++    } catch (e) {
++      console.error('[RevenueCat] removeCustomerInfoUpdateListener error:', e);
++    }
++  };
+ }
+diff --git a/stores/placesStore.ts b/stores/placesStore.ts
+index e712e68..38bef7a 100644
+--- a/stores/placesStore.ts
++++ b/stores/placesStore.ts
+@@ -1,7 +1,79 @@
+ import { create } from "zustand";
+ import { readItems } from "@directus/sdk";
+ import { directus } from "@/lib/directus";
+-import type { DirectusOrte, DirectusKategorie, DirectusEinstellungen } from "@/types";
++import type {
++  DirectusOrte,
++  DirectusKategorie,
++  DirectusEinstellungen,
++} from "@/types";
++
++// ─── Sehenswürdigkeiten gating ───────────────────────────────────────────────
++//
++// Free accounts see ALL pins in EVERY category EXCEPT "Sehenswürdigkeiten",
++// where they see a deterministic ~20 % subset based on a stable hash of the
++// place's id / Name. Premium sees 100 %.
++//
++// We do not assume a hard-coded category id (it differs across environments).
++// Detection priority:
++//   1. EXPO_PUBLIC_SIGHTS_CATEGORY_ID  — explicit override from Doppler/Expo
++//   2. Category whose normalized German name starts with "sehen"
++//      (matches "Sehenswürdigkeiten", "Sehenswertes", … — the displayed
++//      label in profil.tsx is "Sehenswertes", but the brief refers to the
++//      same canonical category as "Sehenswürdigkeiten").
++//
++// The threshold is the literal 20 % from the product spec.
++const FREE_VISIBLE_RATIO = 0.2;
++
++function normalizeGerman(input: string): string {
++  return input
++    .toLowerCase()
++    .replace(/ä/g, "a")
++    .replace(/ö/g, "o")
++    .replace(/ü/g, "u")
++    .replace(/ß/g, "ss")
++    .trim();
++}
++
++function envSightsCategoryId(): number | null {
++  const raw = process.env.EXPO_PUBLIC_SIGHTS_CATEGORY_ID;
++  if (!raw) return null;
++  const n = Number(raw);
++  return Number.isFinite(n) ? n : null;
++}
++
++function isSightsCategory(cat: DirectusKategorie | undefined | null): boolean {
++  if (!cat) return false;
++  const overrideId = envSightsCategoryId();
++  if (overrideId !== null && cat.id === overrideId) return true;
++  return normalizeGerman(cat.Name ?? "").startsWith("sehen");
++}
++
++function placeHasSights(
++  place: DirectusOrte,
++  sightsCategoryIds: Set<number>,
++): boolean {
++  if (!place.Kategorie) return false;
++  return place.Kategorie.some(
++    (k) => k.Kategorie_id && sightsCategoryIds.has(k.Kategorie_id.id),
++  );
++}
++
++// FNV-1a 32-bit — stable, no external deps, well-distributed enough that a
++// 20 % cutoff produces a 20 % visible subset in practice. Keys are derived
++// from place.id (primary) plus Name to make the hash robust if id schemas
++// change later.
++function stableHash01(place: DirectusOrte): number {
++  const key = `${place.id}:${place.Name ?? ""}`;
++  let h = 0x811c9dc5;
++  for (let i = 0; i < key.length; i++) {
++    h ^= key.charCodeAt(i);
++    h = Math.imul(h, 0x01000193);
++  }
++  // Map to [0, 1). >>> 0 normalizes the int32 to uint32.
++  return (h >>> 0) / 0x100000000;
++}
++
++// ─── Store ──────────────────────────────────────────────────────────────────
+ 
+ interface PlacesState {
+   places: DirectusOrte[];
+@@ -11,6 +83,7 @@ interface PlacesState {
+   error: string | null;
+ 
+   getPlaceById: (id: number) => DirectusOrte | undefined;
++  getVisiblePlaces: (isPro: boolean) => DirectusOrte[];
+   fetchAll: () => Promise<void>;
+ }
+ 
+@@ -23,6 +96,27 @@ export const usePlacesStore = create<PlacesState>((set, get) => ({
+ 
+   getPlaceById: (id) => get().places.find((p) => p.id === id),
+ 
++  // Deterministic visibility filter:
++  //   - Premium → all places
++  //   - Free   → all places EXCEPT ~80 % of those tagged with the
++  //              "Sehenswürdigkeiten" category. Selection is stable per
++  //              place id + name, so a free user always sees the same
++  //              subset across runs / devices.
++  getVisiblePlaces: (isPro) => {
++    const { places, categories } = get();
++    if (isPro) return places;
++
++    const sightsCategoryIds = new Set(
++      categories.filter(isSightsCategory).map((c) => c.id),
++    );
++    if (sightsCategoryIds.size === 0) return places;
++
++    return places.filter((p) => {
++      if (!placeHasSights(p, sightsCategoryIds)) return true;
++      return stableHash01(p) < FREE_VISIBLE_RATIO;
++    });
++  },
++
+   fetchAll: async () => {
+     if (get().status === "loading" || get().status === "success") return;
+ 

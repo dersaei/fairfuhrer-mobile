@@ -32,6 +32,7 @@ import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
 import { usePlacesStore } from "@/stores/placesStore";
+import { useAuth } from "@/context/AuthContext";
 import type { DirectusOrte, DirectusKategorie } from "@/types";
 import MenuButton from "@/components/MenuButton";
 
@@ -291,12 +292,19 @@ const DEFAULT_ZOOM = 5;
 export default function KarteScreen() {
   const router = useRouter();
   const {
-    places: allPlaces,
+    places: rawPlaces,
     categories: allCategories,
     einstellungen,
     status,
     fetchAll,
+    getVisiblePlaces,
   } = usePlacesStore();
+  const { isPro } = useAuth();
+  // Free users see ~20 % of Sehenswürdigkeiten pins; premium sees 100 %.
+  const allPlaces = useMemo(
+    () => getVisiblePlaces(isPro),
+    [getVisiblePlaces, isPro, rawPlaces],
+  );
   const isLoading = status === "loading" || status === "idle";
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(

@@ -1,25 +1,70 @@
 import { Platform } from 'react-native';
 import Purchases, { LOG_LEVEL, CustomerInfo } from 'react-native-purchases';
 
-const API_KEY_IOS = 'test_xldOopxcqijWSVcxYwaAdxnykjl';
-const API_KEY_ANDROID = 'test_xldOopxcqijWSVcxYwaAdxnykjl';
+// ─── API keys ────────────────────────────────────────────────────────────────
+// RevenueCat public SDK keys are safe to ship in the client, but we still
+// load them from env (Doppler / Expo public env) so we never hard-code a
+// production secret and so each platform / environment can use its own key.
+//
+// Order of resolution per platform:
+//   1. Platform-specific public key  (EXPO_PUBLIC_RC_KEY_IOS / _ANDROID)
+//   2. Generic test/dev key          (EXPO_PUBLIC_RC_KEY_TEST)
+//   3. Hard-coded RC sandbox test key fallback (only for `expo start` /
+//      detached dev clients without env wiring — RevenueCat's published
+//      "test_" prefixed key is safe for development).
+const FALLBACK_TEST_KEY = 'test_xldOopxcqijWSVcxYwaAdxnykjl';
 
-export const ENTITLEMENT_ID = 'Fairführer Pro';
+function resolveApiKey(): string {
+  const iosKey = process.env.EXPO_PUBLIC_RC_KEY_IOS;
+  const androidKey = process.env.EXPO_PUBLIC_RC_KEY_ANDROID;
+  const testKey = process.env.EXPO_PUBLIC_RC_KEY_TEST;
+
+  if (Platform.OS === 'ios' && iosKey) return iosKey;
+  if (Platform.OS === 'android' && androidKey) return androidKey;
+  if (testKey) return testKey;
+  return FALLBACK_TEST_KEY;
+}
+
+// ─── Entitlement ────────────────────────────────────────────────────────────
+// Stable ASCII identifier as the source of truth. Must match the entitlement
+// configured in the RevenueCat dashboard. All 3 yearly products are mapped
+// to this single entitlement on the dashboard side.
+//
+// Historically the codebase used the German label "Fairführer Pro" as the
+// entitlement key. We keep both forms in `KNOWN_ENTITLEMENT_IDS` so an
+// existing dashboard configuration with the legacy ID continues to grant
+// premium until the dashboard is migrated to the canonical ASCII ID.
+export const ENTITLEMENT_ID = 'fairfuehrer_pro';
+export const LEGACY_ENTITLEMENT_ID = 'Fairführer Pro';
+const KNOWN_ENTITLEMENT_IDS = [ENTITLEMENT_ID, LEGACY_ENTITLEMENT_ID];
+
+// ─── Initialization ─────────────────────────────────────────────────────────
 
 export function initializePurchases() {
   if (__DEV__) {
     Purchases.setLogLevel(LOG_LEVEL.DEBUG);
   }
-
-  const apiKey = Platform.OS === 'ios' ? API_KEY_IOS : API_KEY_ANDROID;
-  Purchases.configure({ apiKey });
+  Purchases.configure({ apiKey: resolveApiKey() });
 }
+
+// ─── Identity ───────────────────────────────────────────────────────────────
 
 export async function identifyUser(userId: string) {
   try {
     await Purchases.logIn(userId);
   } catch (e) {
     console.error('[RevenueCat] identifyUser error:', e);
+  }
+}
+
+export async function setUserEmail(email: string | null | undefined) {
+  if (!email) return;
+  try {
+    // Available since react-native-purchases 4.x; passes through to the
+    // native SubscriberAttributes API.
+    await Purchases.setEmail(email);
+  } catch (e) {
+    console.error('[RevenueCat] setUserEmail error:', e);
   }
 }
 
@@ -34,6 +79,8 @@ export async function resetUser() {
   }
 }
 
+// ─── Customer info ──────────────────────────────────────────────────────────
+
 export async function getCustomerInfo(): Promise<CustomerInfo | null> {
   try {
     return await Purchases.getCustomerInfo();
@@ -45,5 +92,20 @@ export async function getCustomerInfo(): Promise<CustomerInfo | null> {
 
 export function hasPro(customerInfo: CustomerInfo | null): boolean {
   if (!customerInfo) return false;
-  return ENTITLEMENT_ID in customerInfo.entitlements.active;
+  return KNOWN_ENTITLEMENT_IDS.some(
+    (id) => id in customerInfo.entitlements.active,
+  );
+}
+
+export type CustomerInfoListener = (info: CustomerInfo) => void;
+
+export function addCustomerInfoListener(listener: CustomerInfoListener): () => void {
+  Purchases.addCustomerInfoUpdateListener(listener);
+  return () => {
+    try {
+      Purchases.removeCustomerInfoUpdateListener(listener);
+    } catch (e) {
+      console.error('[RevenueCat] removeCustomerInfoUpdateListener error:', e);
+    }
+  };
 }

@@ -1,7 +1,14 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { identifyUser, resetUser, getCustomerInfo, hasPro } from '@/lib/revenuecat';
+import {
+  identifyUser,
+  resetUser,
+  getCustomerInfo,
+  hasPro,
+  setUserEmail,
+  addCustomerInfoListener,
+} from '@/lib/revenuecat';
 
 export interface Profile {
   id: string;
@@ -22,6 +29,7 @@ interface AuthContextType {
   isPro: boolean;
   isLoading: boolean;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   refreshPro: () => Promise<void>;
 }
@@ -33,6 +41,7 @@ const AuthContext = createContext<AuthContextType>({
   isPro: false,
   isLoading: true,
   signOut: async () => {},
+  deleteAccount: async () => {},
   refreshProfile: async () => {},
   refreshPro: async () => {},
 });
@@ -58,13 +67,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsPro(hasPro(info));
   };
 
+  // Identify the user in RC and propagate the email as a subscriber attribute.
+  const identifyAndAttachEmail = async (user: User) => {
+    await identifyUser(user.id);
+    await setUserEmail(user.email);
+  };
+
+  // Reactive RC customer info — premium toggles take effect without polling.
+  const listenerCleanupRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    listenerCleanupRef.current = addCustomerInfoListener((info) => {
+      setIsPro(hasPro(info));
+    });
+    return () => {
+      listenerCleanupRef.current?.();
+      listenerCleanupRef.current = null;
+    };
+  }, []);
+
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
         const [p] = await Promise.all([
           fetchProfile(session.user.id),
-          identifyUser(session.user.id),
+          identifyAndAttachEmail(session.user),
         ]);
         setProfile(p);
         await checkPro();
@@ -77,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         const [p] = await Promise.all([
           fetchProfile(session.user.id),
-          identifyUser(session.user.id),
+          identifyAndAttachEmail(session.user),
         ]);
         setProfile(p);
         await checkPro();
@@ -92,6 +119,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const deleteAccount = async () => {
+    await resetUser();
+    const { error } = await supabase.functions.invoke('delete-account');
+    if (error) throw new Error('Nie udało się usunąć konta');
     await supabase.auth.signOut();
   };
 
@@ -114,6 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isPro,
       isLoading,
       signOut,
+      deleteAccount,
       refreshProfile,
       refreshPro,
     }}>

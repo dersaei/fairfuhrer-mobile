@@ -22,6 +22,7 @@ import Purchases from "react-native-purchases";
 import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 import MenuButton from "@/components/MenuButton";
 import { usePlacesStore } from "@/stores/placesStore";
+import { ENTITLEMENT_ID } from "@/lib/revenuecat";
 
 const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
 
@@ -788,22 +789,15 @@ function PremiumSection({
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
 
-  const plans = [
-    { id: "monthly", label: "Kleine Unterstützung", price: "€4,99" },
-    {
-      id: "yearly",
-      label: "Faire Unterstützung",
-      price: "€9,99",
-      popular: true,
-    },
-    { id: "lifetime", label: "Große Unterstützung", price: "€19,99" },
-  ];
+  // Plans (and prices) live in the RevenueCat dashboard — all 3 yearly
+  // products are mapped to the same `ENTITLEMENT_ID`. We keep only the
+  // marketing copy here; the actual purchase UI is the dashboard paywall.
 
-  const handlePurchase = async (_productId: string) => {
+  const handlePurchase = async () => {
     setPurchasing(true);
     try {
       const result = await RevenueCatUI.presentPaywallIfNeeded({
-        requiredEntitlementIdentifier: "Fairführer Pro",
+        requiredEntitlementIdentifier: ENTITLEMENT_ID,
       });
       if (
         result === PAYWALL_RESULT.PURCHASED ||
@@ -913,30 +907,23 @@ function PremiumSection({
         ))}
 
         <View style={[s.plansContainer, { marginTop: 16 }]}>
-          {plans.map((plan) => (
-            <TouchableOpacity
-              key={plan.id}
-              style={[s.planButton, plan.popular && s.planButtonPopular]}
-              onPress={() => handlePurchase(plan.id)}
-              disabled={purchasing}
-            >
-              <View style={s.planButtonInner}>
-                <View>
-                  <Text style={[s.planLabel, plan.popular && s.planLabelPopular]}>
-                    {plan.label}
-                  </Text>
-                  <Text style={[s.planPrice, plan.popular && s.planPricePopular]}>
-                    {plan.price}
-                  </Text>
-                </View>
-                {plan.popular && (
-                  <View style={s.popularBadge}>
-                    <Text style={s.popularBadgeText}>★ Beliebt</Text>
-                  </View>
-                )}
+          <TouchableOpacity
+            style={[s.planButton, s.planButtonPopular]}
+            onPress={handlePurchase}
+            disabled={purchasing}
+          >
+            <View style={s.planButtonInner}>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.planLabel, s.planLabelPopular]}>
+                  Fairführer+ aktivieren
+                </Text>
+                <Text style={[s.planPrice, s.planPricePopular]}>
+                  Pläne & Preise im nächsten Schritt
+                </Text>
               </View>
-            </TouchableOpacity>
-          ))}
+              {purchasing && <ActivityIndicator color="#fff" />}
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
 
