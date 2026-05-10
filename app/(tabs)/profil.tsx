@@ -439,7 +439,7 @@ function AuthScreen() {
 // ─── Account Screen ──────────────────────────────────────────────────────────
 
 function AccountScreen() {
-  const { user, profile, isPro, signOut, refreshProfile, refreshPro } =
+  const { user, profile, isPro, signOut, deleteAccount, refreshProfile, refreshPro } =
     useAuth();
   const [activeSection, setActiveSection] = useState<AccountSection>("profil");
 
@@ -518,6 +518,7 @@ function AccountScreen() {
             user={user}
             profile={profile}
             signOut={signOut}
+            deleteAccount={deleteAccount}
             refreshProfile={refreshProfile}
           />
         )}
@@ -562,7 +563,7 @@ function ProfilSection({ user, profile }: any) {
 
 // ─── Einstellungen Section ───────────────────────────────────────────────────
 
-function EinstellungenSection({ user, profile, signOut, refreshProfile }: any) {
+function EinstellungenSection({ user, profile, signOut, deleteAccount, refreshProfile }: any) {
   const [username, setUsername] = useState(profile?.username ?? "");
   const [firstName, setFirstName] = useState(profile?.first_name ?? "");
   const [lastName, setLastName] = useState(profile?.last_name ?? "");
@@ -656,11 +657,10 @@ function EinstellungenSection({ user, profile, signOut, refreshProfile }: any) {
           text: "Konto löschen",
           style: "destructive",
           onPress: async () => {
-            const { error } = await supabase.rpc("delete_user");
-            if (error) {
+            try {
+              await deleteAccount();
+            } catch {
               Alert.alert("Fehler", "Konto konnte nicht gelöscht werden.");
-            } else {
-              await supabase.auth.signOut();
             }
           },
         },
