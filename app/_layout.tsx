@@ -63,19 +63,7 @@ function RootLayoutNav() {
           }}
         />
         <Stack.Screen
-          name="(drawer)/datenschutz"
-          options={{ presentation: 'card', animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="(drawer)/agb"
-          options={{ presentation: 'card', animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="(drawer)/impressum"
-          options={{ presentation: 'card', animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="(drawer)/hilfe"
+          name="(drawer)"
           options={{ presentation: 'card', animation: 'slide_from_right' }}
         />
       </Stack>

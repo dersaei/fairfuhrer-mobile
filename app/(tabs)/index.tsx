@@ -53,6 +53,17 @@ const getItemLayout = (_: unknown, index: number) => ({
   index,
 });
 
+// Popularne miejscowości — chips do szybkiego filtrowania
+const CITY_CHIPS = [
+  { label: "Lindau", lat: 47.5461, lon: 9.6831 },
+  { label: "St. Gallen", lat: 47.4239, lon: 9.3748 },
+  { label: "Bregenz", lat: 47.503, lon: 9.7471 },
+  { label: "Konstanz", lat: 47.6608, lon: 9.1756 },
+  { label: "Überlingen", lat: 47.7704, lon: 9.1634 },
+  { label: "Meersburg", lat: 47.6943, lon: 9.2726 },
+  { label: "Friedrichshafen", lat: 47.6549, lon: 9.4769 },
+];
+
 function getImageUrl(place: DirectusOrte): string | null {
   if (place.Titelbild) return `${DIRECTUS_URL}/assets/${place.Titelbild}`;
   if (place.Hauptbild)
@@ -467,6 +478,7 @@ export default function ListeScreen() {
   const routerRef = useRef(router);
   routerRef.current = router;
   const [bottomSectionHeight, setBottomSectionHeight] = useState(0);
+  const [activeCityLabel, setActiveCityLabel] = useState<string | null>(null);
   const isFocused = useIsFocused();
   const gpsDoneRef = useRef(false);
 
@@ -617,6 +629,27 @@ export default function ListeScreen() {
     });
   }, []);
 
+  const selectCityChip = useCallback(
+    async (city: { label: string; lat: number; lon: number } | null) => {
+      if (!city) {
+        setActiveCityLabel(null);
+        setOrderedIds(gpsOrderedIdsRef.current);
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+        return;
+      }
+      setActiveCityLabel(city.label);
+      const { data, error } = await supabase.rpc("nearby_orte", {
+        user_lat: city.lat,
+        user_lng: city.lon,
+      });
+      if (error || !data) return;
+      const ids = (data as { id: number }[]).map((p) => p.id);
+      setOrderedIds(ids);
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+    },
+    [],
+  );
+
   const toggleCategory = useCallback((id: number | null) => {
     if (id === null) {
       setSelectedCategoryIds(new Set());
@@ -719,6 +752,15 @@ export default function ListeScreen() {
         )}
       </View>
 
+      {/* Przestrzeń nad kartą — GPS label wyśrodkowany pionowo */}
+      <View style={styles.aboveCards}>
+        {orderedIds && (
+          <View style={styles.gpsLabel}>
+            <Text style={styles.gpsLabelText}>Nach Entfernung sortiert</Text>
+          </View>
+        )}
+      </View>
+
       {/* Karty — przewijane poziomo */}
       <View style={styles.cardsArea}>
         {displayedIds.length === 0 ? (
@@ -746,6 +788,56 @@ export default function ListeScreen() {
           />
         )}
       </View>
+
+      {/* Przestrzeń pod kartą — city chips wyśrodkowane pionowo */}
+      {!searchFocused && (
+        <View style={styles.belowCards}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.cityChipRow}
+            contentContainerStyle={styles.cityChipRowContent}
+          >
+            <TouchableOpacity
+              style={[
+                styles.cityChip,
+                activeCityLabel === null && styles.cityChipActive,
+              ]}
+              onPress={() => selectCityChip(null)}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.cityChipText,
+                  activeCityLabel === null && styles.cityChipTextActive,
+                ]}
+              >
+                Alle
+              </Text>
+            </TouchableOpacity>
+            {CITY_CHIPS.map((city) => {
+              const isActive = activeCityLabel === city.label;
+              return (
+                <TouchableOpacity
+                  key={city.label}
+                  style={[styles.cityChip, isActive && styles.cityChipActive]}
+                  onPress={() => selectCityChip(city)}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.cityChipText,
+                      isActive && styles.cityChipTextActive,
+                    ]}
+                  >
+                    {city.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Dolna sekcja — wyszukiwarka + kategorie */}
       <View
@@ -1117,7 +1209,7 @@ const styles = StyleSheet.create({
   },
   logoImage: {
     flex: 1,
-    height: 58,
+    height: 68,
   },
   logo: {
     fontFamily: "Anton_400Regular",
@@ -1127,18 +1219,27 @@ const styles = StyleSheet.create({
     letterSpacing: 3,
   },
   tagline: {
-    fontFamily: "Anton_400Regular",
-    fontSize: 16,
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    fontSize: 18,
     paddingVertical: 4,
-    paddingHorizontal: 20,
+    paddingHorizontal: 60,
     color: "#fc6c14",
     textAlign: "center",
   },
-  // Karty
-  cardsArea: {
+  // Przestrzeń nad kartami — GPS label wyśrodkowany pionowo
+  aboveCards: {
     flex: 1,
     justifyContent: "center",
-    overflow: "hidden",
+    alignItems: "flex-start",
+  },
+  // Karty — stała wysokość, nie rozciąga się
+  cardsArea: {
+    flexShrink: 0,
+  },
+  // Przestrzeń pod kartami — chips wyśrodkowane pionowo
+  belowCards: {
+    flex: 1,
+    justifyContent: "center",
   },
   flatList: {
     flexGrow: 0,
@@ -1175,8 +1276,6 @@ const styles = StyleSheet.create({
   },
   searchBarFocused: {
     backgroundColor: "#fff",
-    borderTopWidth: 1.5,
-    borderTopColor: "#fc6c14",
   },
   searchInput: {
     flex: 1,
@@ -1413,6 +1512,49 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginBottom: 4,
     textAlign: "center",
+  },
+  // GPS sort label — czarne tło, biały tekst
+  gpsLabel: {
+    backgroundColor: "#fafafa",
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    paddingVertical: 3,
+    marginLeft: CARD_GAP,
+  },
+  gpsLabelText: {
+    fontSize: 12,
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    color: "#fc6c14",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  // City chips bar
+  cityChipRow: {
+    flexGrow: 0,
+  },
+  cityChipRowContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 0,
+    gap: 6,
+    flexDirection: "row",
+  },
+  cityChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: "#fafafa",
+  },
+  cityChipActive: {
+    backgroundColor: "#181716",
+  },
+  cityChipText: {
+    fontSize: 14,
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    color: "#181716",
+    letterSpacing: 0.3,
+  },
+  cityChipTextActive: {
+    color: "#fc6c14",
   },
   errorText: {
     fontSize: 15,

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -8,14 +8,14 @@ import {
   Pressable,
   Dimensions,
   Linking,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import Svg, { Path, Circle } from 'react-native-svg';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import Svg, { Path, Circle } from "react-native-svg";
 
-const FF_ORANGE = '#fc6c14';
-const FF_BLACK = '#181716';
-const DRAWER_WIDTH = Dimensions.get('window').width * 0.78;
+const FF_ORANGE = "#fc6c14";
+const FF_BLACK = "#181716";
+const DRAWER_WIDTH = Dimensions.get("window").width * 0.78;
 
 interface Props {
   visible: boolean;
@@ -24,8 +24,13 @@ interface Props {
 
 function CloseIcon() {
   return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Path d="M18 6L6 18M6 6l12 12" stroke={FF_BLACK} strokeWidth={2} strokeLinecap="round" />
+    <Svg width={42} height={42} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M18 6L6 18M6 6l12 12"
+        stroke={FF_BLACK}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
     </Svg>
   );
 }
@@ -33,7 +38,13 @@ function CloseIcon() {
 function ChevronIcon() {
   return (
     <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-      <Path d="M9 18l6-6-6-6" stroke="#999" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <Path
+        d="M9 18l6-6-6-6"
+        stroke="#999"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Svg>
   );
 }
@@ -58,8 +69,20 @@ function HilfeIcon() {
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
       <Circle cx={12} cy={12} r={10} stroke={FF_ORANGE} strokeWidth={1.8} />
-      <Path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke={FF_ORANGE} strokeWidth={1.8} strokeLinecap="round" />
-      <Circle cx={12} cy={17} r={0.5} fill={FF_ORANGE} stroke={FF_ORANGE} strokeWidth={1} />
+      <Path
+        d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"
+        stroke={FF_ORANGE}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+      <Circle
+        cx={12}
+        cy={17}
+        r={0.5}
+        fill={FF_ORANGE}
+        stroke={FF_ORANGE}
+        strokeWidth={1}
+      />
     </Svg>
   );
 }
@@ -67,7 +90,13 @@ function HilfeIcon() {
 function DatenschutzIcon() {
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke={FF_ORANGE} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <Path
+        d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+        stroke={FF_ORANGE}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Svg>
   );
 }
@@ -75,8 +104,20 @@ function DatenschutzIcon() {
 function AgbIcon() {
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-      <Path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke={FF_ORANGE} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-      <Path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke={FF_ORANGE} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <Path
+        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+        stroke={FF_ORANGE}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M14 2v6h6M16 13H8M16 17H8M10 9H8"
+        stroke={FF_ORANGE}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Svg>
   );
 }
@@ -85,7 +126,12 @@ function ImpressumIcon() {
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
       <Circle cx={12} cy={12} r={10} stroke={FF_ORANGE} strokeWidth={1.8} />
-      <Path d="M12 16v-4M12 8h.01" stroke={FF_ORANGE} strokeWidth={1.8} strokeLinecap="round" />
+      <Path
+        d="M12 16v-4M12 8h.01"
+        stroke={FF_ORANGE}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
     </Svg>
   );
 }
@@ -93,7 +139,13 @@ function ImpressumIcon() {
 function FeedbackIcon() {
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-      <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke={FF_ORANGE} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <Path
+        d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+        stroke={FF_ORANGE}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Svg>
   );
 }
@@ -107,13 +159,30 @@ export default function AppDrawer({ visible, onClose }: Props) {
   useEffect(() => {
     if (visible) {
       Animated.parallel([
-        Animated.spring(translateX, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }),
-        Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.spring(translateX, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 65,
+          friction: 11,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
       ]).start();
     } else {
       Animated.parallel([
-        Animated.timing(translateX, { toValue: DRAWER_WIDTH, duration: 220, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.timing(translateX, {
+          toValue: DRAWER_WIDTH,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
       ]).start();
     }
   }, [visible]);
@@ -126,7 +195,10 @@ export default function AppDrawer({ visible, onClose }: Props) {
   }
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents={visible ? 'auto' : 'none'}>
+    <View
+      style={StyleSheet.absoluteFill}
+      pointerEvents={visible ? "auto" : "none"}
+    >
       {/* Backdrop */}
       <Animated.View style={[s.backdrop, { opacity }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
@@ -151,17 +223,41 @@ export default function AppDrawer({ visible, onClose }: Props) {
         {/* Main items */}
         <View style={s.section}>
           <Text style={s.sectionLabel}>SUPPORT</Text>
-          <DrawerItem label="Hilfe & FAQ" icon={<HilfeIcon />} onPress={() => navigate('/(drawer)/hilfe')} />
-          <DrawerItem label="Feedback senden" icon={<FeedbackIcon />} onPress={() => Linking.openURL('mailto:info@fairfuehrer.guide?subject=App-Feedback')} />
+          <DrawerItem
+            label="Hilfe & FAQ"
+            icon={<HilfeIcon />}
+            onPress={() => navigate("/(drawer)/hilfe")}
+          />
+          <DrawerItem
+            label="Feedback senden"
+            icon={<FeedbackIcon />}
+            onPress={() =>
+              Linking.openURL(
+                "mailto:info@fairfuehrer.guide?subject=App-Feedback",
+              )
+            }
+          />
         </View>
 
         <View style={s.divider} />
 
         <View style={s.section}>
           <Text style={s.sectionLabel}>RECHTLICHES</Text>
-          <DrawerItem label="Datenschutz" icon={<DatenschutzIcon />} onPress={() => navigate('/(drawer)/datenschutz')} />
-          <DrawerItem label="Nutzungsbedingungen" icon={<AgbIcon />} onPress={() => navigate('/(drawer)/agb')} />
-          <DrawerItem label="Impressum" icon={<ImpressumIcon />} onPress={() => navigate('/(drawer)/impressum')} />
+          <DrawerItem
+            label="Datenschutz"
+            icon={<DatenschutzIcon />}
+            onPress={() => navigate("/(drawer)/datenschutz")}
+          />
+          <DrawerItem
+            label="Nutzungsbedingungen"
+            icon={<AgbIcon />}
+            onPress={() => navigate("/(drawer)/agb")}
+          />
+          <DrawerItem
+            label="Impressum"
+            icon={<ImpressumIcon />}
+            onPress={() => navigate("/(drawer)/impressum")}
+          />
         </View>
 
         <View style={s.footer}>
@@ -176,73 +272,73 @@ export default function AppDrawer({ visible, onClose }: Props) {
 const s = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: "rgba(0,0,0,0.45)",
   },
   panel: {
-    position: 'absolute',
+    position: "absolute",
     right: 0,
     top: 0,
     bottom: 0,
     width: DRAWER_WIDTH,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
+    backgroundColor: "#fff",
+    shadowColor: "#000",
     shadowOffset: { width: -4, height: 0 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 16,
   },
   panelHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: "#f0f0f0",
   },
   panelTitle: {
-    fontFamily: 'Anton_400Regular',
-    fontSize: 20,
-    color: FF_BLACK,
+    fontFamily: "Anton_400Regular",
+    fontSize: 30,
+    color: FF_ORANGE,
     letterSpacing: 1,
   },
   section: {
     paddingTop: 8,
   },
   sectionLabel: {
-    fontFamily: 'FiraSansCondensed_600SemiBold',
+    fontFamily: "FiraSansCondensed_600SemiBold",
     fontSize: 11,
-    color: '#aaa',
+    color: "#aaa",
     letterSpacing: 1.2,
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 4,
   },
   item: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 14,
     gap: 12,
   },
   itemIcon: {
     width: 24,
-    alignItems: 'center',
+    alignItems: "center",
   },
   itemLabel: {
-    fontFamily: 'FiraSansCondensed_500Medium',
+    fontFamily: "FiraSansCondensed_500Medium",
     fontSize: 16,
     color: FF_BLACK,
     flex: 1,
   },
   divider: {
     height: 1,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
     marginHorizontal: 20,
     marginTop: 8,
   },
   footer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
@@ -251,8 +347,8 @@ const s = StyleSheet.create({
     gap: 2,
   },
   footerText: {
-    fontFamily: 'FiraSansCondensed_400Regular',
+    fontFamily: "FiraSansCondensed_400Regular",
     fontSize: 12,
-    color: '#ccc',
+    color: "#ccc",
   },
 });

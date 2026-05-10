@@ -691,7 +691,7 @@ const styles = StyleSheet.create({
   },
   headerSpacer: { width: 36 },
   headerMenuSlot: { width: 36, alignItems: "flex-end" },
-  logoImage: { flex: 1, height: 58 },
+  logoImage: { flex: 1, height: 68 },
   logo: {
     fontFamily: "Anton_400Regular",
     fontSize: 30,
@@ -700,10 +700,10 @@ const styles = StyleSheet.create({
     letterSpacing: 3,
   },
   tagline: {
-    fontFamily: "Anton_400Regular",
-    fontSize: 16,
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    fontSize: 18,
     paddingVertical: 4,
-    paddingHorizontal: 20,
+    paddingHorizontal: 60,
     color: "#fc6c14",
     textAlign: "center",
   },

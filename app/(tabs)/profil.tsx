@@ -70,7 +70,10 @@ function AuthScreen() {
       return;
     }
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     setIsLoading(false);
     if (error) setError("E-Mail oder Passwort ist falsch.");
   };
@@ -82,7 +85,9 @@ function AuthScreen() {
       return;
     }
     if (!consentAccepted) {
-      setError("Bitte stimme den Nutzungsbedingungen und der Datenschutzerklärung zu.");
+      setError(
+        "Bitte stimme den Nutzungsbedingungen und der Datenschutzerklärung zu.",
+      );
       return;
     }
     if (username.length < 3) {
@@ -160,7 +165,9 @@ function AuthScreen() {
             </View>
             <View style={s.welcomeHeroContent}>
               <Text style={s.welcomeEyebrow}>DEIN FAIRFÜHRER-KONTO</Text>
-              <Text style={s.welcomeHeadline}>{"ENTDECKE\nMEHR.\nBEWEGE\nMEHR."}</Text>
+              <Text style={s.welcomeHeadline}>
+                {"ENTDECKE\nMEHR.\nBEWEGE\nMEHR."}
+              </Text>
               <Text style={s.welcomeSubtitle}>
                 Kostenlos registrieren – Audio-Guides hören, faire Orte
                 entdecken und die Community mitgestalten.
@@ -170,13 +177,17 @@ function AuthScreen() {
                 style={s.welcomeBtnPrimary}
                 onPress={() => switchView("register")}
               >
-                <Text style={s.welcomeBtnPrimaryText}>Kostenlos registrieren</Text>
+                <Text style={s.welcomeBtnPrimaryText}>
+                  Kostenlos registrieren
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={s.welcomeBtnSecondary}
                 onPress={() => switchView("login")}
               >
-                <Text style={s.welcomeBtnSecondaryText}>Ich habe schon ein Konto</Text>
+                <Text style={s.welcomeBtnSecondaryText}>
+                  Ich habe schon ein Konto
+                </Text>
               </TouchableOpacity>
             </View>
           </ImageBackground>
@@ -212,7 +223,9 @@ function AuthScreen() {
             {/* Premium */}
             <View style={[s.planCompareCard, s.planCompareCardPremium]}>
               <View style={s.planCompareTitleRow}>
-                <Text style={[s.planCompareTitle, { color: "#fc6c14" }]}>Fairführer+</Text>
+                <Text style={[s.planCompareTitle, { color: "#fc6c14" }]}>
+                  Fairführer+
+                </Text>
                 <View style={s.planCompareBadge}>
                   <Text style={s.planCompareBadgeText}>★ PREMIUM</Text>
                 </View>
@@ -225,7 +238,9 @@ function AuthScreen() {
                 "Pins werden von unseren Redakteuren geprüft",
               ].map((f) => (
                 <View key={f} style={s.planCompareRow}>
-                  <Text style={[s.planCompareCheck, { color: "#fc6c14" }]}>✓</Text>
+                  <Text style={[s.planCompareCheck, { color: "#fc6c14" }]}>
+                    ✓
+                  </Text>
                   <Text style={s.planCompareText}>{f}</Text>
                 </View>
               ))}
@@ -233,7 +248,9 @@ function AuthScreen() {
                 style={s.welcomeBtnPremium}
                 onPress={() => switchView("register")}
               >
-                <Text style={s.welcomeBtnPremiumText}>Jetzt Fairführer+ holen</Text>
+                <Text style={s.welcomeBtnPremiumText}>
+                  Jetzt Fairführer+ holen
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -253,7 +270,11 @@ function AuthScreen() {
         {/* Header: Zurück | logo | Menu — identyczny układ jak na Liste i Karte */}
         <View style={s.header}>
           <View style={s.headerRow}>
-            <TouchableOpacity onPress={() => switchView("welcome")} style={s.headerSpacer} hitSlop={8}>
+            <TouchableOpacity
+              onPress={() => switchView("welcome")}
+              style={s.headerSpacer}
+              hitSlop={8}
+            >
               <Text style={s.backBtnText}>← Zurück</Text>
             </TouchableOpacity>
             {einstellungen?.Logo ? (
@@ -272,7 +293,9 @@ function AuthScreen() {
           {einstellungen?.Slogan ? (
             <Text style={s.tagline}>{einstellungen.Slogan}</Text>
           ) : (
-            <Text style={s.tagline}>Der Audioguide für nachhaltiges Leben und Reisen</Text>
+            <Text style={s.tagline}>
+              Der Audioguide für nachhaltiges Leben und Reisen
+            </Text>
           )}
         </View>
 
@@ -285,13 +308,19 @@ function AuthScreen() {
           </Text>
 
           <View style={s.tabRow}>
-            <TouchableOpacity style={s.tabBtn} onPress={() => switchView("login")}>
+            <TouchableOpacity
+              style={s.tabBtn}
+              onPress={() => switchView("login")}
+            >
               <Text style={[s.tabBtnText, !isReg && s.tabBtnTextActive]}>
                 Anmelden
               </Text>
               {!isReg && <View style={s.tabUnderline} />}
             </TouchableOpacity>
-            <TouchableOpacity style={s.tabBtn} onPress={() => switchView("register")}>
+            <TouchableOpacity
+              style={s.tabBtn}
+              onPress={() => switchView("register")}
+            >
               <Text style={[s.tabBtnText, isReg && s.tabBtnTextActive]}>
                 Registrieren
               </Text>
@@ -370,14 +399,20 @@ function AuthScreen() {
               </View>
               <Text style={s.consentText}>
                 Ich habe die{" "}
-                <Text style={s.consentLink} onPress={() => router.push("/(drawer)/agb")}>
+                <Text
+                  style={s.consentLink}
+                  onPress={() => router.push("/(drawer)/agb")}
+                >
                   Nutzungsbedingungen
-                </Text>
-                {" "}und die{" "}
-                <Text style={s.consentLink} onPress={() => router.push("/(drawer)/datenschutz")}>
+                </Text>{" "}
+                und die{" "}
+                <Text
+                  style={s.consentLink}
+                  onPress={() => router.push("/(drawer)/datenschutz")}
+                >
                   Datenschutzerklärung
-                </Text>
-                {" "}gelesen und stimme ihnen zu.
+                </Text>{" "}
+                gelesen und stimme ihnen zu.
               </Text>
             </TouchableOpacity>
           )}
@@ -860,14 +895,14 @@ function PremiumSection({
     { text: "Alle Kategorien entdecken" },
     { text: "20 % der Pins in „Sehenswertes“" },
     { text: "Karte & Ortsuche" },
-    { text: '100 % der Pins in „Sehenswertes“', locked: true },
+    { text: "100 % der Pins in „Sehenswertes“", locked: true },
     { text: "Offline-Karten", locked: true },
     { text: "Orte vorschlagen & Pins erstellen", locked: true },
   ];
 
   const premiumFeatures = [
     "Alles aus der kostenlosen Version",
-    '100 % der Pins in „Sehenswertes“',
+    "100 % der Pins in „Sehenswertes“",
     "Offline-Karten für unterwegs",
     "Neue Orte vorschlagen & eigene Pins erstellen",
     "Redaktionelle Prüfung deiner Pins vor Veröffentlichung",
@@ -878,13 +913,17 @@ function PremiumSection({
       {/* Was du jetzt hast */}
       <Text style={s.sectionTitle}>Dein aktueller Plan</Text>
       <View style={s.planCompareCard}>
-        <Text style={[s.planCompareTitle, { marginBottom: 12 }]}>Kostenlos</Text>
+        <Text style={[s.planCompareTitle, { marginBottom: 12 }]}>
+          Kostenlos
+        </Text>
         {freeFeatures.map((f) => (
           <View key={f.text} style={s.planCompareRow}>
             <Text style={f.locked ? s.planCompareLock : s.planCompareCheck}>
               {f.locked ? "○" : "✓"}
             </Text>
-            <Text style={f.locked ? s.planCompareTextLocked : s.planCompareText}>
+            <Text
+              style={f.locked ? s.planCompareTextLocked : s.planCompareText}
+            >
               {f.text}
             </Text>
           </View>
@@ -894,7 +933,9 @@ function PremiumSection({
       {/* Premium upgrade */}
       <View style={[s.planCompareCard, s.planCompareCardPremium]}>
         <View style={s.planCompareTitleRow}>
-          <Text style={[s.planCompareTitle, { color: "#fc6c14" }]}>Fairführer+</Text>
+          <Text style={[s.planCompareTitle, { color: "#fc6c14" }]}>
+            Fairführer+
+          </Text>
           <View style={s.planCompareBadge}>
             <Text style={s.planCompareBadgeText}>★ PREMIUM</Text>
           </View>
@@ -1206,12 +1247,12 @@ const s = StyleSheet.create({
   },
   headerSpacer: { width: 72, justifyContent: "center" },
   headerMenuSlot: { width: 72, alignItems: "flex-end" },
-  logoImage: { flex: 1, height: 58 },
+  logoImage: { flex: 1, height: 68 },
   tagline: {
-    fontFamily: "Anton_400Regular",
-    fontSize: 16,
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    fontSize: 18,
     paddingVertical: 4,
-    paddingHorizontal: 20,
+    paddingHorizontal: 60,
     color: "#fc6c14",
     textAlign: "center",
   },
