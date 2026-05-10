@@ -260,7 +260,7 @@ export default function AppDrawer({ visible, onClose }: Props) {
           />
         </View>
 
-        <View style={s.footer}>
+        <View style={[s.footer, { paddingBottom: insets.bottom + 16 }]}>
           <Text style={s.footerText}>© 2025 Seenergien GmbH</Text>
           <Text style={s.footerText}>fairfuehrer.guide</Text>
         </View>
@@ -342,7 +342,6 @@ const s = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingBottom: 20,
     paddingHorizontal: 20,
     gap: 2,
   },

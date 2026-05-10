@@ -10,9 +10,10 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
+import MenuButton from '@/components/MenuButton';
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
@@ -22,10 +23,10 @@ export default function RegisterScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const router = useRouter();
 
   const handleRegister = async () => {
     setError(null);
-
     if (!email || !username || !password || !confirmPassword) {
       setError('Bitte alle Felder ausfüllen.');
       return;
@@ -42,23 +43,16 @@ export default function RegisterScreen() {
       setError('Passwörter stimmen nicht überein.');
       return;
     }
-
     setIsLoading(true);
-
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: {
-          role: 'consumer',
-          username,
-        },
+        data: { role: 'consumer', username },
         emailRedirectTo: process.env.EXPO_PUBLIC_SITE_URL,
       },
     });
-
     setIsLoading(false);
-
     if (error) {
       if (error.message.includes('already registered')) {
         setError('Diese E-Mail-Adresse ist bereits registriert.');
@@ -70,11 +64,24 @@ export default function RegisterScreen() {
     }
   };
 
+  const Header = (
+    <View style={styles.header}>
+      <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <Text style={styles.headerBtnText}>←</Text>
+      </TouchableOpacity>
+      <View style={{ flex: 1 }} />
+      <View style={styles.headerBtn}>
+        <MenuButton />
+      </View>
+    </View>
+  );
+
   if (success) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {Header}
+        <Text style={styles.logo}>FAIRFÜHRER</Text>
         <View style={styles.inner}>
-          <Text style={styles.logo}>FAIRFÜHRER</Text>
           <Text style={styles.title}>Fast fertig!</Text>
           <Text style={styles.successText}>
             Bitte prüfe deine E-Mails und bestätige deine Registrierung.
@@ -88,7 +95,10 @@ export default function RegisterScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {Header}
+      <Text style={styles.logo}>FAIRFÜHRER</Text>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -97,7 +107,6 @@ export default function RegisterScreen() {
           contentContainerStyle={styles.inner}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.logo}>FAIRFÜHRER</Text>
           <Text style={styles.title}>Registrieren</Text>
 
           {error && <Text style={styles.error}>{error}</Text>}
@@ -168,27 +177,45 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  headerBtn: {
+    width: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerBtnText: {
+    fontSize: 24,
+    color: '#181716',
+    lineHeight: 28,
+  },
+  logo: {
+    fontFamily: 'Anton_400Regular',
+    fontSize: 30,
+    color: '#fc6c14',
+    textAlign: 'center',
+    letterSpacing: 3,
+    paddingTop: 4,
+    paddingBottom: 2,
+  },
   inner: {
     flexGrow: 1,
     paddingHorizontal: 24,
     justifyContent: 'center',
-    gap: 16,
-    paddingVertical: 32,
-  },
-  logo: {
-    fontFamily: 'Anton_400Regular',
-    fontSize: 32,
-    color: '#fc6c14',
-    textAlign: 'center',
-    letterSpacing: 3,
-    marginBottom: 8,
+    gap: 14,
+    paddingVertical: 24,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#222',
+    fontFamily: 'FiraSansCondensed_700Bold',
+    fontSize: 26,
+    color: '#181716',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   error: {
     color: '#c0392b',
@@ -197,42 +224,47 @@ const styles = StyleSheet.create({
     backgroundColor: '#fdecea',
     padding: 10,
     borderRadius: 8,
+    fontFamily: 'FiraSansCondensed_400Regular',
   },
   successText: {
     fontSize: 15,
     color: '#555',
     textAlign: 'center',
     lineHeight: 22,
+    fontFamily: 'FiraSansCondensed_400Regular',
   },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 10,
+    borderRadius: 6,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#222',
+    color: '#181716',
     backgroundColor: '#fafafa',
+    fontFamily: 'FiraSansCondensed_400Regular',
   },
   button: {
-    backgroundColor: '#2D6A4F',
+    backgroundColor: '#181716',
     paddingVertical: 15,
-    borderRadius: 10,
+    borderRadius: 6,
     alignItems: 'center',
     marginTop: 4,
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   buttonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: 'FiraSansCondensed_700Bold',
+    letterSpacing: 0.5,
   },
   link: {
     textAlign: 'center',
-    color: '#2D6A4F',
+    color: '#fc6c14',
     fontSize: 14,
+    fontFamily: 'FiraSansCondensed_600SemiBold',
     marginTop: 4,
   },
 });

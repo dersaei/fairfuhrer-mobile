@@ -9,15 +9,17 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
+import MenuButton from '@/components/MenuButton';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -26,9 +28,7 @@ export default function LoginScreen() {
     }
     setIsLoading(true);
     setError(null);
-
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-
     if (error) {
       setError('E-Mail oder Passwort ist falsch.');
     }
@@ -36,12 +36,26 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Górny pasek — tylko Zurück i hamburger */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Text style={styles.headerBtnText}>←</Text>
+        </TouchableOpacity>
+        <View style={{ flex: 1 }} />
+        <View style={styles.headerBtn}>
+          <MenuButton />
+        </View>
+      </View>
+
+      {/* Logo i rola — pod paskiem */}
+      <Text style={styles.logo}>FAIRFÜHRER</Text>
+      <Text style={styles.role}>Reisender</Text>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.inner}
       >
-        <Text style={styles.logo}>FAIRFÜHRER</Text>
         <Text style={styles.title}>Anmelden</Text>
 
         {error && <Text style={styles.error}>{error}</Text>}
@@ -78,6 +92,10 @@ export default function LoginScreen() {
           }
         </TouchableOpacity>
 
+        <Link href="/(auth)/passwort-vergessen" style={styles.linkSecondary}>
+          Passwort vergessen?
+        </Link>
+
         <Link href="/(auth)/register" style={styles.link}>
           Noch kein Konto? Registrieren
         </Link>
@@ -91,26 +109,52 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  headerBtn: {
+    width: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerBtnText: {
+    fontSize: 24,
+    color: '#181716',
+    lineHeight: 28,
+  },
+  logo: {
+    fontFamily: 'Anton_400Regular',
+    fontSize: 30,
+    color: '#fc6c14',
+    textAlign: 'center',
+    letterSpacing: 3,
+    paddingTop: 4,
+    paddingBottom: 2,
+  },
+  role: {
+    fontFamily: 'Anton_400Regular',
+    fontSize: 16,
+    color: '#fc6c14',
+    textAlign: 'center',
+    letterSpacing: 2,
+    paddingBottom: 8,
+  },
   inner: {
     flex: 1,
     paddingHorizontal: 24,
     justifyContent: 'center',
-    gap: 16,
-  },
-  logo: {
-    fontFamily: 'Anton_400Regular',
-    fontSize: 32,
-    color: '#fc6c14',
-    textAlign: 'center',
-    letterSpacing: 3,
-    marginBottom: 8,
+    gap: 14,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#222',
+    fontFamily: 'FiraSansCondensed_700Bold',
+    fontSize: 26,
+    color: '#181716',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   error: {
     color: '#c0392b',
@@ -119,36 +163,46 @@ const styles = StyleSheet.create({
     backgroundColor: '#fdecea',
     padding: 10,
     borderRadius: 8,
+    fontFamily: 'FiraSansCondensed_400Regular',
   },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 10,
+    borderRadius: 6,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#222',
+    color: '#181716',
     backgroundColor: '#fafafa',
+    fontFamily: 'FiraSansCondensed_400Regular',
   },
   button: {
-    backgroundColor: '#2D6A4F',
+    backgroundColor: '#181716',
     paddingVertical: 15,
-    borderRadius: 10,
+    borderRadius: 6,
     alignItems: 'center',
     marginTop: 4,
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   buttonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: 'FiraSansCondensed_700Bold',
+    letterSpacing: 0.5,
   },
   link: {
     textAlign: 'center',
-    color: '#2D6A4F',
+    color: '#fc6c14',
     fontSize: 14,
+    fontFamily: 'FiraSansCondensed_600SemiBold',
     marginTop: 4,
+  },
+  linkSecondary: {
+    textAlign: 'center',
+    color: '#999',
+    fontSize: 13,
+    fontFamily: 'FiraSansCondensed_400Regular',
   },
 });
