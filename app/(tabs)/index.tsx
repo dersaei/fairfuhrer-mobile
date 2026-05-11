@@ -143,10 +143,12 @@ const SHOPPING_CART_CIRCLES = [
 function CategoryIcon({
   categoryId,
   color,
+  strokeColor = "white",
   size = 36,
 }: {
   categoryId: number | null;
   color: string;
+  strokeColor?: string;
   size?: number;
 }) {
   const paths =
@@ -164,7 +166,7 @@ function CategoryIcon({
       <Circle cx="12" cy="12" r="11" fill={color} />
       <G
         fill="none"
-        stroke="white"
+        stroke={strokeColor}
         strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -385,7 +387,9 @@ function KategorieBar({
                   <CategoryIcon
                     categoryId={cat.id}
                     color={
-                      isActive ? "#fff" : (CATEGORY_COLORS[cat.id] ?? "#fc6c14")
+                      isActive
+                        ? "#fafafa"
+                        : (CATEGORY_COLORS[cat.id] ?? "#fc6c14")
                     }
                   />
                 </View>
@@ -405,7 +409,7 @@ function KategorieBar({
                         isActive && styles.kategorieMenuHintActive,
                       ]}
                     >
-                      Kostenlose Konten sehen 20 % der Sehenswertes-Orte. Mit
+                      Basis-Nutzer sehen nur 20 % der Sehenswertes-Orte. Mit
                       Fairführer+ sind alle sichtbar.
                     </Text>
                   )}
@@ -426,7 +430,8 @@ function KategorieBar({
           <View style={styles.kategorieBarIcon}>
             <CategoryIcon
               categoryId={[...selectedIds][0]}
-              color={barColor}
+              color="#fff"
+              strokeColor={barColor}
               size={28}
             />
           </View>
@@ -918,275 +923,292 @@ export default function ListeScreen() {
 
       {/* Panel wyszukiwania — pojawia się nad bottomSection gdy searchFocused */}
       {searchFocused && (
-        <View style={[styles.suggestionsBox, { bottom: bottomSectionHeight }]}>
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            bounces={false}
-            style={styles.suggestionsScroll}
+        <>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => {
+              setSearchFocused(false);
+              Keyboard.dismiss();
+            }}
+          />
+          <View
+            style={[styles.suggestionsBox, { bottom: bottomSectionHeight }]}
           >
-            {query.trim().length < 2 ? (
-              /* ── Pusty input: chipy kategorii + popularne miejsca ── */
-              <>
-                <Text style={styles.suggestionsHeader}>Kategorien</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.chipRow}
-                  contentContainerStyle={styles.chipRowContent}
-                  keyboardShouldPersistTaps="handled"
-                >
-                  {allCategories.map((cat) => {
-                    const color = CATEGORY_COLORS[cat.id] ?? "#fc6c14";
-                    const isActive = selectedCategoryIds.has(cat.id);
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              bounces={false}
+              style={styles.suggestionsScroll}
+            >
+              {query.trim().length < 2 ? (
+                /* ── Pusty input: chipy kategorii + popularne miejsca ── */
+                <>
+                  <Text style={styles.suggestionsHeader}>Kategorien</Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.chipRow}
+                    contentContainerStyle={styles.chipRowContent}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    {allCategories.map((cat) => {
+                      const color = CATEGORY_COLORS[cat.id] ?? "#fc6c14";
+                      const isActive = selectedCategoryIds.has(cat.id);
+                      return (
+                        <TouchableOpacity
+                          key={cat.id}
+                          style={[
+                            styles.categoryChip,
+                            { borderColor: color },
+                            isActive && { backgroundColor: color },
+                          ]}
+                          onPress={() => toggleCategory(cat.id)}
+                        >
+                          <CategoryIcon
+                            categoryId={cat.id}
+                            color={isActive ? "#fff" : color}
+                            size={20}
+                          />
+                          <Text
+                            style={[
+                              styles.categoryChipText,
+                              isActive && { color: "#fff" },
+                            ]}
+                          >
+                            {cat.Name?.split(" ")[0]}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+
+                  <Text style={[styles.suggestionsHeader, { marginTop: 8 }]}>
+                    Beliebt in deiner Nähe
+                  </Text>
+                  {displayedIds.slice(0, 5).map((id) => {
+                    const place = allPlaces.find((p) => p.id === id);
+                    if (!place) return null;
+                    const cats = getCategoriesFromPlace(place);
+                    const imageUrl = getImageUrl(place);
                     return (
                       <TouchableOpacity
-                        key={cat.id}
-                        style={[
-                          styles.categoryChip,
-                          { borderColor: color },
-                          isActive && { backgroundColor: color },
-                        ]}
-                        onPress={() => toggleCategory(cat.id)}
-                      >
-                        <CategoryIcon
-                          categoryId={cat.id}
-                          color={isActive ? "#fff" : color}
-                          size={20}
-                        />
-                        <Text
-                          style={[
-                            styles.categoryChipText,
-                            isActive && { color: "#fff" },
-                          ]}
-                        >
-                          {cat.Name?.split(" ")[0]}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-
-                <Text style={[styles.suggestionsHeader, { marginTop: 8 }]}>
-                  Beliebt in deiner Nähe
-                </Text>
-                {displayedIds.slice(0, 5).map((id) => {
-                  const place = allPlaces.find((p) => p.id === id);
-                  if (!place) return null;
-                  const cats = getCategoriesFromPlace(place);
-                  const imageUrl = getImageUrl(place);
-                  return (
-                    <TouchableOpacity
-                      key={id}
-                      style={styles.suggestionItem}
-                      onPress={() => {
-                        clearSearch();
-                        routerRef.current?.push(`/place/${id}`);
-                      }}
-                    >
-                      {imageUrl ? (
-                        <Image
-                          source={{ uri: imageUrl }}
-                          style={styles.suggestionThumb}
-                        />
-                      ) : (
-                        <View
-                          style={[
-                            styles.suggestionThumb,
-                            { backgroundColor: "#f0e8e0" },
-                          ]}
-                        />
-                      )}
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={styles.suggestionText} numberOfLines={1}>
-                          {place.Name}
-                        </Text>
-                        <Text
-                          style={styles.suggestionSubtext}
-                          numberOfLines={1}
-                        >
-                          {place.Stadt}
-                        </Text>
-                      </View>
-                      {cats[0] && (
-                        <CategoryIcon
-                          categoryId={cats[0].id}
-                          color={CATEGORY_COLORS[cats[0].id] ?? "#fc6c14"}
-                          size={28}
-                        />
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </>
-            ) : (
-              /* ── Jest query: wyniki lokalne + geo ── */
-              <>
-                {/* Kategorie */}
-                {localResults.filter((r) => r.type === "category").length >
-                  0 && (
-                  <>
-                    <Text style={styles.suggestionsHeader}>Kategorien</Text>
-                    {localResults
-                      .filter(
-                        (
-                          r,
-                        ): r is { type: "category"; cat: DirectusKategorie } =>
-                          r.type === "category",
-                      )
-                      .map((r) => {
-                        const color = CATEGORY_COLORS[r.cat.id] ?? "#fc6c14";
-                        return (
-                          <TouchableOpacity
-                            key={r.cat.id}
-                            style={[
-                              styles.suggestionItem,
-                              selectedCategoryIds.has(r.cat.id) && {
-                                backgroundColor:
-                                  (CATEGORY_COLORS[r.cat.id] ?? "#fc6c14") +
-                                  "18",
-                              },
-                            ]}
-                            onPress={() => toggleCategory(r.cat.id)}
-                          >
-                            <View style={styles.suggestionCatIcon}>
-                              <CategoryIcon
-                                categoryId={r.cat.id}
-                                color={color}
-                                size={32}
-                              />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.suggestionText}>
-                                {r.cat.Name}
-                              </Text>
-                            </View>
-                            <Text
-                              style={[
-                                styles.suggestionMeta,
-                                selectedCategoryIds.has(r.cat.id) && {
-                                  color: "#fc6c14",
-                                  fontFamily: "FiraSansCondensed_700Bold",
-                                },
-                              ]}
-                            >
-                              {selectedCategoryIds.has(r.cat.id)
-                                ? "✓"
-                                : "Kategorie"}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                  </>
-                )}
-
-                {/* Miejsca */}
-                {localResults.filter((r) => r.type === "place").length > 0 && (
-                  <>
-                    <Text style={styles.suggestionsHeader}>Orte</Text>
-                    {localResults
-                      .filter(
-                        (r): r is { type: "place"; place: DirectusOrte } =>
-                          r.type === "place",
-                      )
-                      .map((r) => {
-                        const cats = getCategoriesFromPlace(r.place);
-                        const imageUrl = getImageUrl(r.place);
-                        return (
-                          <TouchableOpacity
-                            key={r.place.id}
-                            style={styles.suggestionItem}
-                            onPress={() => {
-                              clearSearch();
-                              // push do /place/:id — używamy RouterPushRef poniżej
-                              routerRef.current?.push(`/place/${r.place.id}`);
-                            }}
-                          >
-                            {imageUrl ? (
-                              <Image
-                                source={{ uri: imageUrl }}
-                                style={styles.suggestionThumb}
-                              />
-                            ) : (
-                              <View
-                                style={[
-                                  styles.suggestionThumb,
-                                  { backgroundColor: "#f0e8e0" },
-                                ]}
-                              />
-                            )}
-                            <View style={{ flex: 1, minWidth: 0 }}>
-                              <Text
-                                style={styles.suggestionText}
-                                numberOfLines={1}
-                              >
-                                {r.place.Name}
-                              </Text>
-                              <Text
-                                style={styles.suggestionSubtext}
-                                numberOfLines={1}
-                              >
-                                {r.place.Stadt}
-                              </Text>
-                            </View>
-                            {cats[0] && (
-                              <CategoryIcon
-                                categoryId={cats[0].id}
-                                color={CATEGORY_COLORS[cats[0].id] ?? "#fc6c14"}
-                                size={28}
-                              />
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
-                  </>
-                )}
-
-                {/* Geo (Mapbox) */}
-                {geoSuggestions.length > 0 && (
-                  <>
-                    <Text style={styles.suggestionsHeader}>Städte</Text>
-                    {geoSuggestions.map((s, i) => (
-                      <TouchableOpacity
-                        key={`geo-${i}`}
+                        key={id}
                         style={styles.suggestionItem}
-                        onPress={() => selectGeoSuggestion(s)}
+                        onPress={() => {
+                          clearSearch();
+                          routerRef.current?.push(`/place/${id}`);
+                        }}
                       >
-                        <View
-                          style={[
-                            styles.suggestionCatIcon,
-                            { backgroundColor: "#f0e8e0", borderRadius: 8 },
-                          ]}
-                        >
-                          <Text style={{ fontSize: 16 }}>📍</Text>
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.suggestionText}>{s.name}</Text>
+                        {imageUrl ? (
+                          <Image
+                            source={{ uri: imageUrl }}
+                            style={styles.suggestionThumb}
+                          />
+                        ) : (
+                          <View
+                            style={[
+                              styles.suggestionThumb,
+                              { backgroundColor: "#f0e8e0" },
+                            ]}
+                          />
+                        )}
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <Text style={styles.suggestionText} numberOfLines={1}>
+                            {place.Name}
+                          </Text>
                           <Text
                             style={styles.suggestionSubtext}
                             numberOfLines={1}
                           >
-                            {s.place_formatted}
+                            {place.Stadt}
                           </Text>
                         </View>
+                        {cats[0] && (
+                          <CategoryIcon
+                            categoryId={cats[0].id}
+                            color={CATEGORY_COLORS[cats[0].id] ?? "#fc6c14"}
+                            size={28}
+                          />
+                        )}
                       </TouchableOpacity>
-                    ))}
-                  </>
-                )}
-
-                {/* Brak wyników */}
-                {localResults.length === 0 &&
-                  geoSuggestions.length === 0 &&
-                  !isFetchingSuggestions && (
-                    <View style={styles.noResults}>
-                      <Text style={styles.noResultsText}>
-                        Keine Ergebnisse.
-                      </Text>
-                    </View>
+                    );
+                  })}
+                </>
+              ) : (
+                /* ── Jest query: wyniki lokalne + geo ── */
+                <>
+                  {/* Kategorie */}
+                  {localResults.filter((r) => r.type === "category").length >
+                    0 && (
+                    <>
+                      <Text style={styles.suggestionsHeader}>Kategorien</Text>
+                      {localResults
+                        .filter(
+                          (
+                            r,
+                          ): r is {
+                            type: "category";
+                            cat: DirectusKategorie;
+                          } => r.type === "category",
+                        )
+                        .map((r) => {
+                          const color = CATEGORY_COLORS[r.cat.id] ?? "#fc6c14";
+                          return (
+                            <TouchableOpacity
+                              key={r.cat.id}
+                              style={[
+                                styles.suggestionItem,
+                                selectedCategoryIds.has(r.cat.id) && {
+                                  backgroundColor:
+                                    (CATEGORY_COLORS[r.cat.id] ?? "#fc6c14") +
+                                    "18",
+                                },
+                              ]}
+                              onPress={() => toggleCategory(r.cat.id)}
+                            >
+                              <View style={styles.suggestionCatIcon}>
+                                <CategoryIcon
+                                  categoryId={r.cat.id}
+                                  color={color}
+                                  size={32}
+                                />
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.suggestionText}>
+                                  {r.cat.Name}
+                                </Text>
+                              </View>
+                              <Text
+                                style={[
+                                  styles.suggestionMeta,
+                                  selectedCategoryIds.has(r.cat.id) && {
+                                    color: "#fc6c14",
+                                    fontFamily: "FiraSansCondensed_700Bold",
+                                  },
+                                ]}
+                              >
+                                {selectedCategoryIds.has(r.cat.id)
+                                  ? "✓"
+                                  : "Kategorie"}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                    </>
                   )}
-              </>
-            )}
-          </ScrollView>
-        </View>
+
+                  {/* Miejsca */}
+                  {localResults.filter((r) => r.type === "place").length >
+                    0 && (
+                    <>
+                      <Text style={styles.suggestionsHeader}>Orte</Text>
+                      {localResults
+                        .filter(
+                          (r): r is { type: "place"; place: DirectusOrte } =>
+                            r.type === "place",
+                        )
+                        .map((r) => {
+                          const cats = getCategoriesFromPlace(r.place);
+                          const imageUrl = getImageUrl(r.place);
+                          return (
+                            <TouchableOpacity
+                              key={r.place.id}
+                              style={styles.suggestionItem}
+                              onPress={() => {
+                                clearSearch();
+                                // push do /place/:id — używamy RouterPushRef poniżej
+                                routerRef.current?.push(`/place/${r.place.id}`);
+                              }}
+                            >
+                              {imageUrl ? (
+                                <Image
+                                  source={{ uri: imageUrl }}
+                                  style={styles.suggestionThumb}
+                                />
+                              ) : (
+                                <View
+                                  style={[
+                                    styles.suggestionThumb,
+                                    { backgroundColor: "#f0e8e0" },
+                                  ]}
+                                />
+                              )}
+                              <View style={{ flex: 1, minWidth: 0 }}>
+                                <Text
+                                  style={styles.suggestionText}
+                                  numberOfLines={1}
+                                >
+                                  {r.place.Name}
+                                </Text>
+                                <Text
+                                  style={styles.suggestionSubtext}
+                                  numberOfLines={1}
+                                >
+                                  {r.place.Stadt}
+                                </Text>
+                              </View>
+                              {cats[0] && (
+                                <CategoryIcon
+                                  categoryId={cats[0].id}
+                                  color={
+                                    CATEGORY_COLORS[cats[0].id] ?? "#fc6c14"
+                                  }
+                                  size={28}
+                                />
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                    </>
+                  )}
+
+                  {/* Geo (Mapbox) */}
+                  {geoSuggestions.length > 0 && (
+                    <>
+                      <Text style={styles.suggestionsHeader}>Städte</Text>
+                      {geoSuggestions.map((s, i) => (
+                        <TouchableOpacity
+                          key={`geo-${i}`}
+                          style={styles.suggestionItem}
+                          onPress={() => selectGeoSuggestion(s)}
+                        >
+                          <View
+                            style={[
+                              styles.suggestionCatIcon,
+                              { backgroundColor: "#f0e8e0", borderRadius: 8 },
+                            ]}
+                          >
+                            <Text style={{ fontSize: 16 }}>📍</Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.suggestionText}>{s.name}</Text>
+                            <Text
+                              style={styles.suggestionSubtext}
+                              numberOfLines={1}
+                            >
+                              {s.place_formatted}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Brak wyników */}
+                  {localResults.length === 0 &&
+                    geoSuggestions.length === 0 &&
+                    !isFetchingSuggestions && (
+                      <View style={styles.noResults}>
+                        <Text style={styles.noResultsText}>
+                          Keine Ergebnisse.
+                        </Text>
+                      </View>
+                    )}
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </>
       )}
     </SafeAreaView>
   );
@@ -1483,9 +1505,9 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   kategorieMenuHint: {
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: "FiraSansCondensed_400Regular",
-    color: "#666",
+    color: "#5c2121",
     marginTop: 2,
     paddingRight: 8,
   },
