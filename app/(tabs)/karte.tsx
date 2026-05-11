@@ -31,7 +31,7 @@ import type { ComponentRef } from "react";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
-import { usePlacesStore } from "@/stores/placesStore";
+import { usePlacesStore, isSightsCategory } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
 import type { DirectusOrte, DirectusKategorie } from "@/types";
 import MenuButton from "@/components/MenuButton";
@@ -87,10 +87,12 @@ function KategorieBar({
   categories,
   selectedId,
   onSelect,
+  isPro,
 }: {
   categories: DirectusKategorie[];
   selectedId: number | null;
   onSelect: (id: number | null) => void;
+  isPro: boolean;
 }) {
   const [modalVisible, setModalVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -210,6 +212,7 @@ function KategorieBar({
           </TouchableOpacity>
           {categories.map((cat) => {
             const isActive = cat.id === selectedId;
+            const showSightsHint = !isPro && isSightsCategory(cat);
             return (
               <TouchableOpacity
                 key={cat.id}
@@ -234,14 +237,27 @@ function KategorieBar({
                     />
                   </Svg>
                 </View>
-                <Text
-                  style={[
-                    styles.kategorieMenuText,
-                    isActive && styles.kategorieMenuTextActive,
-                  ]}
-                >
-                  {cat.Name}
-                </Text>
+                <View style={styles.kategorieMenuTextWrap}>
+                  <Text
+                    style={[
+                      styles.kategorieMenuText,
+                      isActive && styles.kategorieMenuTextActive,
+                    ]}
+                  >
+                    {cat.Name}
+                  </Text>
+                  {showSightsHint && (
+                    <Text
+                      style={[
+                        styles.kategorieMenuHint,
+                        isActive && styles.kategorieMenuHintActive,
+                      ]}
+                    >
+                      Kostenlose Konten sehen 20 % der Sehenswertes-Orte. Mit
+                      Fairführer+ sind alle sichtbar.
+                    </Text>
+                  )}
+                </View>
               </TouchableOpacity>
             );
           })}
@@ -652,6 +668,7 @@ export default function KarteScreen() {
           categories={allCategories}
           selectedId={selectedCategoryId}
           onSelect={setSelectedCategoryId}
+          isPro={isPro}
         />
       </View>
 
@@ -790,12 +807,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  kategorieMenuTextWrap: { flex: 1 },
   kategorieMenuText: {
     fontSize: 20,
     fontFamily: "FiraSansCondensed_600SemiBold",
     color: "#000",
   },
   kategorieMenuTextActive: { color: "#fff" },
+  kategorieMenuHint: {
+    fontSize: 12,
+    fontFamily: "FiraSansCondensed_400Regular",
+    color: "#666",
+    marginTop: 2,
+    paddingRight: 8,
+  },
+  kategorieMenuHintActive: { color: "rgba(255,255,255,0.9)" },
   kategorieBar: {
     flexDirection: "row",
     alignItems: "center",

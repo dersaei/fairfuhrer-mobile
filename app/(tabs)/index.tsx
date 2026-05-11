@@ -26,7 +26,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
-import { usePlacesStore } from "@/stores/placesStore";
+import { usePlacesStore, isSightsCategory } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import type { DirectusOrte, DirectusKategorie } from "@/types";
@@ -81,7 +81,7 @@ function getCategoriesFromPlace(place: DirectusOrte): DirectusKategorie[] {
 // ─── Ikony kategorii (SVG Lucide paths) ──────────────────────────────────────
 
 const CATEGORY_COLORS: Record<number, string> = {
-  1: "#E45858", // Erlebnisse
+  1: "#E45858", // Sehenswertes
   2: "#6477E3", // Essen & Übernachten
   3: "#F0873D", // Einkaufen
   5: "#42D742", // Engagement
@@ -248,10 +248,12 @@ function KategorieBar({
   categories,
   selectedIds,
   onToggle,
+  isPro,
 }: {
   categories: DirectusKategorie[];
   selectedIds: Set<number>;
   onToggle: (id: number | null) => void;
+  isPro: boolean;
 }) {
   const [modalVisible, setModalVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -368,6 +370,7 @@ function KategorieBar({
           {/* Kategorie — każda niezależnie toggleowana, menu nie zamyka się */}
           {categories.map((cat) => {
             const isActive = selectedIds.has(cat.id);
+            const showSightsHint = !isPro && isSightsCategory(cat);
             return (
               <TouchableOpacity
                 key={cat.id}
@@ -386,14 +389,27 @@ function KategorieBar({
                     }
                   />
                 </View>
-                <Text
-                  style={[
-                    styles.kategorieMenuText,
-                    isActive && styles.kategorieMenuTextActive,
-                  ]}
-                >
-                  {cat.Name}
-                </Text>
+                <View style={styles.kategorieMenuTextWrap}>
+                  <Text
+                    style={[
+                      styles.kategorieMenuText,
+                      isActive && styles.kategorieMenuTextActive,
+                    ]}
+                  >
+                    {cat.Name}
+                  </Text>
+                  {showSightsHint && (
+                    <Text
+                      style={[
+                        styles.kategorieMenuHint,
+                        isActive && styles.kategorieMenuHintActive,
+                      ]}
+                    >
+                      Kostenlose Konten sehen 20 % der Sehenswertes-Orte. Mit
+                      Fairführer+ sind alle sichtbar.
+                    </Text>
+                  )}
+                </View>
               </TouchableOpacity>
             );
           })}
@@ -895,6 +911,7 @@ export default function ListeScreen() {
             categories={allCategories}
             selectedIds={selectedCategoryIds}
             onToggle={toggleCategory}
+            isPro={isPro}
           />
         )}
       </View>
@@ -1456,6 +1473,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  kategorieMenuTextWrap: { flex: 1 },
   kategorieMenuText: {
     fontSize: 20,
     fontFamily: "FiraSansCondensed_600SemiBold",
@@ -1463,6 +1481,16 @@ const styles = StyleSheet.create({
   },
   kategorieMenuTextActive: {
     color: "#fff",
+  },
+  kategorieMenuHint: {
+    fontSize: 12,
+    fontFamily: "FiraSansCondensed_400Regular",
+    color: "#666",
+    marginTop: 2,
+    paddingRight: 8,
+  },
+  kategorieMenuHintActive: {
+    color: "rgba(255,255,255,0.9)",
   },
   // PinCard
   card: {

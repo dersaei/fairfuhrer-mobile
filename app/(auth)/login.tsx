@@ -55,10 +55,6 @@ export default function LoginScreen() {
         </View>
       </View>
 
-      {/* Logo i rola — pod paskiem */}
-      <Text style={styles.logo}>FAIRFÜHRER</Text>
-      <Text style={styles.role}>Reisender</Text>
-
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.inner}
@@ -133,23 +129,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: "#181716",
     lineHeight: 28,
-  },
-  logo: {
-    fontFamily: "Anton_400Regular",
-    fontSize: 30,
-    color: "#fc6c14",
-    textAlign: "center",
-    letterSpacing: 3,
-    paddingTop: 4,
-    paddingBottom: 2,
-  },
-  role: {
-    fontFamily: "Anton_400Regular",
-    fontSize: 16,
-    color: "#fc6c14",
-    textAlign: "center",
-    letterSpacing: 2,
-    paddingBottom: 8,
   },
   inner: {
     flex: 1,

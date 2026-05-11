@@ -9,19 +9,19 @@ import type {
 
 // ─── Sehenswürdigkeiten gating ───────────────────────────────────────────────
 //
-// Free accounts see ALL pins in EVERY category EXCEPT "Sehenswürdigkeiten",
-// where they see a deterministic ~20 % subset based on a stable hash of the
-// place's id / Name. Premium sees 100 %.
+// Free accounts see ALL pins in EVERY category EXCEPT "Sehenswertes"
+// (Directus category, env-overridable id). For Sehenswertes-tagged places
+// we select a deterministic top-N subset by stable hash so the free user
+// always sees exactly ceil(0.2 * N) places — same set across devices.
+// Premium sees 100 %.
 //
-// We do not assume a hard-coded category id (it differs across environments).
 // Detection priority:
-//   1. EXPO_PUBLIC_SIGHTS_CATEGORY_ID  — explicit override from Doppler/Expo
-//   2. Category whose normalized German name starts with "sehen"
-//      (matches "Sehenswürdigkeiten", "Sehenswertes", … — the displayed
-//      label in profil.tsx is "Sehenswertes", but the brief refers to the
-//      same canonical category as "Sehenswürdigkeiten").
+//   1. EXPO_PUBLIC_SIGHTS_CATEGORY_ID — explicit override (preferred)
+//   2. Fallback: normalized German name starts with "sehen"
+//      (matches "Sehenswertes" and "Sehenswürdigkeiten").
 //
-// The threshold is the literal 20 % from the product spec.
+// A place tagged with Sehenswertes + any other category is still treated as
+// Sehenswertes and is subject to the 20 % cap.
 const FREE_VISIBLE_RATIO = 0.2;
 
 function normalizeGerman(input: string): string {
@@ -41,12 +41,16 @@ function envSightsCategoryId(): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function isSightsCategory(cat: DirectusKategorie | undefined | null): boolean {
+export function isSightsCategory(
+  cat: DirectusKategorie | undefined | null,
+): boolean {
   if (!cat) return false;
   const overrideId = envSightsCategoryId();
   if (overrideId !== null && cat.id === overrideId) return true;
   return normalizeGerman(cat.Name ?? "").startsWith("sehen");
 }
+
+export const FREE_SIGHTS_VISIBLE_RATIO = FREE_VISIBLE_RATIO;
 
 function placeHasSights(
   place: DirectusOrte,
@@ -98,10 +102,9 @@ export const usePlacesStore = create<PlacesState>((set, get) => ({
 
   // Deterministic visibility filter:
   //   - Premium → all places
-  //   - Free   → all places EXCEPT ~80 % of those tagged with the
-  //              "Sehenswürdigkeiten" category. Selection is stable per
-  //              place id + name, so a free user always sees the same
-  //              subset across runs / devices.
+  //   - Free   → all non-Sehenswertes places + exactly ceil(0.2 * N) of
+  //              the Sehenswertes places (N = total Sehenswertes count).
+  //              Selection is stable: sort by hash, take the smallest N20.
   getVisiblePlaces: (isPro) => {
     const { places, categories } = get();
     if (isPro) return places;
@@ -111,10 +114,26 @@ export const usePlacesStore = create<PlacesState>((set, get) => ({
     );
     if (sightsCategoryIds.size === 0) return places;
 
-    return places.filter((p) => {
-      if (!placeHasSights(p, sightsCategoryIds)) return true;
-      return stableHash01(p) < FREE_VISIBLE_RATIO;
-    });
+    const sights: DirectusOrte[] = [];
+    const others: DirectusOrte[] = [];
+    for (const p of places) {
+      if (placeHasSights(p, sightsCategoryIds)) sights.push(p);
+      else others.push(p);
+    }
+    if (sights.length === 0) return others;
+
+    const visibleCount = Math.ceil(FREE_VISIBLE_RATIO * sights.length);
+    const ranked = sights
+      .map((p) => ({ p, h: stableHash01(p) }))
+      .sort((a, b) => (a.h === b.h ? a.p.id - b.p.id : a.h - b.h))
+      .slice(0, visibleCount)
+      .map((x) => x.p);
+    const visibleSightsIds = new Set(ranked.map((p) => p.id));
+
+    return places.filter(
+      (p) =>
+        !placeHasSights(p, sightsCategoryIds) || visibleSightsIds.has(p.id),
+    );
   },
 
   fetchAll: async () => {

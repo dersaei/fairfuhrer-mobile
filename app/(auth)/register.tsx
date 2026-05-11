@@ -80,7 +80,6 @@ export default function RegisterScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         {Header}
-        <Text style={styles.logo}>FAIRFÜHRER</Text>
         <View style={styles.inner}>
           <Text style={styles.title}>Fast fertig!</Text>
           <Text style={styles.successText}>
@@ -97,7 +96,6 @@ export default function RegisterScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {Header}
-      <Text style={styles.logo}>FAIRFÜHRER</Text>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -193,15 +191,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#181716',
     lineHeight: 28,
-  },
-  logo: {
-    fontFamily: 'Anton_400Regular',
-    fontSize: 30,
-    color: '#fc6c14',
-    textAlign: 'center',
-    letterSpacing: 3,
-    paddingTop: 4,
-    paddingBottom: 2,
   },
   inner: {
     flexGrow: 1,
