@@ -27,11 +27,7 @@ import { ENTITLEMENT_ID } from "@/lib/revenuecat";
 const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
 
 type AuthView = "welcome" | "login" | "register";
-type AccountSection =
-  | "profil"
-  | "einstellungen"
-  | "premium"
-  | "ort-vorschlagen";
+type AccountSection = "profil" | "einstellungen" | "premium" | "ort-vorschlagen";
 
 // ─── Auth Screen ─────────────────────────────────────────────────────────────
 // Trzy widoki: welcome (landing) → login | register (formularz)
@@ -85,9 +81,7 @@ function AuthScreen() {
       return;
     }
     if (!consentAccepted) {
-      setError(
-        "Bitte stimme den Nutzungsbedingungen und der Datenschutzerklärung zu.",
-      );
+      setError("Bitte stimme den Nutzungsbedingungen und der Datenschutzerklärung zu.");
       return;
     }
     if (username.length < 3) {
@@ -165,29 +159,17 @@ function AuthScreen() {
             </View>
             <View style={s.welcomeHeroContent}>
               <Text style={s.welcomeEyebrow}>DEIN FAIRFÜHRER-KONTO</Text>
-              <Text style={s.welcomeHeadline}>
-                {"ENTDECKE\nMEHR.\nBEWEGE\nMEHR."}
-              </Text>
+              <Text style={s.welcomeHeadline}>{"ENTDECKE\nMEHR.\nBEWEGE\nMEHR."}</Text>
               <Text style={s.welcomeSubtitle}>
-                Kostenlos registrieren – Audio-Guides hören, faire Orte
-                entdecken und die Community mitgestalten.
+                Kostenlos registrieren – Audio-Guides hören, faire Orte entdecken und die Community
+                mitgestalten.
               </Text>
 
-              <TouchableOpacity
-                style={s.welcomeBtnPrimary}
-                onPress={() => switchView("register")}
-              >
-                <Text style={s.welcomeBtnPrimaryText}>
-                  Kostenlos registrieren
-                </Text>
+              <TouchableOpacity style={s.welcomeBtnPrimary} onPress={() => switchView("register")}>
+                <Text style={s.welcomeBtnPrimaryText}>Kostenlos registrieren</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={s.welcomeBtnSecondary}
-                onPress={() => switchView("login")}
-              >
-                <Text style={s.welcomeBtnSecondaryText}>
-                  Ich habe schon ein Konto
-                </Text>
+              <TouchableOpacity style={s.welcomeBtnSecondary} onPress={() => switchView("login")}>
+                <Text style={s.welcomeBtnSecondaryText}>Ich habe schon ein Konto</Text>
               </TouchableOpacity>
             </View>
           </ImageBackground>
@@ -223,9 +205,7 @@ function AuthScreen() {
             {/* Premium */}
             <View style={[s.planCompareCard, s.planCompareCardPremium]}>
               <View style={s.planCompareTitleRow}>
-                <Text style={[s.planCompareTitle, { color: "#fc6c14" }]}>
-                  Fairführer+
-                </Text>
+                <Text style={[s.planCompareTitle, { color: "#fc6c14" }]}>Fairführer+</Text>
                 <View style={s.planCompareBadge}>
                   <Text style={s.planCompareBadgeText}>★ PREMIUM</Text>
                 </View>
@@ -238,19 +218,12 @@ function AuthScreen() {
                 "Pins werden von unseren Redakteuren geprüft",
               ].map((f) => (
                 <View key={f} style={s.planCompareRow}>
-                  <Text style={[s.planCompareCheck, { color: "#fc6c14" }]}>
-                    ✓
-                  </Text>
+                  <Text style={[s.planCompareCheck, { color: "#fc6c14" }]}>✓</Text>
                   <Text style={s.planCompareText}>{f}</Text>
                 </View>
               ))}
-              <TouchableOpacity
-                style={s.welcomeBtnPremium}
-                onPress={() => switchView("register")}
-              >
-                <Text style={s.welcomeBtnPremiumText}>
-                  Jetzt Fairführer+ holen
-                </Text>
+              <TouchableOpacity style={s.welcomeBtnPremium} onPress={() => switchView("register")}>
+                <Text style={s.welcomeBtnPremiumText}>Jetzt Fairführer+ holen</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -293,37 +266,20 @@ function AuthScreen() {
           {einstellungen?.Slogan ? (
             <Text style={s.tagline}>{einstellungen.Slogan}</Text>
           ) : (
-            <Text style={s.tagline}>
-              Der Audioguide für nachhaltiges Leben und Reisen
-            </Text>
+            <Text style={s.tagline}>Der Audioguide für nachhaltiges Leben und Reisen</Text>
           )}
         </View>
 
-        <ScrollView
-          contentContainerStyle={s.formContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Text style={s.formHeadline}>
-            {isReg ? "Konto erstellen" : "Willkommen zurück"}
-          </Text>
+        <ScrollView contentContainerStyle={s.formContent} keyboardShouldPersistTaps="handled">
+          <Text style={s.formHeadline}>{isReg ? "Konto erstellen" : "Willkommen zurück"}</Text>
 
           <View style={s.tabRow}>
-            <TouchableOpacity
-              style={s.tabBtn}
-              onPress={() => switchView("login")}
-            >
-              <Text style={[s.tabBtnText, !isReg && s.tabBtnTextActive]}>
-                Anmelden
-              </Text>
+            <TouchableOpacity style={s.tabBtn} onPress={() => switchView("login")}>
+              <Text style={[s.tabBtnText, !isReg && s.tabBtnTextActive]}>Anmelden</Text>
               {!isReg && <View style={s.tabUnderline} />}
             </TouchableOpacity>
-            <TouchableOpacity
-              style={s.tabBtn}
-              onPress={() => switchView("register")}
-            >
-              <Text style={[s.tabBtnText, isReg && s.tabBtnTextActive]}>
-                Registrieren
-              </Text>
+            <TouchableOpacity style={s.tabBtn} onPress={() => switchView("register")}>
+              <Text style={[s.tabBtnText, isReg && s.tabBtnTextActive]}>Registrieren</Text>
               {isReg && <View style={s.tabUnderline} />}
             </TouchableOpacity>
           </View>
@@ -399,17 +355,11 @@ function AuthScreen() {
               </View>
               <Text style={s.consentText}>
                 Ich habe die{" "}
-                <Text
-                  style={s.consentLink}
-                  onPress={() => router.push("/(drawer)/agb")}
-                >
+                <Text style={s.consentLink} onPress={() => router.push("/(drawer)/agb")}>
                   Nutzungsbedingungen
                 </Text>{" "}
                 und die{" "}
-                <Text
-                  style={s.consentLink}
-                  onPress={() => router.push("/(drawer)/datenschutz")}
-                >
+                <Text style={s.consentLink} onPress={() => router.push("/(drawer)/datenschutz")}>
                   Datenschutzerklärung
                 </Text>{" "}
                 gelesen und stimme ihnen zu.
@@ -425,9 +375,7 @@ function AuthScreen() {
             {isLoading ? (
               <ActivityIndicator color="#fc6c14" />
             ) : (
-              <Text style={s.buttonText}>
-                {isReg ? "Konto erstellen" : "Anmelden"}
-              </Text>
+              <Text style={s.buttonText}>{isReg ? "Konto erstellen" : "Anmelden"}</Text>
             )}
           </TouchableOpacity>
         </ScrollView>
@@ -439,8 +387,7 @@ function AuthScreen() {
 // ─── Account Screen ──────────────────────────────────────────────────────────
 
 function AccountScreen() {
-  const { user, profile, isPro, signOut, deleteAccount, refreshProfile, refreshPro } =
-    useAuth();
+  const { user, profile, isPro, signOut, deleteAccount, refreshProfile, refreshPro } = useAuth();
   const [activeSection, setActiveSection] = useState<AccountSection>("profil");
 
   const displayName = profile?.username ?? user?.email ?? "";
@@ -450,17 +397,13 @@ function AccountScreen() {
       {/* Header */}
       <View style={s.accountHeader}>
         <View style={s.avatarPlaceholder}>
-          <Text style={s.avatarInitial}>
-            {displayName.charAt(0).toUpperCase()}
-          </Text>
+          <Text style={s.avatarInitial}>{displayName.charAt(0).toUpperCase()}</Text>
         </View>
         <View style={s.accountHeaderInfo}>
           <Text style={s.accountName}>{profile?.username ?? "—"}</Text>
           <Text style={s.accountEmail}>{user?.email}</Text>
           <View style={s.planBadge}>
-            <Text style={s.planBadgeText}>
-              {isPro ? "★ Fairführer+" : "Kostenlos"}
-            </Text>
+            <Text style={s.planBadgeText}>{isPro ? "★ Fairführer+" : "Kostenlos"}</Text>
           </View>
         </View>
         <MenuButton />
@@ -473,35 +416,25 @@ function AccountScreen() {
         style={s.navScroll}
         contentContainerStyle={s.navContent}
       >
-        {(
-          [
-            "profil",
-            "einstellungen",
-            "premium",
-            "ort-vorschlagen",
-          ] as AccountSection[]
-        ).map((sec) => (
-          <TouchableOpacity
-            key={sec}
-            style={[s.navItem, activeSection === sec && s.navItemActive]}
-            onPress={() => setActiveSection(sec)}
-          >
-            <Text
-              style={[
-                s.navItemText,
-                activeSection === sec && s.navItemTextActive,
-              ]}
+        {(["profil", "einstellungen", "premium", "ort-vorschlagen"] as AccountSection[]).map(
+          (sec) => (
+            <TouchableOpacity
+              key={sec}
+              style={[s.navItem, activeSection === sec && s.navItemActive]}
+              onPress={() => setActiveSection(sec)}
             >
-              {sec === "profil"
-                ? "Profil"
-                : sec === "einstellungen"
-                  ? "Einstellungen"
-                  : sec === "premium"
-                    ? "Premium"
-                    : "Ort vorschlagen"}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text style={[s.navItemText, activeSection === sec && s.navItemTextActive]}>
+                {sec === "profil"
+                  ? "Profil"
+                  : sec === "einstellungen"
+                    ? "Einstellungen"
+                    : sec === "premium"
+                      ? "Premium"
+                      : "Ort vorschlagen"}
+              </Text>
+            </TouchableOpacity>
+          ),
+        )}
       </ScrollView>
 
       {/* Content */}
@@ -510,9 +443,7 @@ function AccountScreen() {
         contentContainerStyle={s.sectionContent}
         keyboardShouldPersistTaps="handled"
       >
-        {activeSection === "profil" && (
-          <ProfilSection user={user} profile={profile} />
-        )}
+        {activeSection === "profil" && <ProfilSection user={user} profile={profile} />}
         {activeSection === "einstellungen" && (
           <EinstellungenSection
             user={user}
@@ -522,9 +453,7 @@ function AccountScreen() {
             refreshProfile={refreshProfile}
           />
         )}
-        {activeSection === "premium" && (
-          <PremiumSection isPro={isPro} refreshPro={refreshPro} />
-        )}
+        {activeSection === "premium" && <PremiumSection isPro={isPro} refreshPro={refreshPro} />}
         {activeSection === "ort-vorschlagen" && (
           <OrtVorschlagenSection user={user} isPremium={isPro} />
         )}
@@ -546,9 +475,7 @@ function ProfilSection({ user, profile }: any) {
   return (
     <View style={s.section}>
       <Text style={s.sectionTitle}>Profilbild</Text>
-      <Text style={s.sectionHint}>
-        Profilbild-Upload wird demnächst verfügbar sein.
-      </Text>
+      <Text style={s.sectionHint}>Profilbild-Upload wird demnächst verfügbar sein.</Text>
 
       <Text style={[s.sectionTitle, { marginTop: 24 }]}>Persönliche Daten</Text>
       {fields.map((f) => (
@@ -673,9 +600,7 @@ function EinstellungenSection({ user, profile, signOut, deleteAccount, refreshPr
       {/* Persönliche Daten */}
       <Text style={s.sectionTitle}>Persönliche Daten</Text>
       {nameError && <Text style={s.errorText}>{nameError}</Text>}
-      {nameSuccess && (
-        <Text style={s.successMsg}>Daten erfolgreich aktualisiert.</Text>
-      )}
+      {nameSuccess && <Text style={s.successMsg}>Daten erfolgreich aktualisiert.</Text>}
       <View style={s.fieldGroup}>
         <Text style={s.fieldLabel}>Benutzername</Text>
         <TextInput
@@ -723,9 +648,7 @@ function EinstellungenSection({ user, profile, signOut, deleteAccount, refreshPr
       <Text style={s.sectionHint}>Aktuelle Adresse: {user?.email}</Text>
       {emailError && <Text style={s.errorText}>{emailError}</Text>}
       {emailSuccess && (
-        <Text style={s.successMsg}>
-          Bestätigungslink wurde an Ihre neue Adresse gesendet.
-        </Text>
+        <Text style={s.successMsg}>Bestätigungslink wurde an Ihre neue Adresse gesendet.</Text>
       )}
       <View style={s.fieldGroup}>
         <Text style={s.fieldLabel}>Neue E-Mail-Adresse</Text>
@@ -755,9 +678,7 @@ function EinstellungenSection({ user, profile, signOut, deleteAccount, refreshPr
       {/* Passwort */}
       <Text style={s.sectionTitle}>Passwort ändern</Text>
       {pwError && <Text style={s.errorText}>{pwError}</Text>}
-      {pwSuccess && (
-        <Text style={s.successMsg}>Passwort erfolgreich geändert.</Text>
-      )}
+      {pwSuccess && <Text style={s.successMsg}>Passwort erfolgreich geändert.</Text>}
       <View style={s.fieldGroup}>
         <Text style={s.fieldLabel}>Neues Passwort</Text>
         <TextInput
@@ -802,8 +723,7 @@ function EinstellungenSection({ user, profile, signOut, deleteAccount, refreshPr
       {/* Konto löschen */}
       <Text style={s.sectionTitleDanger}>Konto löschen</Text>
       <Text style={s.sectionHint}>
-        Diese Aktion ist unwiderruflich. Alle Ihre Daten werden dauerhaft
-        gelöscht.
+        Diese Aktion ist unwiderruflich. Alle Ihre Daten werden dauerhaft gelöscht.
       </Text>
       <TouchableOpacity style={s.buttonDanger} onPress={handleDeleteAccount}>
         <Text style={s.buttonDangerText}>Konto unwiderruflich löschen</Text>
@@ -834,13 +754,10 @@ function PremiumSection({
       const result = await RevenueCatUI.presentPaywallIfNeeded({
         requiredEntitlementIdentifier: ENTITLEMENT_ID,
       });
-      if (
-        result === PAYWALL_RESULT.PURCHASED ||
-        result === PAYWALL_RESULT.RESTORED
-      ) {
+      if (result === PAYWALL_RESULT.PURCHASED || result === PAYWALL_RESULT.RESTORED) {
         await refreshPro();
       }
-    } catch (e) {
+    } catch {
       Alert.alert("Fehler", "Kauf konnte nicht abgeschlossen werden.");
     } finally {
       setPurchasing(false);
@@ -853,7 +770,7 @@ function PremiumSection({
       await Purchases.restorePurchases();
       await refreshPro();
       Alert.alert("Erfolg", "Käufe wurden wiederhergestellt.");
-    } catch (e) {
+    } catch {
       Alert.alert("Fehler", "Wiederherstellung fehlgeschlagen.");
     } finally {
       setRestoring(false);
@@ -863,7 +780,7 @@ function PremiumSection({
   const handleCustomerCenter = async () => {
     try {
       await RevenueCatUI.presentCustomerCenter();
-    } catch (e) {
+    } catch {
       Alert.alert("Fehler", "Kundencenter konnte nicht geöffnet werden.");
     }
   };
@@ -875,15 +792,11 @@ function PremiumSection({
           <Text style={s.proActiveIcon}>★</Text>
           <Text style={s.proActiveTitle}>Fairführer+ aktiv</Text>
           <Text style={s.sectionHint}>
-            Du hast Zugang zu allen Premium-Funktionen. Vielen Dank für deine
-            Unterstützung!
+            Du hast Zugang zu allen Premium-Funktionen. Vielen Dank für deine Unterstützung!
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={s.buttonOutline}
-          onPress={handleCustomerCenter}
-        >
+        <TouchableOpacity style={s.buttonOutline} onPress={handleCustomerCenter}>
           <Text style={s.buttonOutlineText}>Abonnement verwalten</Text>
         </TouchableOpacity>
       </View>
@@ -913,19 +826,13 @@ function PremiumSection({
       {/* Was du jetzt hast */}
       <Text style={s.sectionTitle}>Dein aktueller Plan</Text>
       <View style={s.planCompareCard}>
-        <Text style={[s.planCompareTitle, { marginBottom: 12 }]}>
-          Kostenlos
-        </Text>
+        <Text style={[s.planCompareTitle, { marginBottom: 12 }]}>Kostenlos</Text>
         {freeFeatures.map((f) => (
           <View key={f.text} style={s.planCompareRow}>
             <Text style={f.locked ? s.planCompareLock : s.planCompareCheck}>
               {f.locked ? "○" : "✓"}
             </Text>
-            <Text
-              style={f.locked ? s.planCompareTextLocked : s.planCompareText}
-            >
-              {f.text}
-            </Text>
+            <Text style={f.locked ? s.planCompareTextLocked : s.planCompareText}>{f.text}</Text>
           </View>
         ))}
       </View>
@@ -933,9 +840,7 @@ function PremiumSection({
       {/* Premium upgrade */}
       <View style={[s.planCompareCard, s.planCompareCardPremium]}>
         <View style={s.planCompareTitleRow}>
-          <Text style={[s.planCompareTitle, { color: "#fc6c14" }]}>
-            Fairführer+
-          </Text>
+          <Text style={[s.planCompareTitle, { color: "#fc6c14" }]}>Fairführer+</Text>
           <View style={s.planCompareBadge}>
             <Text style={s.planCompareBadgeText}>★ PREMIUM</Text>
           </View>
@@ -955,9 +860,7 @@ function PremiumSection({
           >
             <View style={s.planButtonInner}>
               <View style={{ flex: 1 }}>
-                <Text style={[s.planLabel, s.planLabelPopular]}>
-                  Fairführer+ aktivieren
-                </Text>
+                <Text style={[s.planLabel, s.planLabelPopular]}>Fairführer+ aktivieren</Text>
                 <Text style={[s.planPrice, s.planPricePopular]}>
                   Pläne & Preise im nächsten Schritt
                 </Text>
@@ -1023,15 +926,13 @@ function OrtVorschlagenSection({ user, isPremium }: any) {
     <View style={s.section}>
       <Text style={s.sectionTitle}>Ort vorschlagen</Text>
       <Text style={s.sectionHint}>
-        Kennen Sie einen fairen Ort, der auf unsere Karte gehört? Füllen Sie das
-        Formular aus!
+        Kennen Sie einen fairen Ort, der auf unsere Karte gehört? Füllen Sie das Formular aus!
       </Text>
 
       {!isPremium && (
         <View style={s.premiumInfo}>
           <Text style={s.premiumInfoText}>
-            Das Einreichen von Ortsvorschlägen ist ausschließlich für
-            Premium-Mitglieder verfügbar.
+            Das Einreichen von Ortsvorschlägen ist ausschließlich für Premium-Mitglieder verfügbar.
           </Text>
         </View>
       )}
@@ -1064,9 +965,7 @@ function OrtVorschlagenSection({ user, isPremium }: any) {
             />
           </View>
           <View style={s.fieldGroup}>
-            <Text style={s.fieldLabel}>
-              Warum sollte dieser Ort auf der Karte stehen?
-            </Text>
+            <Text style={s.fieldLabel}>Warum sollte dieser Ort auf der Karte stehen?</Text>
             <TextInput
               style={[s.input, s.textarea, !isPremium && s.inputDisabled]}
               value={description}

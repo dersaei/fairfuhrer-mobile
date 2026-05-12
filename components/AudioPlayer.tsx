@@ -44,7 +44,14 @@ function PauseIcon({ size = 24 }: { size?: number }) {
 function SkipBackIcon({ size = 24 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx="12" cy="12" r="11" fill="rgba(252,108,20,1)" stroke="rgba(255,255,255,0.3)" strokeWidth="0.5" />
+      <Circle
+        cx="12"
+        cy="12"
+        r="11"
+        fill="rgba(252,108,20,1)"
+        stroke="rgba(255,255,255,0.3)"
+        strokeWidth="0.5"
+      />
       <Polygon points="14,9 11,12 14,15" fill="white" />
       <Polygon points="11,9 8,12 11,15" fill="white" />
     </Svg>
@@ -54,7 +61,14 @@ function SkipBackIcon({ size = 24 }: { size?: number }) {
 function SkipForwardIcon({ size = 24 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx="12" cy="12" r="11" fill="rgba(252,108,20,1)" stroke="rgba(255,255,255,0.3)" strokeWidth="0.5" />
+      <Circle
+        cx="12"
+        cy="12"
+        r="11"
+        fill="rgba(252,108,20,1)"
+        stroke="rgba(255,255,255,0.3)"
+        strokeWidth="0.5"
+      />
       <Polygon points="10,9 13,12 10,15" fill="white" />
       <Polygon points="13,9 16,12 13,15" fill="white" />
     </Svg>
@@ -89,10 +103,13 @@ function PressButton({
   };
 
   return (
-    <TouchableOpacity activeOpacity={1} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
-      <Animated.View style={[style, animStyle]}>
-        {children}
-      </Animated.View>
+    <TouchableOpacity
+      activeOpacity={1}
+      onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+    >
+      <Animated.View style={[style, animStyle]}>{children}</Animated.View>
     </TouchableOpacity>
   );
 }
@@ -110,36 +127,38 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
   const [trackWidth, setTrackWidth] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState<SpeedOption>(1);
 
-  const player  = useAudioPlayer(src);
-  const status  = useAudioPlayerStatus(player);
-  const isPlaying   = status.playing;
+  const player = useAudioPlayer(src);
+  const status = useAudioPlayerStatus(player);
+  const isPlaying = status.playing;
   const currentTime = status.currentTime ?? 0;
-  const duration    = status.duration    ?? 0;
-  const progress    = duration > 0 ? currentTime / duration : 0;
+  const duration = status.duration ?? 0;
+  const progress = duration > 0 ? currentTime / duration : 0;
 
   // ── Shared values ─────────────────────────────────────────────────────────
 
   // fadeSlideUp dla progress i speed (opacity 0→1 + translateY 10→0)
-  const progressOpacity   = useSharedValue(0);
+  const progressOpacity = useSharedValue(0);
   const progressTranslateY = useSharedValue(10);
-  const speedOpacity      = useSharedValue(0);
-  const speedTranslateY   = useSharedValue(10);
+  const speedOpacity = useSharedValue(0);
+  const speedTranslateY = useSharedValue(10);
 
   // pulse dla play button gdy gra (scale 1→1.05→1, 2s loop)
   const pulseScale = useSharedValue(1);
 
   // ── Efekty ────────────────────────────────────────────────────────────────
 
-  useEffect(() => { setAudioModeAsync({ playsInSilentMode: true }); }, []);
+  useEffect(() => {
+    setAudioModeAsync({ playsInSilentMode: true });
+  }, []);
 
   // fadeSlideUp — delay 0.3s dla progress, 0.5s dla speed (jak w web CSS animation)
   useEffect(() => {
     const ease = Easing.bezier(0.25, 0.46, 0.45, 0.94);
 
-    progressOpacity.value    = withDelay(300, withTiming(1,  { duration: 600, easing: ease }));
-    progressTranslateY.value = withDelay(300, withTiming(0,  { duration: 600, easing: ease }));
-    speedOpacity.value       = withDelay(500, withTiming(1,  { duration: 600, easing: ease }));
-    speedTranslateY.value    = withDelay(500, withTiming(0,  { duration: 600, easing: ease }));
+    progressOpacity.value = withDelay(300, withTiming(1, { duration: 600, easing: ease }));
+    progressTranslateY.value = withDelay(300, withTiming(0, { duration: 600, easing: ease }));
+    speedOpacity.value = withDelay(500, withTiming(1, { duration: 600, easing: ease }));
+    speedTranslateY.value = withDelay(500, withTiming(0, { duration: 600, easing: ease }));
   }, []);
 
   // pulse 2s infinite — identyczne z web @keyframes pulse (scale 1→1.05→1)
@@ -148,9 +167,9 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
       pulseScale.value = withRepeat(
         withSequence(
           withTiming(1.05, { duration: 1000, easing: Easing.bezier(0.25, 0.46, 0.45, 0.94) }),
-          withTiming(1,    { duration: 1000, easing: Easing.bezier(0.25, 0.46, 0.45, 0.94) })
+          withTiming(1, { duration: 1000, easing: Easing.bezier(0.25, 0.46, 0.45, 0.94) }),
         ),
-        -1 // nieskończony loop
+        -1, // nieskończony loop
       );
     } else {
       cancelAnimation(pulseScale);
@@ -193,10 +212,8 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
       end={{ x: 1, y: 1 }}
       style={styles.audioPlayer}
     >
-
       {/* Kontrolki */}
       <View style={styles.audioControls}>
-
         <PressButton onPress={() => player.seekTo(Math.max(0, currentTime - 5))}>
           <View style={styles.skipButton}>
             <SkipBackIcon size={32} />
@@ -205,9 +222,11 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
 
         {/* Play/Pause z pulse */}
         <Animated.View style={[styles.playButtonShadow, pulseStyle]}>
-          <PressButton onPress={() => isPlaying ? player.pause() : player.play()}>
+          <PressButton onPress={() => (isPlaying ? player.pause() : player.play())}>
             <LinearGradient
-              colors={isPlaying ? ["#dc3545", "#c82333"] : ["rgba(252,108,20,1)", "rgba(252,108,20,0.9)"]}
+              colors={
+                isPlaying ? ["#dc3545", "#c82333"] : ["rgba(252,108,20,1)", "rgba(252,108,20,0.9)"]
+              }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.playButton}
@@ -222,7 +241,6 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
             <SkipForwardIcon size={32} />
           </View>
         </PressButton>
-
       </View>
 
       {/* Progress — fadeSlideUp 0.3s */}
@@ -254,7 +272,10 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
           return (
             <TouchableOpacity
               key={speed}
-              onPress={() => { setPlaybackSpeed(speed); player.setPlaybackRate(speed); }}
+              onPress={() => {
+                setPlaybackSpeed(speed);
+                player.setPlaybackRate(speed);
+              }}
               activeOpacity={0.75}
             >
               {isActive ? (
@@ -264,7 +285,9 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
                   end={{ x: 1, y: 1 }}
                   style={[styles.speedButton, styles.speedButtonActive]}
                 >
-                  <Text style={[styles.speedButtonText, styles.speedButtonTextActive]}>{speed}x</Text>
+                  <Text style={[styles.speedButtonText, styles.speedButtonTextActive]}>
+                    {speed}x
+                  </Text>
                 </LinearGradient>
               ) : (
                 <View style={styles.speedButton}>
@@ -275,7 +298,6 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
           );
         })}
       </Animated.View>
-
     </LinearGradient>
   );
 }

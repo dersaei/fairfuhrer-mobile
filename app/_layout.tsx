@@ -1,21 +1,21 @@
-import { useEffect, useState } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { View } from 'react-native';
-import * as SplashScreen from 'expo-splash-screen';
-import { useFonts, Anton_400Regular } from '@expo-google-fonts/anton';
+import { useEffect, useState } from "react";
+import { Stack, useRouter, useSegments } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { View } from "react-native";
+import * as SplashScreen from "expo-splash-screen";
+import { useFonts, Anton_400Regular } from "@expo-google-fonts/anton";
 import {
   FiraSansCondensed_400Regular,
   FiraSansCondensed_500Medium,
   FiraSansCondensed_600SemiBold,
   FiraSansCondensed_700Bold,
-} from '@expo-google-fonts/fira-sans-condensed';
-import { AuthProvider, useAuth } from '@/context/AuthContext';
-import { DrawerProvider, useDrawer } from '@/context/DrawerContext';
-import { usePlacesStore } from '@/stores/placesStore';
-import AnimatedSplash from '@/components/AnimatedSplash';
-import AppDrawer from '@/components/AppDrawer';
-import { initializePurchases } from '@/lib/revenuecat';
+} from "@expo-google-fonts/fira-sans-condensed";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { DrawerProvider, useDrawer } from "@/context/DrawerContext";
+import { usePlacesStore } from "@/stores/placesStore";
+import AnimatedSplash from "@/components/AnimatedSplash";
+import AppDrawer from "@/components/AppDrawer";
+import { initializePurchases } from "@/lib/revenuecat";
 
 SplashScreen.preventAutoHideAsync();
 initializePurchases();
@@ -34,13 +34,13 @@ function RootLayoutNav() {
 
   useEffect(() => {
     if (isLoading) return;
-    const inAuthGroup = segments[0] === '(auth)';
+    const inAuthGroup = segments[0] === "(auth)";
     if (session && inAuthGroup) {
-      router.replace('/(tabs)');
+      router.replace("/(tabs)");
     }
   }, [session, isLoading, segments, router]);
 
-  const dataReady = status === 'success' || status === 'error';
+  const dataReady = status === "success" || status === "error";
 
   useEffect(() => {
     if (dataReady && !isLoading) {
@@ -56,15 +56,15 @@ function RootLayoutNav() {
         <Stack.Screen
           name="place/[id]"
           options={{
-            presentation: 'modal',
-            animation: 'slide_from_bottom',
+            presentation: "modal",
+            animation: "slide_from_bottom",
             gestureEnabled: true,
-            gestureDirection: 'vertical',
+            gestureDirection: "vertical",
           }}
         />
         <Stack.Screen
           name="(drawer)"
-          options={{ presentation: 'card', animation: 'slide_from_right' }}
+          options={{ presentation: "card", animation: "slide_from_right" }}
         />
       </Stack>
 
@@ -87,7 +87,7 @@ export default function RootLayout() {
   });
 
   if (!fontsLoaded) {
-    return <View style={{ flex: 1, backgroundColor: '#fff' }} />;
+    return <View style={{ flex: 1, backgroundColor: "#fff" }} />;
   }
 
   return (

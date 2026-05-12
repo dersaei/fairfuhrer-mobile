@@ -1,10 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Image, StyleSheet } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-} from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
 interface Props {
@@ -32,14 +28,8 @@ export default function AnimatedSplash({ onFinished }: Props) {
   }));
 
   return (
-    <Animated.View
-      style={[StyleSheet.absoluteFill, styles.container, animatedStyle]}
-    >
-      <Image
-        source={require("@/assets/app-icon.png")}
-        style={styles.logo}
-        resizeMode="contain"
-      />
+    <Animated.View style={[StyleSheet.absoluteFill, styles.container, animatedStyle]}>
+      <Image source={require("@/assets/app-icon.png")} style={styles.logo} resizeMode="contain" />
     </Animated.View>
   );
 }

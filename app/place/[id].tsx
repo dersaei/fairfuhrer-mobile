@@ -47,9 +47,7 @@ function getAudioUrl(place: DirectusOrte): string | null {
 
 function getCategories(place: DirectusOrte): DirectusKategorie[] {
   if (!place.Kategorie) return [];
-  return place.Kategorie.map((k) => k.Kategorie_id).filter(
-    Boolean,
-  ) as DirectusKategorie[];
+  return place.Kategorie.map((k) => k.Kategorie_id).filter(Boolean) as DirectusKategorie[];
 }
 
 function htmlToText(html: string): string {
@@ -89,9 +87,7 @@ function htmlToText(html: string): string {
     .replace(/&Uuml;/g, "Ü")
     .replace(/&szlig;/g, "ß")
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) =>
-      String.fromCharCode(parseInt(h, 16)),
-    )
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
     .replace(/\n+/g, "\n")
     .trim();
 }
@@ -101,24 +97,8 @@ function htmlToText(html: string): string {
 function CloseIcon({ color = "#fc6c14" }: { color?: string }) {
   return (
     <Svg width={35} height={35} viewBox="0 0 24 24" fill="none">
-      <Line
-        x1="18"
-        y1="6"
-        x2="6"
-        y2="18"
-        stroke={color}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-      <Line
-        x1="6"
-        y1="6"
-        x2="18"
-        y2="18"
-        stroke={color}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
+      <Line x1="18" y1="6" x2="6" y2="18" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+      <Line x1="6" y1="6" x2="18" y2="18" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
     </Svg>
   );
 }
@@ -158,11 +138,9 @@ function GalleryViewer({ images, initialIndex, onClose }: GalleryViewerProps) {
 
   const panRef = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy),
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy),
       onPanResponderRelease: (_, g) => {
-        if (g.dx < -50 && currentIndex < images.length - 1)
-          goTo(currentIndex + 1);
+        if (g.dx < -50 && currentIndex < images.length - 1) goTo(currentIndex + 1);
         else if (g.dx > 50 && currentIndex > 0) goTo(currentIndex - 1);
       },
     }),
@@ -170,11 +148,9 @@ function GalleryViewer({ images, initialIndex, onClose }: GalleryViewerProps) {
 
   useEffect(() => {
     panRef.current = PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy),
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy),
       onPanResponderRelease: (_, g) => {
-        if (g.dx < -50 && currentIndex < images.length - 1)
-          goTo(currentIndex + 1);
+        if (g.dx < -50 && currentIndex < images.length - 1) goTo(currentIndex + 1);
         else if (g.dx > 50 && currentIndex > 0) goTo(currentIndex - 1);
       },
     });
@@ -353,8 +329,7 @@ export default function PlaceScreen() {
       ? AUDIO_HEIGHT
       : 0;
 
-  const directusGallery =
-    place.Galerie?.filter((g) => g?.directus_files_id) ?? [];
+  const directusGallery = place.Galerie?.filter((g) => g?.directus_files_id) ?? [];
   const supabaseGallery = place.Galerie_Bilder ?? [];
   const galleryImages =
     directusGallery.length > 0
@@ -372,11 +347,7 @@ export default function PlaceScreen() {
       {/* ── Stały header: zdjęcie + audio ── */}
       {imageUrl && (
         <View style={styles.imageSection} pointerEvents="box-none">
-          <Image
-            source={{ uri: imageUrl }}
-            style={styles.mainImage}
-            resizeMode="cover"
-          />
+          <Image source={{ uri: imageUrl }} style={styles.mainImage} resizeMode="cover" />
           {audioUrl && (
             <View style={styles.audioOverlay}>
               <AudioPlayer src={audioUrl} />
@@ -418,10 +389,7 @@ export default function PlaceScreen() {
               {categories.map((cat) => (
                 <View
                   key={cat.id}
-                  style={[
-                    styles.categoryBadge,
-                    { backgroundColor: cat.Farbe ?? "#999" },
-                  ]}
+                  style={[styles.categoryBadge, { backgroundColor: cat.Farbe ?? "#999" }]}
                 >
                   <Text style={styles.categoryBadgeText}>{cat.Name}</Text>
                 </View>
@@ -432,13 +400,9 @@ export default function PlaceScreen() {
           {/* Nazwa i adres */}
           <View style={styles.placeNameSection}>
             <Text style={styles.placeName}>{place.Name}</Text>
-            {place.Adresse ? (
-              <Text style={styles.placeAddress}>{place.Adresse}</Text>
-            ) : null}
+            {place.Adresse ? <Text style={styles.placeAddress}>{place.Adresse}</Text> : null}
             {place.Telefon ? (
-              <TouchableOpacity
-                onPress={() => Linking.openURL(`tel:${place.Telefon}`)}
-              >
+              <TouchableOpacity onPress={() => Linking.openURL(`tel:${place.Telefon}`)}>
                 <Text style={styles.placePhone}>📞 {place.Telefon}</Text>
               </TouchableOpacity>
             ) : null}
@@ -447,9 +411,7 @@ export default function PlaceScreen() {
           {/* Opis */}
           {place.Vollbeschreibung ? (
             <View style={styles.infoSection}>
-              <Text style={styles.description}>
-                {htmlToText(place.Vollbeschreibung)}
-              </Text>
+              <Text style={styles.description}>{htmlToText(place.Vollbeschreibung)}</Text>
             </View>
           ) : null}
 
@@ -458,14 +420,10 @@ export default function PlaceScreen() {
             <View style={styles.infoSection}>
               <TouchableOpacity
                 style={styles.externalLink}
-                onPress={() =>
-                  place.Link_URL && Linking.openURL(place.Link_URL)
-                }
+                onPress={() => place.Link_URL && Linking.openURL(place.Link_URL)}
                 activeOpacity={0.85}
               >
-                <Text style={styles.externalLinkText}>
-                  {place.Link_Text || "Website besuchen"}
-                </Text>
+                <Text style={styles.externalLinkText}>{place.Link_Text || "Website besuchen"}</Text>
               </TouchableOpacity>
             </View>
           ) : null}
@@ -481,11 +439,7 @@ export default function PlaceScreen() {
                     onPress={() => setGalleryIndex(index)}
                     activeOpacity={0.85}
                   >
-                    <Image
-                      source={{ uri }}
-                      style={styles.galleryImage}
-                      resizeMode="cover"
-                    />
+                    <Image source={{ uri }} style={styles.galleryImage} resizeMode="cover" />
                   </TouchableOpacity>
                 ))}
               </View>

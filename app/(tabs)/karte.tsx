@@ -14,10 +14,7 @@ import {
   Animated,
   Easing,
 } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, G, Path } from "react-native-svg";
 import Mapbox, {
   Camera,
@@ -68,9 +65,7 @@ const CATEGORY_ICON_PATHS: Record<number, string[]> = {
     "M7 2v20",
     "M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7",
   ],
-  3: [
-    "M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12",
-  ],
+  3: ["M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"],
   5: [
     "M19.414 14.414C21 12.828 22 11.5 22 9.5a5.5 5.5 0 0 0-9.591-3.676.6.6 0 0 1-.818.001A5.5 5.5 0 0 0 2 9.5c0 2.3 1.5 4 3 5.5l5.535 5.362a2 2 0 0 0 2.879.052 2.12 2.12 0 0 0-.004-3 2.124 2.124 0 1 0 3-3 2.124 2.124 0 0 0 3.004 0 2 2 0 0 0 0-2.828l-1.881-1.882a2.41 2.41 0 0 0-3.409 0l-1.71 1.71a2 2 0 0 1-2.828 0 2 2 0 0 1 0-2.828l2.823-2.762",
   ],
@@ -111,9 +106,7 @@ function CategoryIcon({
   size?: number;
 }) {
   const paths =
-    categoryId !== null
-      ? (CATEGORY_ICON_PATHS[categoryId] ?? DEFAULT_ICON_PATHS)
-      : ALL_ICON_PATHS;
+    categoryId !== null ? (CATEGORY_ICON_PATHS[categoryId] ?? DEFAULT_ICON_PATHS) : ALL_ICON_PATHS;
   const extraCircles = categoryId === 3 ? SHOPPING_CART_CIRCLES : [];
   const scale = 0.6;
   const offset = 12 * (1 - scale);
@@ -133,14 +126,7 @@ function CategoryIcon({
           <Path key={i} d={d} />
         ))}
         {extraCircles.map((c, i) => (
-          <Circle
-            key={`c${i}`}
-            cx={c.cx}
-            cy={c.cy}
-            r={c.r}
-            fill="white"
-            stroke="white"
-          />
+          <Circle key={`c${i}`} cx={c.cx} cy={c.cy} r={c.r} fill="white" stroke="white" />
         ))}
       </G>
     </Svg>
@@ -165,9 +151,7 @@ function placesToGeoJSON(places: DirectusOrte[]): GeoJSON.FeatureCollection {
           properties: {
             placeId: p.id,
             categoryColor:
-              catId !== null
-                ? (CATEGORY_COLORS[catId] ?? DEFAULT_COLOR)
-                : DEFAULT_COLOR,
+              catId !== null ? (CATEGORY_COLORS[catId] ?? DEFAULT_COLOR) : DEFAULT_COLOR,
           },
         };
       }),
@@ -191,9 +175,7 @@ function KategorieBar({
   const slideAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
   const selectedCat = categories.find((c) => c.id === selectedId) ?? null;
-  const barColor = selectedCat
-    ? (CATEGORY_COLORS[selectedCat.id] ?? DEFAULT_COLOR)
-    : "#000";
+  const barColor = selectedCat ? (CATEGORY_COLORS[selectedCat.id] ?? DEFAULT_COLOR) : "#000";
 
   const openMenu = useCallback(() => {
     slideAnim.setValue(0);
@@ -272,10 +254,7 @@ function KategorieBar({
             activeOpacity={0.7}
           >
             <View style={styles.kategorieMenuIcon}>
-              <CategoryIcon
-                categoryId={null}
-                color={selectedId === null ? "#000" : "#000"}
-              />
+              <CategoryIcon categoryId={null} color={selectedId === null ? "#000" : "#000"} />
             </View>
             <Text
               style={[
@@ -302,36 +281,22 @@ function KategorieBar({
                 <View style={styles.kategorieMenuIcon}>
                   <CategoryIcon
                     categoryId={cat.id}
-                    color={
-                      isActive
-                        ? "#fff"
-                        : (CATEGORY_COLORS[cat.id] ?? DEFAULT_COLOR)
-                    }
-                    strokeColor={
-                      isActive
-                        ? (CATEGORY_COLORS[cat.id] ?? DEFAULT_COLOR)
-                        : "white"
-                    }
+                    color={isActive ? "#fff" : (CATEGORY_COLORS[cat.id] ?? DEFAULT_COLOR)}
+                    strokeColor={isActive ? (CATEGORY_COLORS[cat.id] ?? DEFAULT_COLOR) : "white"}
                   />
                 </View>
                 <View style={styles.kategorieMenuTextWrap}>
                   <Text
-                    style={[
-                      styles.kategorieMenuText,
-                      isActive && styles.kategorieMenuTextActive,
-                    ]}
+                    style={[styles.kategorieMenuText, isActive && styles.kategorieMenuTextActive]}
                   >
                     {cat.Name}
                   </Text>
                   {showSightsHint && (
                     <Text
-                      style={[
-                        styles.kategorieMenuHint,
-                        isActive && styles.kategorieMenuHintActive,
-                      ]}
+                      style={[styles.kategorieMenuHint, isActive && styles.kategorieMenuHintActive]}
                     >
-                      Basis-Nutzer sehen nur 20 % der Sehenswertes-Orte. Mit
-                      Fairführer+ sind alle sichtbar.
+                      Basis-Nutzer sehen nur 20 % der Sehenswertes-Orte. Mit Fairführer+ sind alle
+                      sichtbar.
                     </Text>
                   )}
                 </View>
@@ -356,9 +321,7 @@ function KategorieBar({
                 size={28}
               />
             </View>
-            <Text style={[styles.kategorieBarText, { color: "#fff" }]}>
-              {selectedCat.Name}
-            </Text>
+            <Text style={[styles.kategorieBarText, { color: "#fff" }]}>{selectedCat.Name}</Text>
             <TouchableOpacity
               onPress={(e) => {
                 e.stopPropagation();
@@ -367,15 +330,11 @@ function KategorieBar({
               style={styles.kategorieClearBtn}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={[styles.kategorieClearText, { color: "#fff" }]}>
-                ✕
-              </Text>
+              <Text style={[styles.kategorieClearText, { color: "#fff" }]}>✕</Text>
             </TouchableOpacity>
           </>
         ) : (
-          <Text style={[styles.kategorieBarText, { color: "#fff" }]}>
-            Kategorie wählen ›
-          </Text>
+          <Text style={[styles.kategorieBarText, { color: "#fff" }]}>Kategorie wählen ›</Text>
         )}
       </TouchableOpacity>
     </View>
@@ -390,7 +349,6 @@ const DEFAULT_ZOOM = 5;
 export default function KarteScreen() {
   const router = useRouter();
   const {
-    places: rawPlaces,
     categories: allCategories,
     einstellungen,
     status,
@@ -399,15 +357,10 @@ export default function KarteScreen() {
   } = usePlacesStore();
   const { isPro } = useAuth();
   // Free users see ~20 % of Sehenswürdigkeiten pins; premium sees 100 %.
-  const allPlaces = useMemo(
-    () => getVisiblePlaces(isPro),
-    [getVisiblePlaces, isPro, rawPlaces],
-  );
+  const allPlaces = getVisiblePlaces(isPro);
   const isLoading = status === "loading" || status === "idle";
 
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
-    null,
-  );
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [geoSuggestions, setGeoSuggestions] = useState<
     { name: string; place_formatted: string; lat: number; lon: number }[]
@@ -415,8 +368,7 @@ export default function KarteScreen() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
   const [bottomSectionHeight, setBottomSectionHeight] = useState(0);
-  const [cameraCenter, setCameraCenter] =
-    useState<[number, number]>(DEFAULT_CENTER);
+  const [cameraCenter, setCameraCenter] = useState<[number, number]>(DEFAULT_CENTER);
   const [cameraZoom, setCameraZoom] = useState(DEFAULT_ZOOM);
   const userLocationRef = useRef<[number, number] | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -435,8 +387,7 @@ export default function KarteScreen() {
     gpsLocatedRef.current = true;
     (async () => {
       try {
-        const { status: locStatus } =
-          await Location.requestForegroundPermissionsAsync();
+        const { status: locStatus } = await Location.requestForegroundPermissionsAsync();
         if (locStatus === "granted") {
           const pos = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.Balanced,
@@ -475,18 +426,16 @@ export default function KarteScreen() {
         const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(text)}&language=de&limit=7&types=country,region,district,place&autocomplete=true&access_token=${MAPBOX_TOKEN}`;
         const res = await fetch(url);
         const json = await res.json();
-        const suggestions = (json.features ?? []).map(
-          (f: Record<string, unknown>) => {
-            const props = f.properties as Record<string, unknown>;
-            const geom = f.geometry as { coordinates: [number, number] };
-            return {
-              name: props.name as string,
-              place_formatted: (props.place_formatted ?? "") as string,
-              lat: geom.coordinates[1],
-              lon: geom.coordinates[0],
-            };
-          },
-        );
+        const suggestions = (json.features ?? []).map((f: Record<string, unknown>) => {
+          const props = f.properties as Record<string, unknown>;
+          const geom = f.geometry as { coordinates: [number, number] };
+          return {
+            name: props.name as string,
+            place_formatted: (props.place_formatted ?? "") as string,
+            lat: geom.coordinates[1],
+            lon: geom.coordinates[0],
+          };
+        });
         setGeoSuggestions(suggestions);
         setShowSuggestions(suggestions.length > 0);
       } catch {
@@ -498,12 +447,7 @@ export default function KarteScreen() {
   }, []);
 
   const selectGeoSuggestion = useCallback(
-    async (item: {
-      name: string;
-      place_formatted: string;
-      lat: number;
-      lon: number;
-    }) => {
+    async (item: { name: string; place_formatted: string; lat: number; lon: number }) => {
       setQuery(item.name);
       setShowSuggestions(false);
       setGeoSuggestions([]);
@@ -533,13 +477,9 @@ export default function KarteScreen() {
 
       if (isCluster) {
         // Zoom do poziomu rozwinięcia klastra
-        const coords = (feature.geometry as GeoJSON.Point).coordinates as [
-          number,
-          number,
-        ];
+        const coords = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
         try {
-          const zoom =
-            await shapeSourceRef.current?.getClusterExpansionZoom(feature);
+          const zoom = await shapeSourceRef.current?.getClusterExpansionZoom(feature);
           if (zoom != null) {
             cameraRef.current?.setCamera({
               centerCoordinate: coords,
@@ -585,9 +525,7 @@ export default function KarteScreen() {
         {einstellungen?.Slogan ? (
           <Text style={styles.tagline}>{einstellungen.Slogan}</Text>
         ) : (
-          <Text style={styles.tagline}>
-            Der Audioguide für nachhaltiges Leben und Reisen
-          </Text>
+          <Text style={styles.tagline}>Der Audioguide für nachhaltiges Leben und Reisen</Text>
         )}
       </View>
 
@@ -615,10 +553,7 @@ export default function KarteScreen() {
               visible
               showsUserHeadingIndicator
               onUpdate={(loc) => {
-                userLocationRef.current = [
-                  loc.coords.longitude,
-                  loc.coords.latitude,
-                ];
+                userLocationRef.current = [loc.coords.longitude, loc.coords.latitude];
               }}
             />
 
@@ -646,15 +581,7 @@ export default function KarteScreen() {
                     30,
                     "#f28cb1",
                   ],
-                  circleRadius: [
-                    "step",
-                    ["get", "point_count"],
-                    20,
-                    10,
-                    30,
-                    30,
-                    40,
-                  ],
+                  circleRadius: ["step", ["get", "point_count"], 20, 10, 30, 30, 40],
                   circleStrokeWidth: 2,
                   circleStrokeColor: "#fff",
                 }}
@@ -724,24 +651,18 @@ export default function KarteScreen() {
               fetchGeoSuggestions(t);
             }}
             onFocus={() => {
-              if (query.length >= 2 && geoSuggestions.length > 0)
-                setShowSuggestions(true);
+              if (query.length >= 2 && geoSuggestions.length > 0) setShowSuggestions(true);
             }}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
             onSubmitEditing={() => {
-              if (geoSuggestions.length > 0)
-                selectGeoSuggestion(geoSuggestions[0]);
+              if (geoSuggestions.length > 0) selectGeoSuggestion(geoSuggestions[0]);
               else setShowSuggestions(false);
             }}
           />
           {isFetchingSuggestions && (
-            <ActivityIndicator
-              size="small"
-              color="#fff"
-              style={{ marginLeft: 8 }}
-            />
+            <ActivityIndicator size="small" color="#fff" style={{ marginLeft: 8 }} />
           )}
           {query.length > 0 && !isFetchingSuggestions && (
             <TouchableOpacity onPress={clearSearch} style={styles.clearBtn}>

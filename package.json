@@ -6,16 +6,19 @@
     "start": "doppler run -- expo start",
     "android": "doppler run -- expo start --android",
     "ios": "doppler run -- expo start --ios",
-    "web": "doppler run -- expo start --web"
+    "web": "doppler run -- expo start --web",
+    "lint": "expo lint"
   },
   "dependencies": {
     "@directus/sdk": "^21.3.0",
     "@expo-google-fonts/anton": "^0.4.2",
     "@expo-google-fonts/fira-sans-condensed": "^0.4.1",
     "@react-native-async-storage/async-storage": "2.2.0",
-    "@react-navigation/drawer": "^7.9.4",
+    "@react-navigation/drawer": "^7.10.0",
     "@rnmapbox/maps": "^10.3.0",
     "@supabase/supabase-js": "^2.105.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
     "expo": "^55.0.23",
     "expo-asset": "^55.0.16",
     "expo-audio": "^55.0.14",
@@ -31,6 +34,7 @@
     "expo-splash-screen": "^55.0.20",
     "expo-status-bar": "^55.0.6",
     "expo-system-ui": "^55.0.17",
+    "prettier": "^3.8.3",
     "react": "19.2.4",
     "react-native": "0.83.6",
     "react-native-gesture-handler": "~2.30.0",
@@ -46,6 +50,8 @@
   },
   "devDependencies": {
     "@types/react": "^19.2.14",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~55.0.0",
     "typescript": "~5.9.2"
   },
   "private": true,

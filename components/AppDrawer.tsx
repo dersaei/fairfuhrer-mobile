@@ -25,12 +25,7 @@ interface Props {
 function CloseIcon() {
   return (
     <Svg width={42} height={42} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M18 6L6 18M6 6l12 12"
-        stroke={FF_BLACK}
-        strokeWidth={2}
-        strokeLinecap="round"
-      />
+      <Path d="M18 6L6 18M6 6l12 12" stroke={FF_BLACK} strokeWidth={2} strokeLinecap="round" />
     </Svg>
   );
 }
@@ -75,14 +70,7 @@ function HilfeIcon() {
         strokeWidth={1.8}
         strokeLinecap="round"
       />
-      <Circle
-        cx={12}
-        cy={17}
-        r={0.5}
-        fill={FF_ORANGE}
-        stroke={FF_ORANGE}
-        strokeWidth={1}
-      />
+      <Circle cx={12} cy={17} r={0.5} fill={FF_ORANGE} stroke={FF_ORANGE} strokeWidth={1} />
     </Svg>
   );
 }
@@ -126,12 +114,7 @@ function ImpressumIcon() {
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
       <Circle cx={12} cy={12} r={10} stroke={FF_ORANGE} strokeWidth={1.8} />
-      <Path
-        d="M12 16v-4M12 8h.01"
-        stroke={FF_ORANGE}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-      />
+      <Path d="M12 16v-4M12 8h.01" stroke={FF_ORANGE} strokeWidth={1.8} strokeLinecap="round" />
     </Svg>
   );
 }
@@ -195,10 +178,7 @@ export default function AppDrawer({ visible, onClose }: Props) {
   }
 
   return (
-    <View
-      style={StyleSheet.absoluteFill}
-      pointerEvents={visible ? "auto" : "none"}
-    >
+    <View style={StyleSheet.absoluteFill} pointerEvents={visible ? "auto" : "none"}>
       {/* Backdrop */}
       <Animated.View style={[s.backdrop, { opacity }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
@@ -231,11 +211,7 @@ export default function AppDrawer({ visible, onClose }: Props) {
           <DrawerItem
             label="Feedback senden"
             icon={<FeedbackIcon />}
-            onPress={() =>
-              Linking.openURL(
-                "mailto:info@fairfuehrer.guide?subject=App-Feedback",
-              )
-            }
+            onPress={() => Linking.openURL("mailto:info@fairfuehrer.guide?subject=App-Feedback")}
           />
         </View>
 
