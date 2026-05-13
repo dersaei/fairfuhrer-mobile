@@ -14,7 +14,6 @@ import { useRouter } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
-import type { DirectusOrte, DirectusKategorie } from "@/types";
 import HomeHeader from "@/components/HomeHeader";
 import { PinCard } from "@/components/PinCard";
 import { KategorieBar } from "@/components/KategorieBar";
@@ -62,15 +61,7 @@ export default function ListeScreen() {
   const [orderedIds, setOrderedIds] = useState<number[] | null>(null);
   const [regionFilterIds, setRegionFilterIds] = useState<Set<number> | null>(null);
 
-  const [query, setQuery] = useState("");
-  const [searchFocused, setSearchFocused] = useState(false);
-  // geo suggestions from Mapbox
-  const [geoSuggestions, setGeoSuggestions] = useState<
-    { name: string; place_formatted: string; lat: number; lon: number }[]
-  >([]);
-  const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<Set<number>>(new Set());
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const gpsOrderedIdsRef = useRef<number[] | null>(null);
   const flatListRef = useRef<FlatList<number>>(null);
   const allPlacesRef = useRef(allPlaces);
@@ -140,11 +131,11 @@ export default function ListeScreen() {
   }, [status, isFocused]);
 
   const categoryFilteredPlaces = useMemo(() => {
-    if (selectedCategoryIds.size === 0) return allPlaces;
+    if (selectedCategoryId === null) return allPlaces;
     return allPlaces.filter((p) =>
-      p.Kategorie?.some((k) => k.Kategorie_id && selectedCategoryIds.has(k.Kategorie_id.id)),
+      p.Kategorie?.some((k) => k.Kategorie_id && k.Kategorie_id.id === selectedCategoryId),
     );
-  }, [allPlaces, selectedCategoryIds]);
+  }, [allPlaces, selectedCategoryId]);
 
   const displayedIds = useMemo(() => {
     let result = [...allPlaces];
@@ -154,9 +145,9 @@ export default function ListeScreen() {
       result = result.filter((p) => regionFilterIds.has(p.id));
     }
 
-    if (selectedCategoryIds.size > 0) {
+    if (selectedCategoryId !== null) {
       result = result.filter((p) =>
-        p.Kategorie?.some((k) => k.Kategorie_id && selectedCategoryIds.has(k.Kategorie_id.id)),
+        p.Kategorie?.some((k) => k.Kategorie_id && k.Kategorie_id.id === selectedCategoryId),
       );
     }
 
@@ -166,7 +157,7 @@ export default function ListeScreen() {
     }
 
     return result.map((p) => p.id);
-  }, [allPlaces, regionFilterIds, selectedCategoryIds, orderedIds]);
+  }, [allPlaces, regionFilterIds, selectedCategoryId, orderedIds]);
 
   const handleLocationSelect = useCallback(
     (
@@ -189,9 +180,6 @@ export default function ListeScreen() {
       setActiveRegionName(cityData.name);
 
       if (cityData.fromSearch) {
-        setQuery(cityData.name);
-        setSearchFocused(false);
-        setGeoSuggestions([]);
         Keyboard.dismiss();
       }
 
@@ -199,6 +187,20 @@ export default function ListeScreen() {
         const ids = new Set(placesInRegion(allPlacesRef.current, cityData.region).map((p) => p.id));
         setRegionFilterIds(ids);
         setOrderedIds(null);
+      } else if (cityData.fromSearch && cityData.lat && cityData.lon) {
+        // user selected a Mapbox suggestion
+        setRegionFilterIds(null);
+        supabase
+          .rpc("nearby_orte", {
+            user_lat: cityData.lat,
+            user_lng: cityData.lon,
+          })
+          .then(({ data, error }) => {
+            if (!error && data) {
+              const ids = (data as { id: number }[]).map((p) => p.id);
+              setOrderedIds(ids);
+            }
+          });
       }
 
       flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
@@ -209,64 +211,12 @@ export default function ListeScreen() {
   const clearSearch = useCallback(() => {
     setActiveRegionName(null);
     setRegionFilterIds(null);
-    setQuery("");
-    setSearchFocused(false);
-    setGeoSuggestions([]);
-    setIsFetchingSuggestions(false);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
     Keyboard.dismiss();
     requestAnimationFrame(() => {
       setOrderedIds(gpsOrderedIdsRef.current);
       flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
     });
   }, []);
-
-  const toggleCategory = useCallback((id: number | null) => {
-    if (id === null) {
-      setSelectedCategoryIds(new Set());
-      return;
-    }
-    setSelectedCategoryIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  // Lokalne wyniki wyszukiwania — miejsca + kategorie dopasowane do query
-  type LocalResult =
-    | { type: "place"; place: DirectusOrte }
-    | { type: "category"; cat: DirectusKategorie }
-    | {
-        type: "geo";
-        name: string;
-        place_formatted: string;
-        lat: number;
-        lon: number;
-      };
-
-  const localResults = useMemo((): LocalResult[] => {
-    const q = query.trim().toLowerCase();
-    if (q.length < 2) return [];
-    const results: LocalResult[] = [];
-
-    // Kategorie
-    allCategories.forEach((cat) => {
-      if (cat.Name?.toLowerCase().includes(q)) results.push({ type: "category", cat });
-    });
-
-    // Miejsca — po nazwie i mieście
-    allPlaces.forEach((p) => {
-      if (p.Name?.toLowerCase().includes(q) || p.Stadt?.toLowerCase().includes(q))
-        results.push({ type: "place", place: p });
-    });
-
-    return results.slice(0, 12);
-  }, [query, allPlaces, allCategories]);
 
   const renderCard = useCallback(
     ({ item: placeId }: { item: number }) => (
@@ -338,18 +288,16 @@ export default function ListeScreen() {
       </View>
 
       {/* Przestrzeń pod kartą — city chips wyśrodkowane pionowo */}
-      {!searchFocused && (
-        <View style={styles.belowCards}>
-          <CityChips
-            activeRegionName={activeRegionName}
-            allPlaces={allPlaces}
-            filteredPlaces={categoryFilteredPlaces}
-            onSelectRegion={(region: Region | null) =>
-              handleLocationSelect(region ? { name: region.name, region } : null)
-            }
-          />
-        </View>
-      )}
+      <View style={styles.belowCards}>
+        <CityChips
+          activeRegionName={activeRegionName}
+          allPlaces={allPlaces}
+          filteredPlaces={categoryFilteredPlaces}
+          onSelectRegion={(region: Region | null) =>
+            handleLocationSelect(region ? { name: region.name, region } : null)
+          }
+        />
+      </View>
 
       {/* Dolna sekcja — wyszukiwarka + kategorie */}
       <View
@@ -357,35 +305,24 @@ export default function ListeScreen() {
         onLayout={(e) => setBottomSectionHeight(e.nativeEvent.layout.height)}
       >
         <SearchSection
-          query={query}
-          setQuery={setQuery}
-          searchFocused={searchFocused}
-          setSearchFocused={setSearchFocused}
-          geoSuggestions={geoSuggestions}
-          setGeoSuggestions={setGeoSuggestions}
-          isFetchingSuggestions={isFetchingSuggestions}
-          setIsFetchingSuggestions={setIsFetchingSuggestions}
-          localResults={localResults}
-          selectedCategoryIds={selectedCategoryIds}
-          toggleCategory={toggleCategory}
-          allCategories={allCategories}
-          allPlaces={allPlaces}
-          displayedIds={displayedIds}
-          handleLocationSelect={handleLocationSelect}
-          clearSearch={clearSearch}
+          onSelectGeo={(item) =>
+            handleLocationSelect({
+              name: item.name,
+              lat: item.lat,
+              lon: item.lon,
+              fromSearch: true,
+            })
+          }
+          onClear={clearSearch}
           bottomSectionHeight={bottomSectionHeight}
-          setActiveCityLabel={setActiveRegionName}
         />
 
-        {/* Pasek kategorii — ukryty gdy panel wyszukiwania jest otwarty */}
-        <View style={{ display: searchFocused ? "none" : "flex" }}>
-          <KategorieBar
-            categories={allCategories}
-            selectedIds={selectedCategoryIds}
-            onToggle={toggleCategory}
-            isPro={isPro}
-          />
-        </View>
+        <KategorieBar
+          categories={allCategories}
+          selectedId={selectedCategoryId}
+          onSelect={setSelectedCategoryId}
+          isPro={isPro}
+        />
       </View>
     </SafeAreaView>
   );

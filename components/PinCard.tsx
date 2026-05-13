@@ -61,50 +61,47 @@ export const PinCard = memo(function PinCard({ placeId }: { placeId: number }) {
 
   return (
     <>
-    <LoginPromptModal
-      visible={showLoginPrompt}
-      onClose={() => setShowLoginPrompt(false)}
-    />
-    <TouchableOpacity style={styles.card} activeOpacity={0.95} onPress={handlePress}>
-      <ImageBackground
-        source={imageUrl ? { uri: imageUrl } : undefined}
-        style={styles.cardImage}
-        resizeMode="cover"
-        blurRadius={isLocked ? 8 : 0}
-      >
-        <LinearGradient colors={["rgba(0,0,0,0.5)", "transparent"]} style={styles.gradientTop} />
-        <LinearGradient
-          colors={["transparent", "rgb(252, 108, 20, 0.6)"]}
-          style={styles.gradientBottom}
-        />
-        {isLocked && (
-          <View style={styles.lockOverlay}>
-            <View style={styles.lockBadge}>
-              <LockIcon />
-              <Text style={styles.lockLabel}>Fairführer+</Text>
+      <LoginPromptModal visible={showLoginPrompt} onClose={() => setShowLoginPrompt(false)} />
+      <TouchableOpacity style={styles.card} activeOpacity={0.95} onPress={handlePress}>
+        <ImageBackground
+          source={imageUrl ? { uri: imageUrl } : undefined}
+          style={styles.cardImage}
+          resizeMode="cover"
+          blurRadius={isLocked ? 8 : 0}
+        >
+          <LinearGradient colors={["rgba(0,0,0,0.5)", "transparent"]} style={styles.gradientTop} />
+          <LinearGradient
+            colors={["transparent", "rgb(252, 108, 20, 0.6)"]}
+            style={styles.gradientBottom}
+          />
+          {isLocked && (
+            <View style={styles.lockOverlay}>
+              <View style={styles.lockBadge}>
+                <LockIcon />
+                <Text style={styles.lockLabel}>Fairführer+</Text>
+              </View>
             </View>
+          )}
+          <View style={styles.cardBottom}>
+            <View style={styles.chipWrap}>
+              {categories.map((cat) => (
+                <CategoryIcon
+                  key={cat.id}
+                  categoryId={cat.id}
+                  color={cat.Farbe ?? "#666"}
+                  size={40}
+                />
+              ))}
+            </View>
+            <Text style={styles.cardName} numberOfLines={3}>
+              {place?.Name}
+            </Text>
+            <Text style={styles.cardLocation} numberOfLines={1}>
+              {[place?.Stadt, place?.Land].filter(Boolean).join(", ")}
+            </Text>
           </View>
-        )}
-        <View style={styles.cardBottom}>
-          <View style={styles.chipWrap}>
-            {categories.map((cat) => (
-              <CategoryIcon
-                key={cat.id}
-                categoryId={cat.id}
-                color={cat.Farbe ?? "#666"}
-                size={40}
-              />
-            ))}
-          </View>
-          <Text style={styles.cardName} numberOfLines={3}>
-            {place?.Name}
-          </Text>
-          <Text style={styles.cardLocation} numberOfLines={1}>
-            {[place?.Stadt, place?.Land].filter(Boolean).join(", ")}
-          </Text>
-        </View>
-      </ImageBackground>
-    </TouchableOpacity>
+        </ImageBackground>
+      </TouchableOpacity>
     </>
   );
 });

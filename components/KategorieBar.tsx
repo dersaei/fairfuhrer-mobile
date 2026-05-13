@@ -10,26 +10,29 @@ import {
   Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { DirectusKategorie } from "@/types";
-import { isSightsCategory } from "@/stores/placesStore";
 import { CategoryIcon, CATEGORY_COLORS } from "./CategoryIcon";
+import { isSightsCategory } from "@/stores/placesStore";
+import type { DirectusKategorie } from "@/types";
+
+const DEFAULT_COLOR = "#fc6c14";
 
 export function KategorieBar({
   categories,
-  selectedIds,
-  onToggle,
+  selectedId,
+  onSelect,
   isPro,
 }: {
   categories: DirectusKategorie[];
-  selectedIds: Set<number>;
-  onToggle: (id: number | null) => void;
+  selectedId: number | null;
+  onSelect: (id: number | null) => void;
   isPro: boolean;
 }) {
   const [modalVisible, setModalVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
-  const hasSelection = selectedIds.size > 0;
-  const barColor = hasSelection ? "#fc6c14" : "#000";
+
+  const selectedCat = selectedId ? categories.find((c) => c.id === selectedId) : null;
+  const barColor = selectedCat ? (selectedCat.Farbe ?? DEFAULT_COLOR) : "#000";
 
   const openMenu = useCallback(() => {
     slideAnim.setValue(0);
@@ -46,7 +49,7 @@ export function KategorieBar({
   }, [slideAnim]);
 
   const closeMenu = useCallback(
-    (action: number | "all" | "cancel") => {
+    (id: number | null) => {
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 200,
@@ -54,15 +57,10 @@ export function KategorieBar({
         useNativeDriver: true,
       }).start(() => {
         setModalVisible(false);
-        if (action === "cancel") return;
-        if (action === "all") {
-          onToggle(null);
-          return;
-        }
-        onToggle(action);
+        onSelect(id);
       });
     },
-    [slideAnim, onToggle],
+    [slideAnim, onSelect],
   );
 
   const menuTranslateY = slideAnim.interpolate({
@@ -74,21 +72,14 @@ export function KategorieBar({
     outputRange: [0, 0.4],
   });
 
-  const barLabel = hasSelection
-    ? selectedIds.size === 1
-      ? (categories.find((c) => selectedIds.has(c.id))?.Name ?? "")
-      : `${selectedIds.size} Kategorien`
-    : "Kategorie wählen ›";
-
   return (
     <View>
-      {/* ── Modal z backdropem i menu ── */}
       <Modal
         transparent
         visible={modalVisible}
         animationType="none"
         onShow={handleModalShow}
-        onRequestClose={() => closeMenu("cancel")}
+        onRequestClose={() => closeMenu(selectedId)}
         statusBarTranslucent
       >
         <Animated.View
@@ -98,7 +89,7 @@ export function KategorieBar({
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
-            onPress={() => closeMenu("cancel")}
+            onPress={() => closeMenu(selectedId)}
           />
         </Animated.View>
 
@@ -112,40 +103,44 @@ export function KategorieBar({
             },
           ]}
         >
-          {/* "Alle" */}
           <TouchableOpacity
-            style={[styles.kategorieMenuItem, !hasSelection && styles.kategorieMenuItemActive]}
-            onPress={() => closeMenu("all")}
+            style={[
+              styles.kategorieMenuItem,
+              selectedId === null && styles.kategorieMenuItemActive,
+            ]}
+            onPress={() => closeMenu(null)}
             activeOpacity={0.7}
           >
             <View style={styles.kategorieMenuIcon}>
-              <CategoryIcon categoryId={null} color={!hasSelection ? "#fff" : "#000"} />
+              <CategoryIcon categoryId={null} color={selectedId === null ? "#000" : "#000"} />
             </View>
             <Text
-              style={[styles.kategorieMenuText, !hasSelection && styles.kategorieMenuTextActive]}
+              style={[
+                styles.kategorieMenuText,
+                selectedId === null && styles.kategorieMenuTextActive,
+              ]}
             >
               Alle
             </Text>
           </TouchableOpacity>
-
-          {/* Kategorie — każda niezależnie toggleowana, menu nie zamyka się */}
           {categories.map((cat) => {
-            const isActive = selectedIds.has(cat.id);
+            const isActive = cat.id === selectedId;
             const showSightsHint = !isPro && isSightsCategory(cat);
             return (
               <TouchableOpacity
                 key={cat.id}
                 style={[
                   styles.kategorieMenuItem,
-                  isActive && { backgroundColor: cat.Farbe ?? "#fc6c14" },
+                  isActive && { backgroundColor: cat.Farbe ?? DEFAULT_COLOR },
                 ]}
-                onPress={() => onToggle(cat.id)}
+                onPress={() => closeMenu(cat.id)}
                 activeOpacity={0.7}
               >
                 <View style={styles.kategorieMenuIcon}>
                   <CategoryIcon
                     categoryId={cat.id}
-                    color={isActive ? "#fafafa" : (CATEGORY_COLORS[cat.id] ?? "#fc6c14")}
+                    color={isActive ? "#fff" : (CATEGORY_COLORS[cat.id] ?? DEFAULT_COLOR)}
+                    strokeColor={isActive ? (CATEGORY_COLORS[cat.id] ?? DEFAULT_COLOR) : "white"}
                   />
                 </View>
                 <View style={styles.kategorieMenuTextWrap}>
@@ -169,34 +164,35 @@ export function KategorieBar({
         </Animated.View>
       </Modal>
 
-      {/* ── Trigger bar ── */}
       <TouchableOpacity
         style={[styles.kategorieBar, { backgroundColor: barColor }]}
         onPress={openMenu}
         activeOpacity={0.85}
       >
-        {hasSelection && selectedIds.size === 1 && (
-          <View style={styles.kategorieBarIcon}>
-            <CategoryIcon
-              categoryId={[...selectedIds][0]}
-              color="#fff"
-              strokeColor={barColor}
-              size={28}
-            />
-          </View>
-        )}
-        <Text style={[styles.kategorieBarText, { color: "#fff" }]}>{barLabel}</Text>
-        {hasSelection && (
-          <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation();
-              onToggle(null);
-            }}
-            style={styles.kategorieClearBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Text style={[styles.kategorieClearText, { color: "#fff" }]}>✕</Text>
-          </TouchableOpacity>
+        {selectedCat ? (
+          <>
+            <View style={styles.kategorieBarIcon}>
+              <CategoryIcon
+                categoryId={selectedCat.id}
+                color="#fff"
+                strokeColor={barColor}
+                size={28}
+              />
+            </View>
+            <Text style={[styles.kategorieBarText, { color: "#fff" }]}>{selectedCat.Name}</Text>
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                onSelect(null);
+              }}
+              style={styles.kategorieClearBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={[styles.kategorieClearText, { color: "#fff" }]}>✕</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <Text style={[styles.kategorieBarText, { color: "#fff" }]}>Kategorie wählen ›</Text>
         )}
       </TouchableOpacity>
     </View>
@@ -204,31 +200,6 @@ export function KategorieBar({
 }
 
 const styles = StyleSheet.create({
-  kategorieBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderTopWidth: 1,
-    borderColor: "#000",
-    paddingHorizontal: 14,
-    paddingVertical: Platform.OS === "ios" ? 12 : 10,
-  },
-  kategorieBarIcon: {
-    marginRight: 10,
-  },
-  kategorieBarText: {
-    fontSize: 18,
-    fontFamily: "FiraSansCondensed_600SemiBold",
-    color: "#000",
-    flex: 1,
-  },
-  kategorieClearBtn: {
-    paddingLeft: 10,
-  },
-  kategorieClearText: {
-    fontSize: 16,
-    color: "#000",
-  },
   kategorieBackdrop: {
     position: "absolute",
     top: 0,
@@ -255,9 +226,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
-  kategorieMenuItemActive: {
-    backgroundColor: "#000",
-  },
+  kategorieMenuItemActive: { backgroundColor: "#000" },
   kategorieMenuIcon: {
     marginRight: 14,
     width: 36,
@@ -271,9 +240,7 @@ const styles = StyleSheet.create({
     fontFamily: "FiraSansCondensed_600SemiBold",
     color: "#000",
   },
-  kategorieMenuTextActive: {
-    color: "#fff",
-  },
+  kategorieMenuTextActive: { color: "#fff" },
   kategorieMenuHint: {
     fontSize: 13,
     fontFamily: "FiraSansCondensed_400Regular",
@@ -281,7 +248,23 @@ const styles = StyleSheet.create({
     marginTop: 2,
     paddingRight: 8,
   },
-  kategorieMenuHintActive: {
-    color: "rgba(255,255,255,0.9)",
+  kategorieMenuHintActive: { color: "rgba(255,255,255,0.9)" },
+  kategorieBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    borderColor: "#000",
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === "ios" ? 12 : 10,
   },
+  kategorieBarIcon: { marginRight: 10 },
+  kategorieBarText: {
+    fontSize: 18,
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    color: "#000",
+    flex: 1,
+  },
+  kategorieClearBtn: { paddingLeft: 10 },
+  kategorieClearText: { fontSize: 16, color: "#000" },
 });

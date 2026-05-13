@@ -1,12 +1,5 @@
 import React from "react";
-import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Pressable,
-} from "react-native";
+import { Modal, View, Text, TouchableOpacity, StyleSheet, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import Svg, { Path, Circle } from "react-native-svg";
 
@@ -65,22 +58,17 @@ export function LoginPromptModal({ visible, onClose }: LoginPromptModalProps) {
           <Text style={styles.title}>Fairführer+</Text>
 
           <Text style={styles.body}>
-            Dieser Audiopin ist Teil unserer Premium-Kollektion. Um ihn
-            freizuschalten, erstelle ein kostenloses Konto und upgrade auf{" "}
-            <Text style={styles.highlight}>Fairführer+</Text> in der App.
+            Dieser Audiopin ist Teil unserer Premium-Kollektion. Um ihn freizuschalten, erstelle ein
+            kostenloses Konto und upgrade auf <Text style={styles.highlight}>Fairführer+</Text> in
+            der App.
           </Text>
 
           <Text style={styles.hint}>
-            Du hast bereits ein Konto? Melde dich an und kaufe Fairführer+ im
-            Bereich „Mein Konto".
+            Du hast bereits ein Konto? Melde dich an und kaufe Fairführer+ im Bereich Mein Konto.
           </Text>
 
           <View style={styles.buttons}>
-            <TouchableOpacity
-              style={styles.btnPrimary}
-              onPress={handleLogin}
-              activeOpacity={0.85}
-            >
+            <TouchableOpacity style={styles.btnPrimary} onPress={handleLogin} activeOpacity={0.85}>
               <Text style={styles.btnPrimaryText}>Zum Profil &amp; Anmelden</Text>
             </TouchableOpacity>
           </View>
