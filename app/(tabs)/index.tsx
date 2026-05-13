@@ -14,13 +14,13 @@ import { useRouter } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/lib/supabase";
 import type { DirectusOrte, DirectusKategorie } from "@/types";
 import HomeHeader from "@/components/HomeHeader";
 import { PinCard } from "@/components/PinCard";
 import { KategorieBar } from "@/components/KategorieBar";
 import { SearchSection } from "@/components/SearchSection";
-import { CityChips, type Region } from "@/components/CityChips";
+import { CityChips, placesInRegion, type Region } from "@/components/CityChips";
+import { supabase } from "@/lib/supabase";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -48,14 +48,19 @@ export default function ListeScreen() {
     status,
     error,
     fetchAll,
-    getVisiblePlaces,
+    getAllPlacesWithLocked,
   } = usePlacesStore();
   const { isPro } = useAuth();
-  // Free users see ~20 % of Sehenswürdigkeiten pins; premium sees 100 %.
-  const allPlaces = getVisiblePlaces(isPro);
+  // All places shown; locked ones open paywall on tap (same logic as map).
+  const { places: allPlaces } = useMemo(
+    () => getAllPlacesWithLocked(isPro),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [getAllPlacesWithLocked, isPro, status],
+  );
   const isLoading = status === "loading" || status === "idle";
 
   const [orderedIds, setOrderedIds] = useState<number[] | null>(null);
+  const [regionFilterIds, setRegionFilterIds] = useState<Set<number> | null>(null);
 
   const [query, setQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -134,8 +139,20 @@ export default function ListeScreen() {
     };
   }, [status, isFocused]);
 
+  const categoryFilteredPlaces = useMemo(() => {
+    if (selectedCategoryIds.size === 0) return allPlaces;
+    return allPlaces.filter((p) =>
+      p.Kategorie?.some((k) => k.Kategorie_id && selectedCategoryIds.has(k.Kategorie_id.id)),
+    );
+  }, [allPlaces, selectedCategoryIds]);
+
   const displayedIds = useMemo(() => {
     let result = [...allPlaces];
+
+    // Filtruj do wybranego regionu (chip)
+    if (regionFilterIds !== null) {
+      result = result.filter((p) => regionFilterIds.has(p.id));
+    }
 
     if (selectedCategoryIds.size > 0) {
       result = result.filter((p) =>
@@ -149,12 +166,13 @@ export default function ListeScreen() {
     }
 
     return result.map((p) => p.id);
-  }, [allPlaces, selectedCategoryIds, orderedIds]);
+  }, [allPlaces, regionFilterIds, selectedCategoryIds, orderedIds]);
 
   const handleLocationSelect = useCallback(
-    async (cityData: { name: string; lat: number; lon: number; fromSearch?: boolean } | null) => {
+    (cityData: { name: string; region?: Region; fromSearch?: boolean; lat?: number; lon?: number } | null) => {
       if (!cityData) {
         setActiveRegionName(null);
+        setRegionFilterIds(null);
         setOrderedIds(gpsOrderedIdsRef.current);
         flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
         return;
@@ -169,15 +187,14 @@ export default function ListeScreen() {
         Keyboard.dismiss();
       }
 
-      const { data, error } = await supabase.rpc("nearby_orte", {
-        user_lat: cityData.lat,
-        user_lng: cityData.lon,
-      });
+      if (cityData.region) {
+        const ids = new Set(
+          placesInRegion(allPlacesRef.current, cityData.region).map((p) => p.id),
+        );
+        setRegionFilterIds(ids);
+        setOrderedIds(null);
+      }
 
-      if (error || !data) return;
-
-      const ids = (data as { id: number }[]).map((p) => p.id);
-      setOrderedIds(ids);
       flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
     },
     [],
@@ -185,6 +202,7 @@ export default function ListeScreen() {
 
   const clearSearch = useCallback(() => {
     setActiveRegionName(null);
+    setRegionFilterIds(null);
     setQuery("");
     setSearchFocused(false);
     setGeoSuggestions([]);
@@ -318,10 +336,10 @@ export default function ListeScreen() {
         <View style={styles.belowCards}>
           <CityChips
             activeRegionName={activeRegionName}
+            allPlaces={allPlaces}
+            filteredPlaces={categoryFilteredPlaces}
             onSelectRegion={(region: Region | null) =>
-              handleLocationSelect(
-                region ? { name: region.name, lat: region.centerLat, lon: region.centerLon } : null,
-              )
+              handleLocationSelect(region ? { name: region.name, region } : null)
             }
           />
         </View>

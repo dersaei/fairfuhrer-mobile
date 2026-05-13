@@ -1,45 +1,46 @@
-import React, { useEffect, useState } from "react";
+import React, { useMemo } from "react";
 import { ScrollView, TouchableOpacity, Text, StyleSheet } from "react-native";
-import { supabase } from "@/lib/supabase";
+import type { DirectusOrte } from "@/types";
 
 export type Region = {
   label: string;
-  name: string; // klucz dla RPC (angielski bez znaków diakr.)
-  centerLat: number;
-  centerLon: number;
+  name: string;
+  land: string; // wartość pola Land w Directus
 };
 
 export const REGIONS: Region[] = [
-  { label: "Bodensee", name: "Bodensee", centerLat: 47.66, centerLon: 9.18 },
-  { label: "Allgäu", name: "Allgäu", centerLat: 47.52, centerLon: 10.19 },
-  { label: "Ostschweiz", name: "Ostschweiz", centerLat: 47.42, centerLon: 9.37 },
-  { label: "Vorarlberg", name: "Vorarlberg", centerLat: 47.24, centerLon: 9.74 },
-  { label: "Oberschwaben", name: "Oberschwaben", centerLat: 47.98, centerLon: 10.18 },
-  { label: "Ostallgäu", name: "Ostallgäu", centerLat: 47.77, centerLon: 10.62 },
+  { label: "Deutschland", name: "Deutschland", land: "Deutschland" },
+  { label: "Österreich", name: "Österreich", land: "Österreich" },
+  { label: "Schweiz", name: "Schweiz", land: "Schweiz" },
 ];
+
+export function placesInRegion(places: DirectusOrte[], region: Region): DirectusOrte[] {
+  return places.filter((p) => p.Land === region.land);
+}
 
 export function CityChips({
   activeRegionName,
   onSelectRegion,
+  allPlaces,
+  filteredPlaces,
 }: {
   activeRegionName: string | null;
   onSelectRegion: (region: Region | null) => void;
+  allPlaces: DirectusOrte[];
+  filteredPlaces: DirectusOrte[];
 }) {
-  const [counts, setCounts] = useState<Record<string, number>>({});
+  const counts = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const region of REGIONS) {
+      map[region.name] = placesInRegion(filteredPlaces, region).length;
+    }
+    return map;
+  }, [filteredPlaces]);
 
-  useEffect(() => {
-    supabase.rpc("region_audio_counts").then(({ data }) => {
-      if (!data) return;
-      const map: Record<string, number> = {};
-      (data as { region: string; pin_count: number }[]).forEach((row) => {
-        map[row.region] = row.pin_count;
-      });
-      setCounts(map);
-    });
-  }, []);
-
-  // Wyświetlaj tylko regiony które mają przynajmniej 1 pin
-  const visibleRegions = REGIONS.filter((r) => (counts[r.name] ?? 0) > 0);
+  const visibleRegions = useMemo(
+    () => REGIONS.filter((r) => placesInRegion(allPlaces, r).length > 0),
+    [allPlaces],
+  );
 
   return (
     <ScrollView
@@ -60,7 +61,7 @@ export function CityChips({
           >
             <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
               {region.label}
-              {count ? ` (${count})` : ""}
+              {count > 0 ? ` (${count})` : ""}
             </Text>
           </TouchableOpacity>
         );

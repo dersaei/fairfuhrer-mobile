@@ -14,9 +14,12 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Line } from "react-native-svg";
+import Svg, { Line, Path, Circle } from "react-native-svg";
+import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { usePlacesStore } from "@/stores/placesStore";
+import { useAuth } from "@/context/AuthContext";
+import { ENTITLEMENT_ID } from "@/lib/revenuecat";
 import type { DirectusKategorie, DirectusOrte } from "@/types";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -303,8 +306,27 @@ export default function PlaceScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
+  const [paywallShown, setPaywallShown] = useState(false);
 
+  const { isPro, refreshPro } = useAuth();
   const place = usePlacesStore((s) => s.getPlaceById(Number(id)));
+  const isLocked = usePlacesStore((s) => s.isLockedPlace(Number(id), isPro));
+
+  // Deep-link guard: if someone navigates directly to a locked place (e.g.
+  // shared URL), show the paywall immediately instead of the detail screen.
+  useEffect(() => {
+    if (!isLocked || paywallShown) return;
+    setPaywallShown(true);
+    RevenueCatUI.presentPaywallIfNeeded({
+      requiredEntitlementIdentifier: ENTITLEMENT_ID,
+    }).then(async (result) => {
+      if (result === PAYWALL_RESULT.PURCHASED || result === PAYWALL_RESULT.RESTORED) {
+        await refreshPro();
+      } else {
+        router.back();
+      }
+    });
+  }, [isLocked, paywallShown, refreshPro, router]);
 
   if (!place) {
     return (
@@ -316,6 +338,9 @@ export default function PlaceScreen() {
       </View>
     );
   }
+
+  // While paywall is being shown for a locked place, render nothing.
+  if (isLocked) return null;
 
   const imageUrl = getImageUrl(place);
   const audioUrl = getAudioUrl(place);

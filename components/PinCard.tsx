@@ -1,30 +1,90 @@
-import React, { memo, useCallback } from "react";
+import React, { memo, useCallback, useState } from "react";
 import { View, Text, TouchableOpacity, ImageBackground, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import Svg, { Path, Circle } from "react-native-svg";
 import { useRouter } from "expo-router";
+import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 import { usePlacesStore } from "@/stores/placesStore";
+import { useAuth } from "@/context/AuthContext";
+import { ENTITLEMENT_ID } from "@/lib/revenuecat";
 import { CategoryIcon } from "./CategoryIcon";
 import { getImageUrl, getCategoriesFromPlace } from "@/utils/placeHelpers";
+import { LoginPromptModal } from "./LoginPromptModal";
+
+function LockIcon() {
+  return (
+    <Svg width={36} height={36} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M7 11V7a5 5 0 0 1 10 0v4"
+        stroke="#fff"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M5 11h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z"
+        stroke="#fff"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Circle cx={12} cy={16} r={1.5} fill="#fff" />
+    </Svg>
+  );
+}
 
 export const PinCard = memo(function PinCard({ placeId }: { placeId: number }) {
   const router = useRouter();
+  const { session, isPro, refreshPro } = useAuth();
   const place = usePlacesStore((s) => s.getPlaceById(placeId));
+  const isLocked = usePlacesStore((s) => s.isLockedPlace(placeId, isPro));
   const imageUrl = place ? getImageUrl(place) : null;
   const categories = place ? getCategoriesFromPlace(place) : [];
-  const handlePress = useCallback(() => router.push(`/place/${placeId}`), [router, placeId]);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+
+  const handlePress = useCallback(async () => {
+    if (isLocked) {
+      if (!session) {
+        setShowLoginPrompt(true);
+        return;
+      }
+      const result = await RevenueCatUI.presentPaywallIfNeeded({
+        requiredEntitlementIdentifier: ENTITLEMENT_ID,
+      });
+      if (result === PAYWALL_RESULT.PURCHASED || result === PAYWALL_RESULT.RESTORED) {
+        await refreshPro();
+      }
+      return;
+    }
+    router.push(`/place/${placeId}`);
+  }, [isLocked, session, placeId, router, refreshPro]);
 
   return (
+    <>
+    <LoginPromptModal
+      visible={showLoginPrompt}
+      onClose={() => setShowLoginPrompt(false)}
+    />
     <TouchableOpacity style={styles.card} activeOpacity={0.95} onPress={handlePress}>
       <ImageBackground
         source={imageUrl ? { uri: imageUrl } : undefined}
         style={styles.cardImage}
         resizeMode="cover"
+        blurRadius={isLocked ? 8 : 0}
       >
         <LinearGradient colors={["rgba(0,0,0,0.5)", "transparent"]} style={styles.gradientTop} />
         <LinearGradient
           colors={["transparent", "rgb(252, 108, 20, 0.6)"]}
           style={styles.gradientBottom}
         />
+        {isLocked && (
+          <View style={styles.lockOverlay}>
+            <View style={styles.lockBadge}>
+              <LockIcon />
+              <Text style={styles.lockLabel}>Fairführer+</Text>
+            </View>
+          </View>
+        )}
         <View style={styles.cardBottom}>
           <View style={styles.chipWrap}>
             {categories.map((cat) => (
@@ -45,6 +105,7 @@ export const PinCard = memo(function PinCard({ placeId }: { placeId: number }) {
         </View>
       </ImageBackground>
     </TouchableOpacity>
+    </>
   );
 });
 
@@ -95,5 +156,31 @@ const styles = StyleSheet.create({
     fontFamily: "FiraSansCondensed_400Regular",
     marginTop: 2,
     marginBottom: 4,
+  },
+  lockOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  lockBadge: {
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.25)",
+  },
+  lockLabel: {
+    fontFamily: "FiraSansCondensed_700Bold",
+    fontSize: 18,
+    color: "#fff",
+    letterSpacing: 1.5,
   },
 });

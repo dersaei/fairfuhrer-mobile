@@ -77,6 +77,43 @@ function stableHash01(place: DirectusOrte): number {
   return (h >>> 0) / 0x100000000;
 }
 
+// ─── Shared gating computation ───────────────────────────────────────────────
+//
+// Returns two sets for free users:
+//   visibleSightsIds — the top-20% Sehenswertes places (unlocked)
+//   lockedSightsIds  — the remaining 80% (shown on map, paywall on tap)
+//
+// For premium users both sets are empty (not needed — all places are open).
+
+function computeSightsGating(
+  places: DirectusOrte[],
+  categories: DirectusKategorie[],
+): { visibleSightsIds: Set<number>; lockedSightsIds: Set<number> } {
+  const sightsCategoryIds = new Set(
+    categories.filter(isSightsCategory).map((c) => c.id),
+  );
+  if (sightsCategoryIds.size === 0) {
+    return { visibleSightsIds: new Set(), lockedSightsIds: new Set() };
+  }
+
+  const sights: DirectusOrte[] = [];
+  for (const p of places) {
+    if (placeHasSights(p, sightsCategoryIds)) sights.push(p);
+  }
+  if (sights.length === 0) {
+    return { visibleSightsIds: new Set(), lockedSightsIds: new Set() };
+  }
+
+  const visibleCount = Math.ceil(FREE_VISIBLE_RATIO * sights.length);
+  const ranked = sights
+    .map((p) => ({ p, h: stableHash01(p) }))
+    .sort((a, b) => (a.h === b.h ? a.p.id - b.p.id : a.h - b.h));
+
+  const visibleSightsIds = new Set(ranked.slice(0, visibleCount).map((x) => x.p.id));
+  const lockedSightsIds = new Set(ranked.slice(visibleCount).map((x) => x.p.id));
+  return { visibleSightsIds, lockedSightsIds };
+}
+
 // ─── Store ──────────────────────────────────────────────────────────────────
 
 interface PlacesState {
@@ -88,6 +125,14 @@ interface PlacesState {
 
   getPlaceById: (id: number) => DirectusOrte | undefined;
   getVisiblePlaces: (isPro: boolean) => DirectusOrte[];
+  // Returns all places (for map display), plus the set of locked IDs.
+  // Locked = Sehenswertes but outside the free 20% — shown as pins,
+  // but tapping opens paywall instead of the detail screen.
+  getAllPlacesWithLocked: (isPro: boolean) => {
+    places: DirectusOrte[];
+    lockedIds: Set<number>;
+  };
+  isLockedPlace: (placeId: number, isPro: boolean) => boolean;
   fetchAll: () => Promise<void>;
 }
 
@@ -109,31 +154,33 @@ export const usePlacesStore = create<PlacesState>((set, get) => ({
     const { places, categories } = get();
     if (isPro) return places;
 
+    const { visibleSightsIds, lockedSightsIds } = computeSightsGating(places, categories);
+    if (visibleSightsIds.size === 0 && lockedSightsIds.size === 0) return places;
+
     const sightsCategoryIds = new Set(
       categories.filter(isSightsCategory).map((c) => c.id),
     );
-    if (sightsCategoryIds.size === 0) return places;
-
-    const sights: DirectusOrte[] = [];
-    const others: DirectusOrte[] = [];
-    for (const p of places) {
-      if (placeHasSights(p, sightsCategoryIds)) sights.push(p);
-      else others.push(p);
-    }
-    if (sights.length === 0) return others;
-
-    const visibleCount = Math.ceil(FREE_VISIBLE_RATIO * sights.length);
-    const ranked = sights
-      .map((p) => ({ p, h: stableHash01(p) }))
-      .sort((a, b) => (a.h === b.h ? a.p.id - b.p.id : a.h - b.h))
-      .slice(0, visibleCount)
-      .map((x) => x.p);
-    const visibleSightsIds = new Set(ranked.map((p) => p.id));
-
     return places.filter(
       (p) =>
         !placeHasSights(p, sightsCategoryIds) || visibleSightsIds.has(p.id),
     );
+  },
+
+  // For map: returns ALL places (so locked pins still appear) plus the set
+  // of locked IDs so the map layer can route taps to paywall.
+  getAllPlacesWithLocked: (isPro) => {
+    const { places, categories } = get();
+    if (isPro) return { places, lockedIds: new Set() };
+
+    const { lockedSightsIds } = computeSightsGating(places, categories);
+    return { places, lockedIds: lockedSightsIds };
+  },
+
+  isLockedPlace: (placeId, isPro) => {
+    if (isPro) return false;
+    const { places, categories } = get();
+    const { lockedSightsIds } = computeSightsGating(places, categories);
+    return lockedSightsIds.has(placeId);
   },
 
   fetchAll: async () => {

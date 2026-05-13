@@ -28,8 +28,11 @@ import type { ComponentRef } from "react";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
+import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 import { usePlacesStore, isSightsCategory } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
+import { ENTITLEMENT_ID } from "@/lib/revenuecat";
+import { LoginPromptModal } from "@/components/LoginPromptModal";
 import type { DirectusOrte, DirectusKategorie } from "@/types";
 import MenuButton from "@/components/MenuButton";
 
@@ -135,7 +138,10 @@ function CategoryIcon({
 
 // ─── GeoJSON builder ──────────────────────────────────────────────────────────
 
-function placesToGeoJSON(places: DirectusOrte[]): GeoJSON.FeatureCollection {
+function placesToGeoJSON(
+  places: DirectusOrte[],
+  lockedIds: Set<number>,
+): GeoJSON.FeatureCollection {
   return {
     type: "FeatureCollection",
     features: places
@@ -150,6 +156,7 @@ function placesToGeoJSON(places: DirectusOrte[]): GeoJSON.FeatureCollection {
           },
           properties: {
             placeId: p.id,
+            locked: lockedIds.has(p.id) ? 1 : 0,
             categoryColor:
               catId !== null ? (CATEGORY_COLORS[catId] ?? DEFAULT_COLOR) : DEFAULT_COLOR,
           },
@@ -353,11 +360,16 @@ export default function KarteScreen() {
     einstellungen,
     status,
     fetchAll,
-    getVisiblePlaces,
+    getAllPlacesWithLocked,
   } = usePlacesStore();
-  const { isPro } = useAuth();
-  // Free users see ~20 % of Sehenswürdigkeiten pins; premium sees 100 %.
-  const allPlaces = getVisiblePlaces(isPro);
+  const { session, isPro, refreshPro } = useAuth();
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  // All Sehenswertes pins shown on map; locked ones open paywall on tap.
+  const { places: allPlaces, lockedIds } = useMemo(
+    () => getAllPlacesWithLocked(isPro),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [getAllPlacesWithLocked, isPro, status],
+  );
   const isLoading = status === "loading" || status === "idle";
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
@@ -409,8 +421,8 @@ export default function KarteScreen() {
         : allPlaces.filter((p) =>
             p.Kategorie?.some((k) => k.Kategorie_id?.id === selectedCategoryId),
           );
-    return placesToGeoJSON(filtered);
-  }, [allPlaces, selectedCategoryId]);
+    return placesToGeoJSON(filtered, lockedIds);
+  }, [allPlaces, lockedIds, selectedCategoryId]);
 
   const fetchGeoSuggestions = useCallback((text: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -496,11 +508,28 @@ export default function KarteScreen() {
         return;
       }
 
-      // Pojedynczy pin — otwórz szczegóły
+      // Pojedynczy pin — locked otwiera paywall, odblokowany otwiera szczegóły
       const placeId = feature.properties.placeId as number;
-      if (placeId) router.push(`/place/${placeId}`);
+      const isLocked = feature.properties.locked === 1;
+      if (!placeId) return;
+
+      if (isLocked) {
+        if (!session) {
+          setShowLoginPrompt(true);
+          return;
+        }
+        const result = await RevenueCatUI.presentPaywallIfNeeded({
+          requiredEntitlementIdentifier: ENTITLEMENT_ID,
+        });
+        if (result === PAYWALL_RESULT.PURCHASED || result === PAYWALL_RESULT.RESTORED) {
+          await refreshPro();
+        }
+        return;
+      }
+
+      router.push(`/place/${placeId}`);
     },
-    [router],
+    [router, session, refreshPro],
   );
 
   return (
@@ -680,6 +709,11 @@ export default function KarteScreen() {
       </View>
 
       {/* Sugestie — absolute nad bottomSection, poza jego drzewem */}
+      <LoginPromptModal
+        visible={showLoginPrompt}
+        onClose={() => setShowLoginPrompt(false)}
+      />
+
       {showSuggestions && geoSuggestions.length > 0 && (
         <View style={[styles.suggestionsBox, { bottom: bottomSectionHeight }]}>
           <ScrollView keyboardShouldPersistTaps="handled" bounces={false}>
