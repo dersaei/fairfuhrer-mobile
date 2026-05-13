@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState } from "react";
 
 interface DrawerContextType {
   isOpen: boolean;
@@ -15,7 +15,9 @@ const DrawerContext = createContext<DrawerContextType>({
 export function DrawerProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   return (
-    <DrawerContext.Provider value={{ isOpen, openDrawer: () => setIsOpen(true), closeDrawer: () => setIsOpen(false) }}>
+    <DrawerContext.Provider
+      value={{ isOpen, openDrawer: () => setIsOpen(true), closeDrawer: () => setIsOpen(false) }}
+    >
       {children}
     </DrawerContext.Provider>
   );

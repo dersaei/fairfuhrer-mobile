@@ -38,11 +38,6 @@ export function LoginPromptModal({ visible, onClose }: LoginPromptModalProps) {
     router.push("/(tabs)/profil");
   };
 
-  const handleRegister = () => {
-    onClose();
-    router.push("/(tabs)/profil");
-  };
-
   return (
     <Modal
       visible={visible}

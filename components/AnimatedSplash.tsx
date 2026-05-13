@@ -20,6 +20,7 @@ export default function AnimatedSplash({ onFinished }: Props) {
         scheduleOnRN(onFinished);
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => ({

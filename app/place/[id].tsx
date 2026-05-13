@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Line, Path, Circle } from "react-native-svg";
+import Svg, { Line, Path } from "react-native-svg";
 import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { usePlacesStore } from "@/stores/placesStore";

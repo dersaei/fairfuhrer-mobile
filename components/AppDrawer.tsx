@@ -168,6 +168,7 @@ export default function AppDrawer({ visible, onClose }: Props) {
         }),
       ]).start();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   if (!visible && (translateX as any)._value === DRAWER_WIDTH) return null;

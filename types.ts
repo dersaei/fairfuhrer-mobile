@@ -22,7 +22,7 @@ export interface Zertifizierung {
 export type Kategorie = Category;
 
 export interface GeoJSONPoint {
-  type: 'Point';
+  type: "Point";
   coordinates: [number, number]; // [longitude, latitude]
 }
 
@@ -47,8 +47,8 @@ export interface Place {
 
 export type Orte = Place;
 
-export type PanelState = 'closed' | 'opening' | 'open' | 'closing';
-export type LoadingState = 'idle' | 'loading' | 'success' | 'error';
+export type PanelState = "closed" | "opening" | "open" | "closing";
+export type LoadingState = "idle" | "loading" | "success" | "error";
 
 export type Coordinates = [longitude: number, latitude: number];
 
@@ -108,7 +108,7 @@ export interface DirectusEinstellungen {
 // TYPY DLA UŻYTKOWNIKA / AUTH
 // ========================================
 
-export type UserRole = 'free' | 'premium';
+export type UserRole = "free" | "premium";
 
 export interface AppUser {
   id: string;

@@ -159,6 +159,7 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
     progressTranslateY.value = withDelay(300, withTiming(0, { duration: 600, easing: ease }));
     speedOpacity.value = withDelay(500, withTiming(1, { duration: 600, easing: ease }));
     speedTranslateY.value = withDelay(500, withTiming(0, { duration: 600, easing: ease }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // pulse 2s infinite — identyczne z web @keyframes pulse (scale 1→1.05→1)
@@ -175,6 +176,7 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
       cancelAnimation(pulseScale);
       pulseScale.value = withTiming(1, { duration: 150 });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying]);
 
   // ── Animated styles ───────────────────────────────────────────────────────
