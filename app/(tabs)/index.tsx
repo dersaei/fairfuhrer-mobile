@@ -169,7 +169,15 @@ export default function ListeScreen() {
   }, [allPlaces, regionFilterIds, selectedCategoryIds, orderedIds]);
 
   const handleLocationSelect = useCallback(
-    (cityData: { name: string; region?: Region; fromSearch?: boolean; lat?: number; lon?: number } | null) => {
+    (
+      cityData: {
+        name: string;
+        region?: Region;
+        fromSearch?: boolean;
+        lat?: number;
+        lon?: number;
+      } | null,
+    ) => {
       if (!cityData) {
         setActiveRegionName(null);
         setRegionFilterIds(null);
@@ -188,9 +196,7 @@ export default function ListeScreen() {
       }
 
       if (cityData.region) {
-        const ids = new Set(
-          placesInRegion(allPlacesRef.current, cityData.region).map((p) => p.id),
-        );
+        const ids = new Set(placesInRegion(allPlacesRef.current, cityData.region).map((p) => p.id));
         setRegionFilterIds(ids);
         setOrderedIds(null);
       }

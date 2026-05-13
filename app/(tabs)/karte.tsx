@@ -709,10 +709,7 @@ export default function KarteScreen() {
       </View>
 
       {/* Sugestie — absolute nad bottomSection, poza jego drzewem */}
-      <LoginPromptModal
-        visible={showLoginPrompt}
-        onClose={() => setShowLoginPrompt(false)}
-      />
+      <LoginPromptModal visible={showLoginPrompt} onClose={() => setShowLoginPrompt(false)} />
 
       {showSuggestions && geoSuggestions.length > 0 && (
         <View style={[styles.suggestionsBox, { bottom: bottomSectionHeight }]}>
