@@ -10,9 +10,8 @@ import Mapbox, {
   SymbolLayer,
 } from "@rnmapbox/maps";
 import type { ComponentRef } from "react";
-import * as Location from "expo-location";
 import { useRouter } from "expo-router";
-import { useIsFocused } from "@react-navigation/native";
+import { useTabGpsCenter } from "@/hooks/useTabGpsCenter";
 import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
@@ -63,9 +62,6 @@ function placesToGeoJSON(
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
-const DEFAULT_CENTER: [number, number] = [10.0, 51.0];
-const DEFAULT_ZOOM = 5;
-
 export default function KarteScreen() {
   const router = useRouter();
   const {
@@ -87,37 +83,14 @@ export default function KarteScreen() {
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [bottomSectionHeight, setBottomSectionHeight] = useState(0);
-  const [cameraCenter, setCameraCenter] = useState<[number, number]>(DEFAULT_CENTER);
-  const [cameraZoom, setCameraZoom] = useState(DEFAULT_ZOOM);
+  const { center: cameraCenter, zoom: cameraZoom } = useTabGpsCenter(status === "success");
   const userLocationRef = useRef<[number, number] | null>(null);
   const shapeSourceRef = useRef<ComponentRef<typeof ShapeSource>>(null);
   const cameraRef = useRef<Camera>(null);
-  const isFocused = useIsFocused();
-  const gpsLocatedRef = useRef(false);
 
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
-
-  // GPS tylko gdy tab jest aktywny i dane gotowe — nie przy starcie aplikacji
-  useEffect(() => {
-    if (status !== "success" || !isFocused || gpsLocatedRef.current) return;
-    gpsLocatedRef.current = true;
-    (async () => {
-      try {
-        const { status: locStatus } = await Location.requestForegroundPermissionsAsync();
-        if (locStatus === "granted") {
-          const pos = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-          setCameraCenter([pos.coords.longitude, pos.coords.latitude]);
-          setCameraZoom(10);
-        }
-      } catch {
-        /* zostaje domyślne centrum */
-      }
-    })();
-  }, [status, isFocused]);
 
   // GeoJSON — przeliczany tylko gdy zmienia się lista lub filtr
   const geoJSON = useMemo(() => {
@@ -161,8 +134,12 @@ export default function KarteScreen() {
           }
         } catch {
           // fallback — zoom o 2 poziomy
-          setCameraCenter(coords);
-          setCameraZoom((z) => Math.min(z + 2, 20));
+          cameraRef.current?.setCamera({
+            centerCoordinate: coords,
+            zoomLevel: Math.min(cameraZoom + 2, 20),
+            animationMode: "flyTo",
+            animationDuration: 300,
+          });
         }
         return;
       }
@@ -188,7 +165,7 @@ export default function KarteScreen() {
 
       router.push(`/place/${placeId}`);
     },
-    [router, session, refreshPro],
+    [router, session, refreshPro, cameraZoom],
   );
 
   return (

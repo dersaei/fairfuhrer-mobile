@@ -9,9 +9,6 @@ import {
   Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as Location from "expo-location";
-import { useRouter } from "expo-router";
-import { useIsFocused } from "@react-navigation/native";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
 import HomeHeader from "@/components/HomeHeader";
@@ -20,6 +17,7 @@ import { KategorieBar } from "@/components/KategorieBar";
 import { SearchSection } from "@/components/SearchSection";
 import { CityChips, placesInRegion, type Region } from "@/components/CityChips";
 import { supabase } from "@/lib/supabase";
+import { useGpsSort } from "@/hooks/useGpsSort";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -58,77 +56,24 @@ export default function ListeScreen() {
   );
   const isLoading = status === "loading" || status === "idle";
 
-  const [orderedIds, setOrderedIds] = useState<number[] | null>(null);
+  const {
+    orderedIds,
+    setOrderedIds,
+    orderedIdsRef: gpsOrderedIdsRef,
+  } = useGpsSort(status === "success");
   const [regionFilterIds, setRegionFilterIds] = useState<Set<number> | null>(null);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
-  const gpsOrderedIdsRef = useRef<number[] | null>(null);
   const flatListRef = useRef<FlatList<number>>(null);
   const allPlacesRef = useRef(allPlaces);
   allPlacesRef.current = allPlaces;
-  const router = useRouter();
-  const routerRef = useRef(router);
-  routerRef.current = router;
   const [bottomSectionHeight, setBottomSectionHeight] = useState(0);
   const [activeRegionName, setActiveRegionName] = useState<string | null>(null);
-  const isFocused = useIsFocused();
-  const gpsDoneRef = useRef(false);
 
   // Fetch danych przy pierwszym montowaniu
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
-
-  // Sortowanie GPS — tylko raz, gdy dane gotowe i ekran aktywny
-  useEffect(() => {
-    if (status !== "success" || !isFocused || gpsDoneRef.current) return;
-    gpsDoneRef.current = true;
-
-    let mounted = true;
-
-    // requestForegroundPermissionsAsync uruchamiamy najpierw bez blokowania
-    Location.requestForegroundPermissionsAsync()
-      .then(({ status: locStatus }) => {
-        if (locStatus !== "granted" || !mounted) return;
-        Location.getLastKnownPositionAsync()
-          .then((lastPos) => {
-            if (lastPos && mounted) {
-              const { latitude: lat, longitude: lng } = lastPos.coords;
-              supabase
-                .rpc("nearby_orte", { user_lat: lat, user_lng: lng })
-                .then(({ data, error }) => {
-                  if (error || !data || !mounted) return;
-                  const ids = (data as { id: number }[]).map((p) => p.id);
-                  gpsOrderedIdsRef.current = ids;
-                  setOrderedIds(ids);
-                });
-            }
-            // Odśwież z aktualną pozycją w tle
-            Location.getCurrentPositionAsync({
-              accuracy: Location.Accuracy.Balanced,
-            })
-              .then((pos) => {
-                if (!mounted) return;
-                const { latitude: lat, longitude: lng } = pos.coords;
-                supabase
-                  .rpc("nearby_orte", { user_lat: lat, user_lng: lng })
-                  .then(({ data, error }) => {
-                    if (error || !data || !mounted) return;
-                    const ids = (data as { id: number }[]).map((p) => p.id);
-                    gpsOrderedIdsRef.current = ids;
-                    setOrderedIds(ids);
-                  });
-              })
-              .catch(() => {});
-          })
-          .catch(() => {});
-      })
-      .catch(() => {});
-
-    return () => {
-      mounted = false;
-    };
-  }, [status, isFocused]);
 
   const categoryFilteredPlaces = useMemo(() => {
     if (selectedCategoryId === null) return allPlaces;
@@ -205,7 +150,7 @@ export default function ListeScreen() {
 
       flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
     },
-    [],
+    [gpsOrderedIdsRef, setOrderedIds],
   );
 
   const clearSearch = useCallback(() => {
@@ -216,7 +161,7 @@ export default function ListeScreen() {
       setOrderedIds(gpsOrderedIdsRef.current);
       flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
     });
-  }, []);
+  }, [gpsOrderedIdsRef, setOrderedIds]);
 
   const renderCard = useCallback(
     ({ item: placeId }: { item: number }) => (
