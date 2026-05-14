@@ -1,5 +1,4 @@
-import { useState, useRef } from "react";
-import { useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import * as Location from "expo-location";
 import { useIsFocused } from "@react-navigation/native";
 

@@ -20,14 +20,12 @@ export function useGpsSort(dataReady: boolean): {
     let mounted = true;
 
     const fetchSorted = (lat: number, lng: number) => {
-      supabase
-        .rpc("nearby_orte", { user_lat: lat, user_lng: lng })
-        .then(({ data, error }) => {
-          if (error || !data || !mounted) return;
-          const ids = (data as { id: number }[]).map((p) => p.id);
-          orderedIdsRef.current = ids;
-          setOrderedIds(ids);
-        });
+      supabase.rpc("nearby_orte", { user_lat: lat, user_lng: lng }).then(({ data, error }) => {
+        if (error || !data || !mounted) return;
+        const ids = (data as { id: number }[]).map((p) => p.id);
+        orderedIdsRef.current = ids;
+        setOrderedIds(ids);
+      });
     };
 
     Location.requestForegroundPermissionsAsync()
