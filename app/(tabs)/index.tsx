@@ -265,7 +265,12 @@ export default function ListeScreen() {
         <KategorieBar
           categories={allCategories}
           selectedId={selectedCategoryId}
-          onSelect={setSelectedCategoryId}
+          onSelect={(id) => {
+            setSelectedCategoryId(id);
+            requestAnimationFrame(() => {
+              flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+            });
+          }}
           isPro={isPro}
         />
       </View>

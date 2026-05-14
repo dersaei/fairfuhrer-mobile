@@ -11,20 +11,18 @@ import {
   ScrollView,
   Alert,
   ImageBackground,
-  Image,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, type Profile } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { AuthWeakPasswordError } from "@supabase/supabase-js";
 import Purchases from "react-native-purchases";
 import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 import MenuButton from "@/components/MenuButton";
-import { usePlacesStore } from "@/stores/placesStore";
 import { ENTITLEMENT_ID } from "@/lib/revenuecat";
-
-const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
 
 type AuthView = "welcome" | "login" | "register";
 type AccountSection = "profil" | "einstellungen" | "premium" | "ort-vorschlagen";
@@ -34,7 +32,6 @@ type AccountSection = "profil" | "einstellungen" | "premium" | "ort-vorschlagen"
 
 function AuthScreen() {
   const router = useRouter();
-  const { einstellungen } = usePlacesStore();
   const [view, setView] = useState<AuthView>("welcome");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -107,11 +104,15 @@ function AuthScreen() {
     });
     setIsLoading(false);
     if (error) {
-      setError(
-        error.message.includes("already registered")
-          ? "Diese E-Mail-Adresse ist bereits registriert."
-          : "Registrierung fehlgeschlagen. Bitte erneut versuchen.",
-      );
+      if (error instanceof AuthWeakPasswordError) {
+        setError(
+          "Dieses Passwort ist zu schwach oder bereits bekannt. Bitte wähle ein einzigartiges Passwort – am besten mit einem Passwort-Manager wie Bitwarden oder 1Password.",
+        );
+      } else if (error.message.includes("already registered")) {
+        setError("Diese E-Mail-Adresse ist bereits registriert.");
+      } else {
+        setError("Registrierung fehlgeschlagen. Bitte erneut versuchen.");
+      }
     } else {
       setRegisterSuccess(true);
     }
@@ -122,7 +123,7 @@ function AuthScreen() {
     return (
       <SafeAreaView style={s.container}>
         <View style={s.centerContent}>
-          <Text style={s.logo}>FAIRFÜHRER</Text>
+          <Text style={s.formTitle}>FAIRFÜHRER</Text>
           <Text style={s.successTitle}>Fast fertig!</Text>
           <Text style={s.successText}>
             Bitte prüfe deine E-Mails und bestätige deine Registrierung.
@@ -240,38 +241,23 @@ function AuthScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        {/* Header: Zurück | logo | Menu — identyczny układ jak na Liste i Karte */}
-        <View style={s.header}>
-          <View style={s.headerRow}>
-            <TouchableOpacity
-              onPress={() => switchView("welcome")}
-              style={s.headerSpacer}
-              hitSlop={8}
-            >
-              <Text style={s.backBtnText}>← Zurück</Text>
-            </TouchableOpacity>
-            {einstellungen?.Logo ? (
-              <Image
-                source={{ uri: `${DIRECTUS_URL}/assets/${einstellungen.Logo}` }}
-                style={s.logoImage}
-                resizeMode="contain"
-              />
-            ) : (
-              <Text style={s.logo}>FAIRFÜHRER</Text>
-            )}
-            <View style={s.headerMenuSlot}>
-              <MenuButton />
-            </View>
+        {/* Placeholder o tej samej wysokości co header na Liste/Karte */}
+        <View style={s.headerPlaceholder}>
+          <TouchableOpacity
+            onPress={() => switchView("welcome")}
+            style={s.headerSpacer}
+            hitSlop={8}
+          >
+            <Text style={s.backBtnText}>← Zurück</Text>
+          </TouchableOpacity>
+          <View style={s.headerMenuSlot}>
+            <MenuButton />
           </View>
-          {einstellungen?.Slogan ? (
-            <Text style={s.tagline}>{einstellungen.Slogan}</Text>
-          ) : (
-            <Text style={s.tagline}>Der Audioguide für nachhaltiges Leben und Reisen</Text>
-          )}
         </View>
 
         <ScrollView contentContainerStyle={s.formContent} keyboardShouldPersistTaps="handled">
-          <Text style={s.formHeadline}>{isReg ? "Konto erstellen" : "Willkommen zurück"}</Text>
+          <Text style={s.formTitle}>FAIRFÜHRER</Text>
+          <Text style={s.formHeadline}>{isReg ? "Konto erstellen" : "Reisender"}</Text>
 
           <View style={s.tabRow}>
             <TouchableOpacity style={s.tabBtn} onPress={() => switchView("login")}>
@@ -291,7 +277,7 @@ function AuthScreen() {
             <TextInput
               style={s.input}
               placeholder="deine@email.de"
-              placeholderTextColor="#181716"
+              placeholderTextColor="rgba(24, 23, 22, 0.5s)"
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -306,7 +292,7 @@ function AuthScreen() {
               <TextInput
                 style={s.input}
                 placeholder="min. 3 Zeichen"
-                placeholderTextColor="#181716"
+                placeholderTextColor="rgba(24, 23, 22, 0.5)"
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
@@ -320,12 +306,20 @@ function AuthScreen() {
             <TextInput
               style={s.input}
               placeholder="min. 8 Zeichen"
-              placeholderTextColor="#181716"
+              placeholderTextColor="rgba(24, 23, 22, 0.5)"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
               autoComplete={isReg ? "new-password" : "password"}
             />
+            {isReg && (
+              <Text style={s.fieldHint}>
+                Mindestens 8 Zeichen mit Groß- und Kleinbuchstaben, einer Zahl und einem
+                Sonderzeichen (z. B. !, @, #). Wähle ein einzigartiges Passwort – wir empfehlen
+                einen Passwort-Manager (z. B. Dashlane, 1Password) zum Erstellen sicherer
+                Passwörter.
+              </Text>
+            )}
           </View>
 
           {isReg && (
@@ -334,7 +328,7 @@ function AuthScreen() {
               <TextInput
                 style={s.input}
                 placeholder="Passwort bestätigen"
-                placeholderTextColor="#181716"
+                placeholderTextColor="rgba(24, 23, 22, 0.5)"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
@@ -378,6 +372,16 @@ function AuthScreen() {
               <Text style={s.buttonText}>{isReg ? "Konto erstellen" : "Anmelden"}</Text>
             )}
           </TouchableOpacity>
+
+          <Text style={s.partnerInfo}>
+            Werde unser Partner.{" "}
+            <Text
+              style={s.partnerLink}
+              onPress={() => Linking.openURL("https://www.fairfuehrer.guide/partner-werden")}
+            >
+              Hier erfahren Sie mehr.
+            </Text>
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -453,7 +457,9 @@ function AccountScreen() {
             refreshProfile={refreshProfile}
           />
         )}
-        {activeSection === "premium" && <PremiumSection isPro={isPro} refreshPro={refreshPro} />}
+        {activeSection === "premium" && (
+          <PremiumSection isPro={isPro} refreshPro={refreshPro} profile={profile} />
+        )}
         {activeSection === "ort-vorschlagen" && (
           <OrtVorschlagenSection user={user} isPremium={isPro} />
         )}
@@ -737,9 +743,11 @@ function EinstellungenSection({ user, profile, signOut, deleteAccount, refreshPr
 function PremiumSection({
   isPro,
   refreshPro,
+  profile,
 }: {
   isPro: boolean;
   refreshPro: () => Promise<void>;
+  profile: Profile | null;
 }) {
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -786,13 +794,34 @@ function PremiumSection({
   };
 
   if (isPro) {
+    const premiumUntil = profile?.premium_until
+      ? new Date(profile.premium_until).toLocaleDateString("de-DE", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        })
+      : null;
+
     return (
       <View style={s.section}>
         <View style={s.proActiveBox}>
           <Text style={s.proActiveIcon}>★</Text>
           <Text style={s.proActiveTitle}>Fairführer+ aktiv</Text>
+          {premiumUntil && <Text style={s.proActiveDate}>Gültig bis: {premiumUntil}</Text>}
           <Text style={s.sectionHint}>
             Du hast Zugang zu allen Premium-Funktionen. Vielen Dank für deine Unterstützung!
+          </Text>
+        </View>
+
+        <View style={s.proInfoBox}>
+          <Text style={s.proInfoTitle}>Abonnement-Informationen</Text>
+          <Text style={s.proInfoText}>
+            Dein Abo wird automatisch verlängert, sofern du es nicht mindestens 24 Stunden vor
+            Ablauf kündigst. Die Abrechnung erfolgt über deinen App Store (iOS) oder Google Play
+            (Android)-Account.
+          </Text>
+          <Text style={s.proInfoText}>
+            {`Zum Kündigen oder Ändern des Abos tippe auf „Abonnement verwalten“.`}
           </Text>
         </View>
 
@@ -1024,14 +1053,6 @@ const s = StyleSheet.create({
     paddingVertical: 40,
     gap: 16,
   },
-  logo: {
-    flex: 1,
-    fontFamily: "Anton_400Regular",
-    fontSize: 30,
-    color: "#fc6c14",
-    textAlign: "center",
-    letterSpacing: 3,
-  },
   roleLabel: {
     fontSize: 18,
     fontFamily: "FiraSansCondensed_700Bold",
@@ -1069,6 +1090,13 @@ const s = StyleSheet.create({
     borderRadius: 2,
   },
   fieldGroup: { width: "100%", gap: 6 },
+  fieldHint: {
+    fontSize: 12,
+    fontFamily: "FiraSansCondensed_400Regular",
+    color: "#212358",
+    paddingLeft: 4,
+    lineHeight: 17,
+  },
   fieldLabel: {
     fontSize: 11,
     fontFamily: "FiraSansCondensed_700Bold",
@@ -1137,24 +1165,16 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontFamily: "FiraSansCondensed_600SemiBold",
   },
-  // Form header (logo + tagline — jak na Liste/Karte)
-  header: { paddingTop: 8, paddingBottom: 4 },
-  headerRow: {
+  // Form header placeholder (ta sama wysokość co header na Liste/Karte)
+  headerPlaceholder: {
+    height: 110,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 12,
   },
   headerSpacer: { width: 72, justifyContent: "center" },
   headerMenuSlot: { width: 72, alignItems: "flex-end" },
-  logoImage: { flex: 1, height: 68 },
-  tagline: {
-    fontFamily: "FiraSansCondensed_600SemiBold",
-    fontSize: 18,
-    paddingVertical: 4,
-    paddingHorizontal: 60,
-    color: "#fc6c14",
-    textAlign: "center",
-  },
   formContent: {
     flexGrow: 1,
     alignItems: "center",
@@ -1365,6 +1385,30 @@ const s = StyleSheet.create({
     fontFamily: "FiraSansCondensed_700Bold",
     color: "#111",
     letterSpacing: 0.3,
+  },
+  proActiveDate: {
+    fontSize: 15,
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    color: "#111",
+  },
+  proInfoBox: {
+    backgroundColor: "#f9f5f2",
+    borderRadius: 12,
+    padding: 16,
+    gap: 8,
+  },
+  proInfoTitle: {
+    fontSize: 13,
+    fontFamily: "FiraSansCondensed_700Bold",
+    color: "#555",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  proInfoText: {
+    fontSize: 13,
+    fontFamily: "FiraSansCondensed_400Regular",
+    color: "#666",
+    lineHeight: 18,
   },
   plansContainer: { gap: 10, marginTop: 4 },
   planButton: {
@@ -1606,6 +1650,27 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontFamily: "FiraSansCondensed_600SemiBold",
     color: "#fc6c14",
+  },
+  partnerInfo: {
+    fontSize: 16,
+    fontFamily: "FiraSansCondensed_400Regular",
+    color: "#000000",
+    textAlign: "center",
+    lineHeight: 19,
+    marginTop: 40,
+    marginBottom: 20,
+  },
+  partnerLink: {
+    color: "#fc6c14",
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    textDecorationLine: "underline",
+  },
+  formTitle: {
+    fontFamily: "Anton_400Regular",
+    fontSize: 40,
+    color: "#fc6c14",
+    textAlign: "center",
+    letterSpacing: 3,
   },
   formHeadline: {
     fontSize: 28,
