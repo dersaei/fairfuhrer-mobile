@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -92,15 +92,15 @@ function PressButton({
     transform: [{ scale: scale.value }],
   }));
 
-  const onPressIn = () => {
+  const onPressIn = useCallback(() => {
     // scale(0.9) — odpowiednik CSS button:active { transform: scale(0.9) }
     scale.value = withTiming(0.9, { duration: 100, easing: Easing.out(Easing.cubic) });
-  };
+  }, [scale]);
 
-  const onPressOut = () => {
+  const onPressOut = useCallback(() => {
     // sprężynowy powrót — cubic-bezier(0.34, 1.56, 0.64, 1) z web
     scale.value = withSpring(1, { damping: 10, stiffness: 200, mass: 0.5 });
-  };
+  }, [scale]);
 
   return (
     <TouchableOpacity
@@ -113,6 +113,11 @@ function PressButton({
     </TouchableOpacity>
   );
 }
+
+// ─── Utils ──────────────────────────────────────────────────────────────────
+
+const formatTime = (t: number) =>
+  `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
 
 // ─── AudioPlayer ─────────────────────────────────────────────────────────────
 
@@ -197,13 +202,41 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  const formatTime = (t: number) =>
-    `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+  const handleTrackPress = useCallback(
+    (e: GestureResponderEvent) => {
+      if (!trackWidth || !duration) return;
+      player.seekTo(Math.min(1, Math.max(0, e.nativeEvent.locationX / trackWidth)) * duration);
+    },
+    [trackWidth, duration, player],
+  );
 
-  const handleTrackPress = (e: GestureResponderEvent) => {
-    if (!trackWidth || !duration) return;
-    player.seekTo(Math.min(1, Math.max(0, e.nativeEvent.locationX / trackWidth)) * duration);
-  };
+  const handleSkipBack = useCallback(() => {
+    player.seekTo(Math.max(0, currentTime - 5));
+  }, [player, currentTime]);
+
+  const handleSkipForward = useCallback(() => {
+    player.seekTo(Math.min(duration, currentTime + 5));
+  }, [player, duration, currentTime]);
+
+  const handleTogglePlay = useCallback(() => {
+    if (isPlaying) {
+      player.pause();
+    } else {
+      player.play();
+    }
+  }, [isPlaying, player]);
+
+  const handleSetSpeed = useCallback(
+    (speed: SpeedOption) => {
+      setPlaybackSpeed(speed);
+      player.setPlaybackRate(speed);
+    },
+    [player],
+  );
+
+  const handleLayout = useCallback((e: LayoutChangeEvent) => {
+    setTrackWidth(e.nativeEvent.layout.width);
+  }, []);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -216,7 +249,7 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
     >
       {/* Kontrolki */}
       <View style={styles.audioControls}>
-        <PressButton onPress={() => player.seekTo(Math.max(0, currentTime - 5))}>
+        <PressButton onPress={handleSkipBack}>
           <View style={styles.skipButton}>
             <SkipBackIcon size={32} />
           </View>
@@ -224,7 +257,7 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
 
         {/* Play/Pause z pulse */}
         <Animated.View style={[styles.playButtonShadow, pulseStyle]}>
-          <PressButton onPress={() => (isPlaying ? player.pause() : player.play())}>
+          <PressButton onPress={handleTogglePlay}>
             <LinearGradient
               colors={
                 isPlaying ? ["#dc3545", "#c82333"] : ["rgba(252,108,20,1)", "rgba(252,108,20,0.9)"]
@@ -238,7 +271,7 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
           </PressButton>
         </Animated.View>
 
-        <PressButton onPress={() => player.seekTo(Math.min(duration, currentTime + 5))}>
+        <PressButton onPress={handleSkipForward}>
           <View style={styles.skipButton}>
             <SkipForwardIcon size={32} />
           </View>
@@ -252,7 +285,7 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
           activeOpacity={1}
           style={styles.trackTouchable}
           onPress={handleTrackPress}
-          onLayout={(e: LayoutChangeEvent) => setTrackWidth(e.nativeEvent.layout.width)}
+          onLayout={handleLayout}
         >
           <LinearGradient
             colors={["#dee2e6", "#ced4da"]}
@@ -274,10 +307,7 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
           return (
             <TouchableOpacity
               key={speed}
-              onPress={() => {
-                setPlaybackSpeed(speed);
-                player.setPlaybackRate(speed);
-              }}
+              onPress={() => handleSetSpeed(speed)}
               activeOpacity={0.75}
             >
               {isActive ? (
@@ -385,7 +415,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   timeText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "500",
     color: "#495057",
     fontFamily: "FiraSansCondensed_400Regular",
@@ -400,7 +430,7 @@ const styles = StyleSheet.create({
   },
   speedButton: {
     height: 28,
-    paddingHorizontal: 8,
+    paddingHorizontal: 15,
     borderRadius: 20,
     borderWidth: 1.5,
     borderColor: "rgba(252,108,20,0.25)",
@@ -423,7 +453,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   speedButtonText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "500",
     color: "#495057",
     fontFamily: "FiraSansCondensed_400Regular",
