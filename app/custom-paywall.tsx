@@ -199,7 +199,7 @@ export default function PaywallScreen() {
             {purchasing ? (
               <ActivityIndicator color="#fc6c14" />
             ) : (
-              <Text style={s.ctaBtnText}>Fairführer+ aktivieren · {selectedPrice}/Jahr</Text>
+              <Text style={s.ctaBtnText}>FAIRFÜHRER+ aktivieren · {selectedPrice}/Jahr</Text>
             )}
           </TouchableOpacity>
 
@@ -417,14 +417,14 @@ const s = StyleSheet.create({
   // Legal — Voll
   legalBlock: { gap: 8, paddingHorizontal: 8, marginTop: 4 },
   legalText: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: "FiraSansCondensed_400Regular",
-    color: "#9c948c",
+    color: "#2d2e32",
     textAlign: "center",
     lineHeight: 16,
   },
   legalStrong: {
-    color: "#6e665e",
+    color: "#000",
     fontFamily: "FiraSansCondensed_600SemiBold",
   },
   legalLinks: {
@@ -433,10 +433,10 @@ const s = StyleSheet.create({
     marginTop: 2,
   },
   legalLink: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: "FiraSansCondensed_600SemiBold",
-    color: "#6e665e",
+    color: "#000",
     textDecorationLine: "underline",
   },
-  legalSep: { fontSize: 11, color: "#9c948c" },
+  legalSep: { fontSize: 12, color: "#000" },
 });

@@ -50,16 +50,16 @@ export function LoginPromptModal({ visible, onClose }: LoginPromptModalProps) {
         <Pressable style={styles.card} onPress={() => {}}>
           <LockIcon />
 
-          <Text style={styles.title}>Fairführer+</Text>
+          <Text style={styles.title}>FAIRFÜHRER+</Text>
 
           <Text style={styles.body}>
             Dieser Audiopin ist Teil unserer Premium-Kollektion. Um ihn freizuschalten, erstelle ein
-            kostenloses Konto und upgrade auf <Text style={styles.highlight}>Fairführer+</Text> in
+            kostenloses Konto und upgrade auf <Text style={styles.highlight}>FAIRFÜHRER+</Text> in
             der App.
           </Text>
 
           <Text style={styles.hint}>
-            Du hast bereits ein Konto? Melde dich an und kaufe Fairführer+ im Bereich Mein Konto.
+            Du hast bereits ein Konto? Melde dich an und kaufe FAIRFÜHRER+ im Bereich Mein Konto.
           </Text>
 
           <View style={styles.buttons}>

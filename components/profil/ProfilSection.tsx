@@ -1,18 +1,20 @@
 import { useState } from "react";
-import { View, Text, Image, TouchableOpacity, ActivityIndicator, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 
-export default function ProfilSection({ user, profile }: any) {
+export default function ProfilSection({ user, profile, signOut }: any) {
   const { refreshProfile } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
 
   const avatarUrl = profile?.avatar_url ?? null;
 
   const handlePickImage = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    // Request full library access (not limited)
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync(true);
     if (!perm.granted) {
       setUploadError("Kein Zugriff auf die Fotobibliothek.");
       return;
@@ -22,29 +24,38 @@ export default function ProfilSection({ user, profile }: any) {
       mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.85,
+      quality: 0.8,
+      // base64 for reliable upload in React Native
+      base64: true,
     });
 
     if (result.canceled || !result.assets[0]) return;
 
     const asset = result.assets[0];
+    if (!asset.base64) {
+      setUploadError("Bild konnte nicht geladen werden.");
+      return;
+    }
+
     setUploadError(null);
     setUploading(true);
 
     try {
-      const ext = asset.uri.split(".").pop() ?? "jpg";
+      const mimeType = asset.mimeType ?? "image/jpeg";
+      const ext = mimeType.split("/")[1]?.replace("jpeg", "jpg") ?? "jpg";
       const path = `${user.id}/avatar.${ext}`;
 
-      const response = await fetch(asset.uri);
-      const blob = await response.blob();
-      const arrayBuffer = await blob.arrayBuffer();
+      // Decode base64 to Uint8Array for upload
+      const byteCharacters = atob(asset.base64);
+      const byteArray = new Uint8Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteArray[i] = byteCharacters.charCodeAt(i);
+      }
 
-      const { error: uploadErr } = await supabase.storage
-        .from("avatars")
-        .upload(path, arrayBuffer, {
-          upsert: true,
-          contentType: asset.mimeType ?? `image/${ext}`,
-        });
+      const { error: uploadErr } = await supabase.storage.from("avatars").upload(path, byteArray, {
+        upsert: true,
+        contentType: mimeType,
+      });
 
       if (uploadErr) throw uploadErr;
 
@@ -86,6 +97,15 @@ export default function ProfilSection({ user, profile }: any) {
     }
   };
 
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await signOut();
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
   const fields = [
     { label: "Benutzername", value: profile?.username ?? "—" },
     { label: "E-Mail-Adresse", value: user?.email ?? "—" },
@@ -95,46 +115,35 @@ export default function ProfilSection({ user, profile }: any) {
 
   return (
     <View style={s.section}>
-      {/* Profilbild */}
+      {/* Profilbild — only buttons, no avatar preview (avatar is in header) */}
       <Text style={s.sectionTitle}>Profilbild</Text>
       <Text style={s.sectionHint}>
-        Lade ein Bild hoch (JPG, PNG — max. 2 MB). Es erscheint in deinem Profil-Header.
+        Lade ein Bild hoch (JPG, PNG, WebP — max. 2 MB). Es erscheint im Profil-Header.
       </Text>
 
-      <View style={s.avatarRow}>
-        {avatarUrl ? (
-          <Image source={{ uri: avatarUrl }} style={s.avatarPreview} />
-        ) : (
-          <View style={s.avatarPlaceholderLarge}>
-            <Text style={s.avatarInitialLarge}>
-              {(profile?.username ?? user?.email ?? "?").charAt(0).toUpperCase()}
-            </Text>
-          </View>
-        )}
-        <View style={s.avatarButtons}>
-          <TouchableOpacity
-            style={[s.uploadBtn, uploading && s.btnDisabled]}
-            onPress={handlePickImage}
-            disabled={uploading}
-            activeOpacity={0.85}
-          >
-            {uploading ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={s.uploadBtnText}>{avatarUrl ? "Bild ändern" : "Bild hochladen"}</Text>
-            )}
-          </TouchableOpacity>
-          {avatarUrl && (
-            <TouchableOpacity
-              style={[s.deleteBtn, uploading && s.btnDisabled]}
-              onPress={handleDeleteAvatar}
-              disabled={uploading}
-              activeOpacity={0.85}
-            >
-              <Text style={s.deleteBtnText}>Entfernen</Text>
-            </TouchableOpacity>
+      <View style={s.avatarActions}>
+        <TouchableOpacity
+          style={[s.uploadBtn, uploading && s.btnDisabled]}
+          onPress={handlePickImage}
+          disabled={uploading}
+          activeOpacity={0.8}
+        >
+          {uploading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={s.uploadBtnText}>{avatarUrl ? "Bild ändern" : "Bild hochladen"}</Text>
           )}
-        </View>
+        </TouchableOpacity>
+        {avatarUrl && (
+          <TouchableOpacity
+            style={[s.deleteBtn, uploading && s.btnDisabled]}
+            onPress={handleDeleteAvatar}
+            disabled={uploading}
+            activeOpacity={0.8}
+          >
+            <Text style={s.deleteBtnText}>Entfernen</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {uploadError && <Text style={s.errorMsg}>{uploadError}</Text>}
@@ -147,6 +156,21 @@ export default function ProfilSection({ user, profile }: any) {
           <Text style={s.infoValue}>{f.value}</Text>
         </View>
       ))}
+
+      {/* Abmelden */}
+      <View style={s.divider} />
+      <TouchableOpacity
+        style={[s.signOutBtn, signingOut && s.btnDisabled]}
+        onPress={handleSignOut}
+        disabled={signingOut}
+        activeOpacity={0.7}
+      >
+        {signingOut ? (
+          <ActivityIndicator color="#111" size="small" />
+        ) : (
+          <Text style={s.signOutBtnText}>Abmelden</Text>
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
@@ -166,55 +190,37 @@ const s = StyleSheet.create({
     fontFamily: "FiraSansCondensed_400Regular",
     lineHeight: 20,
   },
-  avatarRow: {
+  avatarActions: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
+    gap: 10,
+    flexWrap: "wrap",
   },
-  avatarPreview: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#eee",
-  },
-  avatarPlaceholderLarge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#111",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarInitialLarge: {
-    fontSize: 32,
-    color: "#fc6c14",
-    fontFamily: "Anton_400Regular",
-    lineHeight: 32,
-  },
-  avatarButtons: { flex: 1, gap: 8 },
   uploadBtn: {
-    backgroundColor: "#fc6c14",
+    backgroundColor: "#18222f",
     paddingVertical: 10,
     paddingHorizontal: 16,
+    borderRadius: 6,
     alignItems: "center",
+    minWidth: 140,
   },
   uploadBtnText: {
-    fontFamily: "FiraSansCondensed_700Bold",
+    fontFamily: "FiraSansCondensed_600SemiBold",
     fontSize: 14,
     color: "#fff",
-    letterSpacing: 0.3,
   },
   deleteBtn: {
-    borderWidth: 1.5,
-    borderColor: "#111",
-    paddingVertical: 9,
+    backgroundColor: "rgb(220,29,29)",
+    paddingVertical: 10,
     paddingHorizontal: 16,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: "#18222f",
     alignItems: "center",
   },
   deleteBtnText: {
     fontFamily: "FiraSansCondensed_600SemiBold",
     fontSize: 14,
-    color: "#111",
+    color: "#fff",
   },
   btnDisabled: { opacity: 0.5 },
   errorMsg: {
@@ -245,5 +251,19 @@ const s = StyleSheet.create({
     color: "#111",
     flexShrink: 1,
     textAlign: "right",
+  },
+  divider: { height: 1, backgroundColor: "#f0e8e0", marginVertical: 4 },
+  signOutBtn: {
+    borderWidth: 1.5,
+    borderColor: "#111",
+    paddingVertical: 14,
+    alignItems: "center",
+    borderRadius: 6,
+    backgroundColor: "#fafafa",
+  },
+  signOutBtnText: {
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    fontSize: 15,
+    color: "#111",
   },
 });

@@ -179,7 +179,7 @@ export default function AuthScreen() {
             />
 
             <PlanCompareCard
-              title="Fairführer+"
+              title="FAIRFÜHRER+"
               isPremium
               features={[
                 { text: "Alles aus der kostenlosen Version" },
@@ -193,7 +193,7 @@ export default function AuthScreen() {
                   style={s.welcomeBtnPremium}
                   onPress={() => switchView("register")}
                 >
-                  <Text style={s.welcomeBtnPremiumText}>Jetzt Fairführer+ holen</Text>
+                  <Text style={s.welcomeBtnPremiumText}>Jetzt FAIRFÜHRER+ holen</Text>
                 </TouchableOpacity>
               }
             />

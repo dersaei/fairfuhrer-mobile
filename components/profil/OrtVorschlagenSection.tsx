@@ -32,7 +32,6 @@ export default function OrtVorschlagenSection({ user, profile, isPremium }: Prop
 
   return (
     <View style={s.section}>
-      <Text style={s.sectionTitle}>Ort vorschlagen</Text>
       <Text style={s.sectionHint}>
         Kennen Sie einen fairen Ort, der auf unsere Karte gehört? Füllen Sie das Formular aus!
       </Text>
@@ -83,6 +82,14 @@ export default function OrtVorschlagenSection({ user, profile, isPremium }: Prop
               editable={isPremium}
             />
           </View>
+          {isPremium && (
+            <Text style={s.hint}>
+              Ihr Vorschlag wird zusammen mit Ihrer E-Mail-Adresse übermittelt.
+              {profile?.first_name || profile?.last_name
+                ? " Vor- und Nachname werden ebenfalls gesendet, da sie in Ihrem Profil hinterlegt sind."
+                : " Vor- und Nachname werden nicht gesendet, da sie in Ihrem Profil nicht hinterlegt sind."}
+            </Text>
+          )}
           <TouchableOpacity
             style={[s.button, (!isPremium || isLoading) && s.buttonDisabled]}
             onPress={handleSubmit}
@@ -102,16 +109,17 @@ export default function OrtVorschlagenSection({ user, profile, isPremium }: Prop
 
 const s = StyleSheet.create({
   section: { gap: 12 },
-  sectionTitle: {
-    fontSize: 20,
-    fontFamily: "FiraSansCondensed_700Bold",
-    color: "#111",
-    letterSpacing: 0.3,
-  },
   sectionHint: {
-    fontSize: 15,
-    color: "#999",
+    fontSize: 20,
+    color: "#000",
     fontFamily: "FiraSansCondensed_400Regular",
+    lineHeight: 22,
+    textAlign: "center",
+  },
+  hint: {
+    fontSize: 13,
+    fontFamily: "FiraSansCondensed_400Regular",
+    color: "#555",
     lineHeight: 18,
   },
   premiumInfo: { backgroundColor: "#fff5ef", borderRadius: 12, padding: 14 },
@@ -142,7 +150,7 @@ const s = StyleSheet.create({
   fieldLabel: {
     fontSize: 11,
     fontFamily: "FiraSansCondensed_700Bold",
-    color: "#fc6c14",
+    color: "#000",
     letterSpacing: 1.5,
     textTransform: "uppercase",
     paddingLeft: 4,
@@ -156,7 +164,7 @@ const s = StyleSheet.create({
     paddingVertical: 13,
     fontSize: 16,
     color: "#111",
-    backgroundColor: "#fff",
+    backgroundColor: "#fafafa",
     fontFamily: "FiraSansCondensed_400Regular",
   },
   inputDisabled: {

@@ -24,6 +24,36 @@ export default function EinstellungenSection({
 
   return (
     <View style={s.section}>
+      <Text style={s.sectionTitle}>E-Mail-Adresse ändern</Text>
+      <Text style={s.sectionHint}>Aktuelle Adresse: {user?.email}</Text>
+      {emailForm.emailError && <Text style={s.errorText}>{emailForm.emailError}</Text>}
+      {emailForm.emailSuccess && (
+        <Text style={s.successMsg}>Bestätigungslink wurde an Ihre neue Adresse gesendet.</Text>
+      )}
+      <View style={s.fieldGroup}>
+        <Text style={s.fieldLabel}>Neue E-Mail-Adresse</Text>
+        <TextInput
+          style={s.input}
+          value={emailForm.newEmail}
+          onChangeText={emailForm.setNewEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          autoComplete="email"
+        />
+      </View>
+      <TouchableOpacity
+        style={[s.button, emailForm.emailLoading && s.buttonDisabled]}
+        onPress={emailForm.handleEmailChange}
+        disabled={emailForm.emailLoading}
+      >
+        {emailForm.emailLoading ? (
+          <ActivityIndicator color="#fc6c14" />
+        ) : (
+          <Text style={s.buttonText}>Ändern</Text>
+        )}
+      </TouchableOpacity>
+      <View style={s.divider} />
+
       <Text style={s.sectionTitle}>Persönliche Daten</Text>
       {nameForm.nameError && <Text style={s.errorText}>{nameForm.nameError}</Text>}
       {nameForm.nameSuccess && <Text style={s.successMsg}>Daten erfolgreich aktualisiert.</Text>}
@@ -66,38 +96,6 @@ export default function EinstellungenSection({
           <Text style={s.buttonText}>Aktualisieren</Text>
         )}
       </TouchableOpacity>
-
-      <View style={s.divider} />
-
-      <Text style={s.sectionTitle}>E-Mail-Adresse ändern</Text>
-      <Text style={s.sectionHint}>Aktuelle Adresse: {user?.email}</Text>
-      {emailForm.emailError && <Text style={s.errorText}>{emailForm.emailError}</Text>}
-      {emailForm.emailSuccess && (
-        <Text style={s.successMsg}>Bestätigungslink wurde an Ihre neue Adresse gesendet.</Text>
-      )}
-      <View style={s.fieldGroup}>
-        <Text style={s.fieldLabel}>Neue E-Mail-Adresse</Text>
-        <TextInput
-          style={s.input}
-          value={emailForm.newEmail}
-          onChangeText={emailForm.setNewEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
-        />
-      </View>
-      <TouchableOpacity
-        style={[s.button, emailForm.emailLoading && s.buttonDisabled]}
-        onPress={emailForm.handleEmailChange}
-        disabled={emailForm.emailLoading}
-      >
-        {emailForm.emailLoading ? (
-          <ActivityIndicator color="#fc6c14" />
-        ) : (
-          <Text style={s.buttonText}>Ändern</Text>
-        )}
-      </TouchableOpacity>
-
       <View style={s.divider} />
 
       <Text style={s.sectionTitle}>Passwort ändern</Text>
@@ -137,12 +135,6 @@ export default function EinstellungenSection({
 
       <View style={s.divider} />
 
-      <TouchableOpacity style={s.buttonOutline} onPress={signOut}>
-        <Text style={s.buttonOutlineText}>Abmelden</Text>
-      </TouchableOpacity>
-
-      <View style={s.divider} />
-
       <Text style={s.sectionTitleDanger}>Konto löschen</Text>
       <Text style={s.sectionHint}>
         Diese Aktion ist unwiderruflich. Alle Ihre Daten werden dauerhaft gelöscht.
@@ -169,7 +161,7 @@ const s = StyleSheet.create({
   },
   sectionHint: {
     fontSize: 15,
-    color: "#999",
+    color: "#000",
     fontFamily: "FiraSansCondensed_400Regular",
     lineHeight: 18,
   },
@@ -199,7 +191,7 @@ const s = StyleSheet.create({
   fieldLabel: {
     fontSize: 11,
     fontFamily: "FiraSansCondensed_700Bold",
-    color: "#fc6c14",
+    color: "#000",
     letterSpacing: 1.5,
     textTransform: "uppercase",
     paddingLeft: 4,
@@ -213,12 +205,12 @@ const s = StyleSheet.create({
     paddingVertical: 13,
     fontSize: 16,
     color: "#111",
-    backgroundColor: "#fff",
+    backgroundColor: "#fafafa",
     fontFamily: "FiraSansCondensed_400Regular",
   },
   button: {
     width: "100%",
-    backgroundColor: "#111",
+    backgroundColor: "#000",
     paddingTop: 12,
     paddingBottom: 16,
     borderRadius: 12,
@@ -249,13 +241,14 @@ const s = StyleSheet.create({
     width: "100%",
     borderWidth: 1.5,
     borderColor: "#c0392b",
+    backgroundColor: "firebrick",
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
   },
   buttonDangerText: {
-    color: "#c0392b",
-    fontSize: 15,
+    color: "#fff",
+    fontSize: 18,
     fontFamily: "FiraSansCondensed_600SemiBold",
   },
 });

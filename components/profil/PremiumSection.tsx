@@ -56,12 +56,12 @@ export default function PremiumSection({
 
   return (
     <View style={s.section}>
-      <Text style={s.heading}>Fairführer+</Text>
+      <Text style={s.heading}>FAIRFÜHRER+</Text>
 
       {isPro ? (
         <View style={s.proActiveBox}>
           <Text style={s.proActiveIcon}>★</Text>
-          <Text style={s.proActiveTitle}>Fairführer+ aktiv</Text>
+          <Text style={s.proActiveTitle}>FAIRFÜHRER+ aktiv</Text>
           {premiumUntil && (
             <Text style={s.proActiveDate}>
               {"Gültig bis: "}
@@ -81,7 +81,7 @@ export default function PremiumSection({
       ) : (
         <Text style={s.lead}>
           {"Mit "}
-          <Text style={s.leadBold}>Fairführer+</Text>
+          <Text style={s.leadBold}>FAIRFÜHRER+</Text>
           {
             " unterstützt du die Community und erhältst Zugang zu allen Pins und exklusiven Funktionen."
           }
@@ -95,7 +95,7 @@ export default function PremiumSection({
           <View style={s.tableHead}>
             <Text style={[s.thCell, s.thFeature]}>Funktion</Text>
             <Text style={[s.thCell, s.thFree]}>Kostenlos</Text>
-            <Text style={[s.thCell, s.thPro]}>Fairführer+</Text>
+            <Text style={[s.thCell, s.thPro]}>FAIRFÜHRER+</Text>
           </View>
           {TABLE_ROWS.map((row, i) => (
             <View key={i} style={[s.tableRow, i % 2 === 1 && s.tableRowAlt]}>
@@ -125,9 +125,9 @@ export default function PremiumSection({
       ) : (
         <>
           <View style={s.appBox}>
-            <Text style={s.sectionLabel}>So kaufst du Fairführer+</Text>
+            <Text style={s.sectionLabel}>So kaufst du FAIRFÜHRER+</Text>
             <TouchableOpacity style={s.btnPrimary} onPress={handlePurchase} activeOpacity={0.85}>
-              <Text style={s.btnPrimaryText}>Fairführer+ aktivieren</Text>
+              <Text style={s.btnPrimaryText}>FAIRFÜHRER+ aktivieren</Text>
               <Text style={s.btnPrimarySub}>{"Pläne & Preise im nächsten Schritt"}</Text>
             </TouchableOpacity>
           </View>

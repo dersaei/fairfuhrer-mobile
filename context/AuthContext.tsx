@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import { Session, User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 import {
   identifyUser,
   resetUser,
@@ -8,11 +8,11 @@ import {
   hasPro,
   setUserEmail,
   addCustomerInfoListener,
-} from '@/lib/revenuecat';
+} from "@/lib/revenuecat";
 
 export interface Profile {
   id: string;
-  role: 'consumer' | 'partner';
+  role: "consumer" | "partner";
   username: string | null;
   first_name: string | null;
   last_name: string | null;
@@ -47,11 +47,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 async function fetchProfile(userId: string): Promise<Profile | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
+  const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single();
   if (error) return null;
   return data as Profile;
 }
@@ -99,7 +95,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       if (session?.user) {
         const [p] = await Promise.all([
@@ -108,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ]);
         setProfile(p);
         await checkPro();
-      } else if (event === 'SIGNED_OUT') {
+      } else if (event === "SIGNED_OUT") {
         setProfile(null);
         setIsPro(false);
         await resetUser();
@@ -124,8 +122,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAccount = async () => {
     await resetUser();
-    const { error } = await supabase.functions.invoke('delete-account');
-    if (error) throw new Error('Nie udało się usunąć konta');
+    const { error } = await supabase.functions.invoke("delete-account");
+    if (error) throw new Error("Nie udało się usunąć konta");
     await supabase.auth.signOut();
   };
 
@@ -141,17 +139,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{
-      session,
-      user: session?.user ?? null,
-      profile,
-      isPro,
-      isLoading,
-      signOut,
-      deleteAccount,
-      refreshProfile,
-      refreshPro,
-    }}>
+    <AuthContext.Provider
+      value={{
+        session,
+        user: session?.user ?? null,
+        profile,
+        isPro,
+        isLoading,
+        signOut,
+        deleteAccount,
+        refreshProfile,
+        refreshPro,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -64,7 +64,7 @@ export default function KontaktForm() {
       <View style={s.section}>
         <View style={s.successBox}>
           <Text style={s.successText}>
-            Vielen Dank für deine Nachricht! Wir melden uns so schnell wie möglich bei dir.
+            Vielen Dank für Ihre Nachricht! Wir melden uns so schnell wie möglich bei Ihnen.
           </Text>
         </View>
       </View>
@@ -75,8 +75,8 @@ export default function KontaktForm() {
     <View style={s.section}>
       <Text style={s.title}>Kontakt aufnehmen</Text>
       <Text style={s.lead}>
-        Du hast eine Frage oder ein Anliegen? Schreib uns direkt — wir antworten in der Regel
-        innerhalb von 1–2 Werktagen.
+        Sie haben eine Frage oder ein Anliegen? Schreiben Sie uns direkt — wir antworten in der
+        Regel innerhalb von 1–2 Werktagen.
       </Text>
 
       {status === "error" && errorMsg && <Text style={s.errorMsg}>{errorMsg}</Text>}
@@ -132,8 +132,8 @@ export default function KontaktForm() {
 
 const s = StyleSheet.create({
   section: {
-    borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
+    borderTopWidth: 2,
+    borderTopColor: "#000",
     paddingTop: 20,
     gap: 12,
   },
@@ -175,24 +175,24 @@ const s = StyleSheet.create({
     color: "#18222f",
   },
   input: {
-    borderWidth: 1.5,
-    borderColor: "#ccc",
+    borderWidth: 1,
+    borderColor: "#000",
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontFamily: "FiraSansCondensed_400Regular",
     fontSize: 15,
     color: "#18222f",
-    backgroundColor: "#fff",
+    backgroundColor: "#fafafa",
   },
   textarea: {
-    borderWidth: 1.5,
-    borderColor: "#ccc",
+    borderWidth: 1,
+    borderColor: "#000",
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontFamily: "FiraSansCondensed_400Regular",
     fontSize: 15,
     color: "#18222f",
-    backgroundColor: "#fff",
+    backgroundColor: "#fafafa",
     minHeight: 120,
   },
   button: {
@@ -223,8 +223,8 @@ const s = StyleSheet.create({
   },
   successBox: {
     borderWidth: 1.5,
-    borderColor: "#fc6c14",
-    backgroundColor: "#fff5ef",
+    borderColor: "#b7e4cc",
+    backgroundColor: "#f0faf4",
     padding: 20,
   },
   successText: {

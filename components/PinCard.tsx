@@ -71,7 +71,7 @@ export const PinCard = memo(function PinCard({ placeId }: { placeId: number }) {
             <View style={styles.lockOverlay}>
               <View style={styles.lockBadge}>
                 <LockIcon />
-                <Text style={styles.lockLabel}>Fairführer+</Text>
+                <Text style={styles.lockLabel}>FAIRFÜHRER+</Text>
               </View>
             </View>
           )}

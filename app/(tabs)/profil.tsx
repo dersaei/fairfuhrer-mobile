@@ -39,8 +39,10 @@ function AccountScreen() {
         <View style={s.accountHeaderInfo}>
           <Text style={s.accountName}>{profile?.username ?? "—"}</Text>
           <Text style={s.accountEmail}>{user?.email}</Text>
-          <View style={s.planBadge}>
-            <Text style={s.planBadgeText}>{isPro ? "★ Fairführer+" : "Kostenlos"}</Text>
+          <View style={[s.planBadge, isPro && s.planBadgePro]}>
+            <Text style={[s.planBadgeText, isPro && s.planBadgeTextPro]}>
+              {isPro ? "★ FAIRFÜHRER+" : "Kostenlos"}
+            </Text>
           </View>
         </View>
         <MenuButton />
@@ -80,7 +82,9 @@ function AccountScreen() {
         contentContainerStyle={s.sectionContent}
         keyboardShouldPersistTaps="handled"
       >
-        {activeSection === "profil" && <ProfilSection user={user} profile={profile} />}
+        {activeSection === "profil" && (
+          <ProfilSection user={user} profile={profile} signOut={signOut} />
+        )}
         {activeSection === "einstellungen" && (
           <EinstellungenSection
             user={user}
@@ -143,13 +147,13 @@ const s = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#111",
+    backgroundColor: "#fc6c14",
     alignItems: "center",
     justifyContent: "center",
   },
   avatarInitial: {
     fontSize: 28,
-    color: "#fc6c14",
+    color: "#fff",
     fontFamily: "Anton_400Regular",
     lineHeight: 28,
   },
@@ -174,10 +178,16 @@ const s = StyleSheet.create({
     borderRadius: 20,
     marginTop: 4,
   },
+  planBadgePro: {
+    backgroundColor: "#fc6c14",
+  },
   planBadgeText: {
     color: "#fc6c14",
     fontFamily: "FiraSansCondensed_700Bold",
     fontSize: 12,
+  },
+  planBadgeTextPro: {
+    color: "#fff",
   },
   navScroll: {
     borderBottomWidth: 1,
