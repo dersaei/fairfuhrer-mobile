@@ -16,8 +16,9 @@ import ProfilSection from "@/components/profil/ProfilSection";
 import EinstellungenSection from "@/components/profil/EinstellungenSection";
 import PremiumSection from "@/components/profil/PremiumSection";
 import OrtVorschlagenSection from "@/components/profil/OrtVorschlagenSection";
+import OfflineKartenSection from "@/components/profil/OfflineKartenSection";
 
-type AccountSection = "profil" | "einstellungen" | "premium" | "ort-vorschlagen";
+type AccountSection = "profil" | "einstellungen" | "offline-karten" | "premium" | "ort-vorschlagen";
 
 function AccountScreen() {
   const { user, profile, isPro, signOut, deleteAccount, refreshProfile, refreshPro } = useAuth();
@@ -55,25 +56,33 @@ function AccountScreen() {
         style={s.navScroll}
         contentContainerStyle={s.navContent}
       >
-        {(["profil", "einstellungen", "ort-vorschlagen", "premium"] as AccountSection[]).map(
-          (sec) => (
-            <TouchableOpacity
-              key={sec}
-              style={[s.navItem, activeSection === sec && s.navItemActive]}
-              onPress={() => setActiveSection(sec)}
-            >
-              <Text style={[s.navItemText, activeSection === sec && s.navItemTextActive]}>
-                {sec === "profil"
-                  ? "Profil"
-                  : sec === "einstellungen"
-                    ? "Einstellungen"
+        {(
+          [
+            "profil",
+            "einstellungen",
+            "offline-karten",
+            "ort-vorschlagen",
+            "premium",
+          ] as AccountSection[]
+        ).map((sec) => (
+          <TouchableOpacity
+            key={sec}
+            style={[s.navItem, activeSection === sec && s.navItemActive]}
+            onPress={() => setActiveSection(sec)}
+          >
+            <Text style={[s.navItemText, activeSection === sec && s.navItemTextActive]}>
+              {sec === "profil"
+                ? "Profil"
+                : sec === "einstellungen"
+                  ? "Einstellungen"
+                  : sec === "offline-karten"
+                    ? "Offline-Karten"
                     : sec === "premium"
                       ? "Premium"
                       : "Ort vorschlagen"}
-              </Text>
-            </TouchableOpacity>
-          ),
-        )}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
 
       {/* Content */}
@@ -94,6 +103,7 @@ function AccountScreen() {
             refreshProfile={refreshProfile}
           />
         )}
+        {activeSection === "offline-karten" && <OfflineKartenSection isPro={isPro} />}
         {activeSection === "premium" && (
           <PremiumSection isPro={isPro} refreshPro={refreshPro} profile={profile} />
         )}
