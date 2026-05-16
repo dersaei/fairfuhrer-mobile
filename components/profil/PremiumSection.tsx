@@ -1,10 +1,19 @@
 import { useState } from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from "react-native";
 import Purchases from "react-native-purchases";
-import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
+import RevenueCatUI from "react-native-purchases-ui";
+import { useRouter } from "expo-router";
 import { type Profile } from "@/context/AuthContext";
-import { ENTITLEMENT_ID } from "@/lib/revenuecat";
-import PlanCompareCard, { Feature } from "@/components/PlanCompareCard";
+import KontaktForm from "@/components/profil/KontaktForm";
+
+const TABLE_ROWS = [
+  { label: "Alle Kategorien auf der Karte", free: true, pro: true },
+  { label: "20 % der Sehenswertes-Pins", free: true, pro: true },
+  { label: "100 % der Sehenswertes-Pins", free: false, pro: true },
+  { label: "Offline-Karten", free: false, pro: true },
+  { label: "Orte vorschlagen", free: false, pro: true },
+  { label: "Community-Funktionen", free: false, pro: true },
+];
 
 export default function PremiumSection({
   isPro,
@@ -15,23 +24,11 @@ export default function PremiumSection({
   refreshPro: () => Promise<void>;
   profile: Profile | null;
 }) {
-  const [purchasing, setPurchasing] = useState(false);
+  const router = useRouter();
   const [restoring, setRestoring] = useState(false);
 
-  const handlePurchase = async () => {
-    setPurchasing(true);
-    try {
-      const result = await RevenueCatUI.presentPaywallIfNeeded({
-        requiredEntitlementIdentifier: ENTITLEMENT_ID,
-      });
-      if (result === PAYWALL_RESULT.PURCHASED || result === PAYWALL_RESULT.RESTORED) {
-        await refreshPro();
-      }
-    } catch {
-      Alert.alert("Fehler", "Kauf konnte nicht abgeschlossen werden.");
-    } finally {
-      setPurchasing(false);
-    }
+  const handlePurchase = () => {
+    router.push("/custom-paywall");
   };
 
   const handleRestore = async () => {
@@ -55,210 +52,245 @@ export default function PremiumSection({
     }
   };
 
-  if (isPro) {
-    const premiumUntil = profile?.premium_until
-      ? new Date(profile.premium_until).toLocaleDateString("de-DE", {
-          day: "2-digit",
-          month: "long",
-          year: "numeric",
-        })
-      : null;
-
-    return (
-      <View style={s.section}>
-        <View style={s.proActiveBox}>
-          <Text style={s.proActiveIcon}>★</Text>
-          <Text style={s.proActiveTitle}>Fairführer+ aktiv</Text>
-          {premiumUntil && <Text style={s.proActiveDate}>Gültig bis: {premiumUntil}</Text>}
-          <Text style={s.sectionHint}>
-            Du hast Zugang zu allen Premium-Funktionen. Vielen Dank für deine Unterstützung!
-          </Text>
-        </View>
-
-        <View style={s.proInfoBox}>
-          <Text style={s.proInfoTitle}>Abonnement-Informationen</Text>
-          <Text style={s.proInfoText}>
-            Dein Abo wird automatisch verlängert, sofern du es nicht mindestens 24 Stunden vor
-            Ablauf kündigst. Die Abrechnung erfolgt über deinen App Store (iOS) oder Google Play
-            (Android)-Account.
-          </Text>
-          <Text style={s.proInfoText}>
-            {`Zum Kündigen oder Ändern des Abos tippe auf „Abonnement verwalten“.`}
-          </Text>
-        </View>
-
-        <TouchableOpacity style={s.buttonOutline} onPress={handleCustomerCenter}>
-          <Text style={s.buttonOutlineText}>Abonnement verwalten</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const freeFeatures: Feature[] = [
-    { text: "Audio-Guides zu allen Orten anhören" },
-    { text: "Alle Kategorien entdecken" },
-    { text: "20 % der Pins in „Sehenswertes“" },
-    { text: "Karte & Ortsuche" },
-    { text: "100 % der Pins in „Sehenswertes“", locked: true },
-    { text: "Offline-Karten", locked: true },
-    { text: "Orte vorschlagen & Pins erstellen", locked: true },
-  ];
-
-  const premiumFeatures: Feature[] = [
-    { text: "Alles aus der kostenlosen Version" },
-    { text: "100 % der Pins in „Sehenswertes“" },
-    { text: "Offline-Karten für unterwegs" },
-    { text: "Neue Orte vorschlagen & eigene Pins erstellen" },
-    { text: "Redaktionelle Prüfung deiner Pins vor Veröffentlichung" },
-  ];
+  const premiumUntil = profile?.premium_until ? new Date(profile.premium_until) : null;
 
   return (
     <View style={s.section}>
-      <Text style={s.sectionTitle}>Dein aktueller Plan</Text>
+      <Text style={s.heading}>Fairführer+</Text>
 
-      <PlanCompareCard title="Kostenlos" features={freeFeatures} />
+      {isPro ? (
+        <View style={s.proActiveBox}>
+          <Text style={s.proActiveIcon}>★</Text>
+          <Text style={s.proActiveTitle}>Fairführer+ aktiv</Text>
+          {premiumUntil && (
+            <Text style={s.proActiveDate}>
+              {"Gültig bis: "}
+              <Text style={s.proActiveDateBold}>
+                {premiumUntil.toLocaleDateString("de-DE", {
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </Text>
+            </Text>
+          )}
+          <Text style={s.proActiveHint}>
+            {`Dein Abonnement wird über den App Store (iOS) oder Google Play (Android) verwaltet. Um dein Abo zu kündigen oder zu ändern, gehe zu Profil → Premium → Abonnement verwalten.`}
+          </Text>
+        </View>
+      ) : (
+        <Text style={s.lead}>
+          {"Mit "}
+          <Text style={s.leadBold}>Fairführer+</Text>
+          {
+            " unterstützt du die Community und erhältst Zugang zu allen Pins und exklusiven Funktionen."
+          }
+        </Text>
+      )}
 
-      <PlanCompareCard
-        title="Fairführer+"
-        isPremium
-        features={premiumFeatures}
-        button={
-          <View style={[s.plansContainer, { marginTop: 16 }]}>
-            <TouchableOpacity
-              style={[s.planButton, s.planButtonPopular]}
-              onPress={handlePurchase}
-              disabled={purchasing}
-            >
-              <View style={s.planButtonInner}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[s.planLabel, s.planLabelPopular]}>Fairführer+ aktivieren</Text>
-                  {purchasing ? null : (
-                    <Text style={[s.planPrice, s.planPricePopular]}>
-                      Pläne & Preise im nächsten Schritt
-                    </Text>
-                  )}
-                </View>
-                {purchasing && <ActivityIndicator color="#fff" />}
-              </View>
+      {/* Tabela porównawcza */}
+      <View style={s.tableBlock}>
+        <Text style={s.sectionLabel}>Kostenlos vs. Premium</Text>
+        <View style={s.table}>
+          <View style={s.tableHead}>
+            <Text style={[s.thCell, s.thFeature]}>Funktion</Text>
+            <Text style={[s.thCell, s.thFree]}>Kostenlos</Text>
+            <Text style={[s.thCell, s.thPro]}>Fairführer+</Text>
+          </View>
+          {TABLE_ROWS.map((row, i) => (
+            <View key={i} style={[s.tableRow, i % 2 === 1 && s.tableRowAlt]}>
+              <Text style={s.tdFeature}>{row.label}</Text>
+              <Text style={[s.tdCenter, row.free ? s.check : s.cross]}>{row.free ? "✓" : "—"}</Text>
+              <Text style={[s.tdCenter, row.pro ? s.check : s.cross]}>{row.pro ? "✓" : "—"}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Zakup lub zarządzanie abonamentem */}
+      {isPro ? (
+        <>
+          <View style={s.proInfoBox}>
+            <Text style={s.proInfoTitle}>Abonnement-Informationen</Text>
+            <Text style={s.proInfoText}>
+              Dein Abo wird automatisch verlängert, sofern du es nicht mindestens 24 Stunden vor
+              Ablauf kündigst. Die Abrechnung erfolgt über deinen App Store (iOS) oder Google Play
+              (Android)-Account.
+            </Text>
+          </View>
+          <TouchableOpacity style={s.btnOutline} onPress={handleCustomerCenter}>
+            <Text style={s.btnOutlineText}>Abonnement verwalten</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <>
+          <View style={s.appBox}>
+            <Text style={s.sectionLabel}>So kaufst du Fairführer+</Text>
+            <TouchableOpacity style={s.btnPrimary} onPress={handlePurchase} activeOpacity={0.85}>
+              <Text style={s.btnPrimaryText}>Fairführer+ aktivieren</Text>
+              <Text style={s.btnPrimarySub}>{"Pläne & Preise im nächsten Schritt"}</Text>
             </TouchableOpacity>
           </View>
-        }
-      />
+          <TouchableOpacity
+            style={[s.btnOutline, restoring && s.btnDisabled]}
+            onPress={handleRestore}
+            disabled={restoring}
+          >
+            {restoring ? (
+              <ActivityIndicator color="#111" />
+            ) : (
+              <Text style={s.btnOutlineText}>Käufe wiederherstellen</Text>
+            )}
+          </TouchableOpacity>
+        </>
+      )}
 
-      <TouchableOpacity
-        style={[s.buttonOutline, restoring && s.buttonDisabled]}
-        onPress={handleRestore}
-        disabled={restoring}
-      >
-        {restoring ? (
-          <ActivityIndicator color="#111" />
-        ) : (
-          <Text style={s.buttonOutlineText}>Käufe wiederherstellen</Text>
-        )}
-      </TouchableOpacity>
+      {/* Formularz kontaktowy */}
+      <KontaktForm />
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  section: { gap: 12, marginTop: 16 },
-  sectionTitle: {
-    fontSize: 20,
-    fontFamily: "FiraSansCondensed_700Bold",
-    color: "#111",
-    letterSpacing: 0.3,
-  },
-  sectionHint: {
-    fontSize: 15,
-    color: "#999",
-    fontFamily: "FiraSansCondensed_400Regular",
-    lineHeight: 18,
-    textAlign: "center",
-  },
-  proActiveBox: {
-    backgroundColor: "#fff5ef",
-    borderRadius: 12,
-    padding: 20,
-    alignItems: "center",
-    gap: 8,
-  },
-  proActiveIcon: {
+  section: { gap: 16, marginTop: 8 },
+  heading: {
+    fontFamily: "Anton_400Regular",
     fontSize: 32,
     color: "#fc6c14",
+    textAlign: "center",
+    letterSpacing: 1,
+    paddingBottom: 16,
+    borderBottomWidth: 2,
+    borderBottomColor: "#111",
   },
+  lead: {
+    fontFamily: "FiraSansCondensed_400Regular",
+    fontSize: 15,
+    color: "#18222f",
+    lineHeight: 22,
+  },
+  leadBold: { fontFamily: "FiraSansCondensed_700Bold" },
+  proActiveBox: {
+    borderWidth: 1.5,
+    borderColor: "#fc6c14",
+    backgroundColor: "#fff5ef",
+    padding: 20,
+    alignItems: "center",
+    gap: 6,
+  },
+  proActiveIcon: { fontSize: 28, color: "#fc6c14" },
   proActiveTitle: {
-    fontSize: 20,
     fontFamily: "FiraSansCondensed_700Bold",
-    color: "#111",
-    letterSpacing: 0.3,
+    fontSize: 18,
+    color: "#18222f",
   },
   proActiveDate: {
-    fontSize: 15,
-    fontFamily: "FiraSansCondensed_600SemiBold",
-    color: "#111",
+    fontFamily: "FiraSansCondensed_400Regular",
+    fontSize: 14,
+    color: "#18222f",
   },
-  proInfoBox: {
-    backgroundColor: "#f9f5f2",
-    borderRadius: 12,
-    padding: 16,
-    gap: 8,
-  },
-  proInfoTitle: {
+  proActiveDateBold: { fontFamily: "FiraSansCondensed_700Bold" },
+  proActiveHint: {
+    fontFamily: "FiraSansCondensed_400Regular",
     fontSize: 13,
+    color: "#555",
+    lineHeight: 19,
+    textAlign: "center",
+    marginTop: 4,
+  },
+  tableBlock: { gap: 8 },
+  sectionLabel: {
     fontFamily: "FiraSansCondensed_700Bold",
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: "#18222f",
+  },
+  table: { borderWidth: 1, borderColor: "#e0e0e0" },
+  tableHead: {
+    flexDirection: "row",
+    backgroundColor: "#f5f5f5",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  thCell: {
+    fontFamily: "FiraSansCondensed_700Bold",
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  thFeature: { flex: 1, color: "#18222f" },
+  thFree: { width: 72, textAlign: "center", color: "#666" },
+  thPro: { width: 72, textAlign: "center", color: "#fc6c14" },
+  tableRow: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    alignItems: "center",
+  },
+  tableRowAlt: { backgroundColor: "#fafafa" },
+  tdFeature: {
+    flex: 1,
+    fontFamily: "FiraSansCondensed_400Regular",
+    fontSize: 14,
+    color: "#18222f",
+    paddingVertical: 9,
+    paddingHorizontal: 10,
+    lineHeight: 18,
+  },
+  tdCenter: {
+    width: 72,
+    textAlign: "center",
+    fontSize: 15,
+    fontFamily: "FiraSansCondensed_700Bold",
+  },
+  check: { color: "#18a34a" },
+  cross: { color: "#bbb" },
+  appBox: { gap: 10 },
+  btnPrimary: {
+    backgroundColor: "#fc6c14",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    gap: 2,
+  },
+  btnPrimaryText: {
+    fontFamily: "FiraSansCondensed_700Bold",
+    fontSize: 16,
+    color: "#fff",
+    letterSpacing: 0.5,
+  },
+  btnPrimarySub: {
+    fontFamily: "FiraSansCondensed_400Regular",
+    fontSize: 12,
+    color: "rgba(255,255,255,0.8)",
+  },
+  proInfoBox: { backgroundColor: "#f9f5f2", padding: 16, gap: 8 },
+  proInfoTitle: {
+    fontFamily: "FiraSansCondensed_700Bold",
+    fontSize: 12,
     color: "#555",
     letterSpacing: 1,
     textTransform: "uppercase",
   },
   proInfoText: {
-    fontSize: 13,
     fontFamily: "FiraSansCondensed_400Regular",
+    fontSize: 13,
     color: "#666",
     lineHeight: 18,
   },
-  buttonOutline: {
-    width: "100%",
+  btnOutline: {
     borderWidth: 1.5,
     borderColor: "#111",
     paddingVertical: 14,
-    borderRadius: 12,
     alignItems: "center",
-    marginTop: 16,
   },
-  buttonOutlineText: {
-    color: "#111",
+  btnOutlineText: {
+    fontFamily: "FiraSansCondensed_600SemiBold",
     fontSize: 15,
-    fontFamily: "FiraSansCondensed_600SemiBold",
-  },
-  buttonDisabled: { opacity: 0.4 },
-  plansContainer: { gap: 10, marginTop: 4 },
-  planButton: {
-    borderWidth: 1.5,
-    borderColor: "#ddd",
-    borderRadius: 12,
-    padding: 16,
-    backgroundColor: "#fff",
-  },
-  planButtonPopular: {
-    borderColor: "#fc6c14",
-    backgroundColor: "#fff5ef",
-  },
-  planButtonInner: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  planLabel: {
-    fontSize: 16,
-    fontFamily: "FiraSansCondensed_600SemiBold",
     color: "#111",
   },
-  planLabelPopular: { color: "#fc6c14" },
-  planPrice: {
-    fontSize: 14,
-    fontFamily: "FiraSansCondensed_400Regular",
-    color: "#666",
-    marginTop: 2,
-  },
-  planPricePopular: { color: "#fc6c14" },
+  btnDisabled: { opacity: 0.4 },
 });

@@ -3,10 +3,8 @@ import { View, Text, TouchableOpacity, ImageBackground, StyleSheet } from "react
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Path, Circle } from "react-native-svg";
 import { useRouter } from "expo-router";
-import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
-import { ENTITLEMENT_ID } from "@/lib/revenuecat";
 import { CategoryIcon } from "./CategoryIcon";
 import { getImageUrl, getCategoriesFromPlace } from "@/utils/placeHelpers";
 import { LoginPromptModal } from "./LoginPromptModal";
@@ -35,7 +33,7 @@ function LockIcon() {
 
 export const PinCard = memo(function PinCard({ placeId }: { placeId: number }) {
   const router = useRouter();
-  const { session, isPro, refreshPro } = useAuth();
+  const { session, isPro } = useAuth();
   const place = usePlacesStore((s) => s.getPlaceById(placeId));
   const isLocked = usePlacesStore((s) => s.isLockedPlace(placeId, isPro));
   const imageUrl = place ? getImageUrl(place) : null;
@@ -48,16 +46,11 @@ export const PinCard = memo(function PinCard({ placeId }: { placeId: number }) {
         setShowLoginPrompt(true);
         return;
       }
-      const result = await RevenueCatUI.presentPaywallIfNeeded({
-        requiredEntitlementIdentifier: ENTITLEMENT_ID,
-      });
-      if (result === PAYWALL_RESULT.PURCHASED || result === PAYWALL_RESULT.RESTORED) {
-        await refreshPro();
-      }
+      router.push("/custom-paywall");
       return;
     }
     router.push(`/place/${placeId}`);
-  }, [isLocked, session, placeId, router, refreshPro]);
+  }, [isLocked, session, placeId, router]);
 
   return (
     <>

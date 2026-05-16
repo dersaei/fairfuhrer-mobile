@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -28,9 +29,13 @@ function AccountScreen() {
     <SafeAreaView style={s.container} edges={["top"]}>
       {/* Header */}
       <View style={s.accountHeader}>
-        <View style={s.avatarPlaceholder}>
-          <Text style={s.avatarInitial}>{displayName.charAt(0).toUpperCase()}</Text>
-        </View>
+        {profile?.avatar_url ? (
+          <Image source={{ uri: profile.avatar_url }} style={s.avatarImage} />
+        ) : (
+          <View style={s.avatarPlaceholder}>
+            <Text style={s.avatarInitial}>{displayName.charAt(0).toUpperCase()}</Text>
+          </View>
+        )}
         <View style={s.accountHeaderInfo}>
           <Text style={s.accountName}>{profile?.username ?? "—"}</Text>
           <Text style={s.accountEmail}>{user?.email}</Text>
@@ -48,7 +53,7 @@ function AccountScreen() {
         style={s.navScroll}
         contentContainerStyle={s.navContent}
       >
-        {(["profil", "einstellungen", "premium", "ort-vorschlagen"] as AccountSection[]).map(
+        {(["profil", "einstellungen", "ort-vorschlagen", "premium"] as AccountSection[]).map(
           (sec) => (
             <TouchableOpacity
               key={sec}
@@ -127,6 +132,12 @@ const s = StyleSheet.create({
     gap: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#f0e8e0",
+  },
+  avatarImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#eee",
   },
   avatarPlaceholder: {
     width: 64,

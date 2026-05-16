@@ -12,10 +12,8 @@ import Mapbox, {
 import type { ComponentRef } from "react";
 import { useRouter } from "expo-router";
 import { useTabGpsCenter } from "@/hooks/useTabGpsCenter";
-import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
-import { ENTITLEMENT_ID } from "@/lib/revenuecat";
 import { LoginPromptModal } from "@/components/LoginPromptModal";
 import type { DirectusOrte } from "@/types";
 import MenuButton from "@/components/MenuButton";
@@ -71,7 +69,7 @@ export default function KarteScreen() {
     fetchAll,
     getAllPlacesWithLocked,
   } = usePlacesStore();
-  const { session, isPro, refreshPro } = useAuth();
+  const { session, isPro } = useAuth();
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   // All Sehenswertes pins shown on map; locked ones open paywall on tap.
   const { places: allPlaces, lockedIds } = useMemo(
@@ -154,18 +152,13 @@ export default function KarteScreen() {
           setShowLoginPrompt(true);
           return;
         }
-        const result = await RevenueCatUI.presentPaywallIfNeeded({
-          requiredEntitlementIdentifier: ENTITLEMENT_ID,
-        });
-        if (result === PAYWALL_RESULT.PURCHASED || result === PAYWALL_RESULT.RESTORED) {
-          await refreshPro();
-        }
+        router.push("/custom-paywall");
         return;
       }
 
       router.push(`/place/${placeId}`);
     },
-    [router, session, refreshPro, cameraZoom],
+    [router, session, cameraZoom],
   );
 
   return (

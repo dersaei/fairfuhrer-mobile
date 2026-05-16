@@ -1,0 +1,546 @@
+diff --git a/app/(tabs)/profil.tsx b/app/(tabs)/profil.tsx
+index 2688ba1..cfe3115 100644
+--- a/app/(tabs)/profil.tsx
++++ b/app/(tabs)/profil.tsx
+@@ -1,4 +1,4 @@
+-import { useState } from "react";
++import { useState, useEffect, useCallback, useRef } from "react";
+ import {
+   View,
+   Text,
+@@ -23,6 +23,14 @@ import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
+ import MenuButton from "@/components/MenuButton";
+ import { usePlacesStore } from "@/stores/placesStore";
+ import { ENTITLEMENT_ID } from "@/lib/revenuecat";
++import {
++  OFFLINE_PACK_LABEL,
++  deleteOfflinePack,
++  formatPackSize,
++  getOfflinePackStatus,
++  startOfflinePackDownload,
++  type OfflinePackStatus,
++} from "@/lib/offlineMaps";
+ 
+ const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
+ 
+@@ -30,6 +38,7 @@ type AuthView = "welcome" | "login" | "register";
+ type AccountSection =
+   | "profil"
+   | "einstellungen"
++  | "offline-karten"
+   | "premium"
+   | "ort-vorschlagen";
+ 
+@@ -477,6 +486,7 @@ function AccountScreen() {
+           [
+             "profil",
+             "einstellungen",
++            "offline-karten",
+             "premium",
+             "ort-vorschlagen",
+           ] as AccountSection[]
+@@ -496,9 +506,11 @@ function AccountScreen() {
+                 ? "Profil"
+                 : sec === "einstellungen"
+                   ? "Einstellungen"
+-                  : sec === "premium"
+-                    ? "Premium"
+-                    : "Ort vorschlagen"}
++                  : sec === "offline-karten"
++                    ? "Offline-Karten"
++                    : sec === "premium"
++                      ? "Premium"
++                      : "Ort vorschlagen"}
+             </Text>
+           </TouchableOpacity>
+         ))}
+@@ -522,6 +534,9 @@ function AccountScreen() {
+             refreshProfile={refreshProfile}
+           />
+         )}
++        {activeSection === "offline-karten" && (
++          <OfflineKartenSection isPro={isPro} />
++        )}
+         {activeSection === "premium" && (
+           <PremiumSection isPro={isPro} refreshPro={refreshPro} />
+         )}
+@@ -812,6 +827,208 @@ function EinstellungenSection({ user, profile, signOut, deleteAccount, refreshPr
+   );
+ }
+ 
++// ─── Offline-Karten Section ──────────────────────────────────────────────────
++
++function OfflineKartenSection({ isPro }: { isPro: boolean }) {
++  const [status, setStatus] = useState<OfflinePackStatus | null>(null);
++  const [isInitializing, setIsInitializing] = useState(true);
++  const [isWorking, setIsWorking] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++  const isMountedRef = useRef(true);
++
++  useEffect(() => {
++    isMountedRef.current = true;
++    return () => {
++      isMountedRef.current = false;
++    };
++  }, []);
++
++  // Sprawdź aktualny status paczki przy wejściu na ekran.
++  useEffect(() => {
++    let cancelled = false;
++    (async () => {
++      try {
++        const current = await getOfflinePackStatus();
++        if (!cancelled && isMountedRef.current) setStatus(current);
++      } catch {
++        if (!cancelled && isMountedRef.current) setStatus(null);
++      } finally {
++        if (!cancelled && isMountedRef.current) setIsInitializing(false);
++      }
++    })();
++    return () => {
++      cancelled = true;
++    };
++  }, []);
++
++  const handleProgress = useCallback((next: OfflinePackStatus) => {
++    if (!isMountedRef.current) return;
++    setStatus(next);
++    if (next.state === "complete") {
++      setIsWorking(false);
++    }
++  }, []);
++
++  const handleError = useCallback((err: { message: string }) => {
++    if (!isMountedRef.current) return;
++    setError(err.message);
++    setIsWorking(false);
++  }, []);
++
++  const handleDownload = useCallback(async () => {
++    if (!isPro || isWorking) return;
++    setError(null);
++    setIsWorking(true);
++    try {
++      const initial = await startOfflinePackDownload(handleProgress, handleError);
++      if (!isMountedRef.current) return;
++      setStatus(initial);
++      if (initial.state === "complete") setIsWorking(false);
++    } catch (e) {
++      if (!isMountedRef.current) return;
++      const message =
++        e instanceof Error
++          ? e.message
++          : "Download konnte nicht gestartet werden.";
++      setError(message);
++      setIsWorking(false);
++    }
++  }, [handleError, handleProgress, isPro, isWorking]);
++
++  const handleDelete = useCallback(() => {
++    if (isWorking) return;
++    Alert.alert(
++      "Offline-Karte entfernen",
++      "Möchtest du die Offline-Karte „" +
++        OFFLINE_PACK_LABEL +
++        "“ wirklich von diesem Gerät entfernen?",
++      [
++        { text: "Abbrechen", style: "cancel" },
++        {
++          text: "Entfernen",
++          style: "destructive",
++          onPress: async () => {
++            setIsWorking(true);
++            setError(null);
++            try {
++              await deleteOfflinePack();
++              if (!isMountedRef.current) return;
++              setStatus(null);
++            } catch {
++              if (!isMountedRef.current) return;
++              setError("Offline-Karte konnte nicht entfernt werden.");
++            } finally {
++              if (isMountedRef.current) setIsWorking(false);
++            }
++          },
++        },
++      ],
++    );
++  }, [isWorking]);
++
++  const isComplete = status?.state === "complete";
++  const isDownloading =
++    status?.state === "active" || (isWorking && !isComplete);
++  const percent = Math.max(0, Math.min(100, Math.round(status?.percentage ?? 0)));
++
++  return (
++    <View style={s.section}>
++      <Text style={s.sectionTitle}>Offline-Karten</Text>
++      <Text style={s.sectionHint}>
++        Lade Kartenkacheln für eine ausgewählte Region auf dein Gerät, damit
++        die Karte auch ohne Internetverbindung funktioniert. Die Inhalte (Pins
++        und Beschreibungen) bleiben weiterhin online.
++      </Text>
++
++      {!isPro && (
++        <View style={s.premiumInfo}>
++          <Text style={s.premiumInfoText}>
++            Offline-Karten sind Teil von Fairführer+. Mit einem Premium-Konto
++            kannst du Kartenregionen auf dein Gerät herunterladen.
++          </Text>
++        </View>
++      )}
++
++      <View style={s.offlinePackCard}>
++        <View style={s.offlinePackHeader}>
++          <Text style={s.offlinePackTitle}>{OFFLINE_PACK_LABEL}</Text>
++          {isComplete && (
++            <View style={s.offlinePackBadge}>
++              <Text style={s.offlinePackBadgeText}>Verfügbar</Text>
++            </View>
++          )}
++        </View>
++        <Text style={s.offlinePackMeta}>
++          Region rund um den Bodensee und das Allgäu. Zoom-Stufen 6 bis 14.
++        </Text>
++
++        {isInitializing && (
++          <View style={s.offlineInline}>
++            <ActivityIndicator color="#fc6c14" />
++            <Text style={s.offlineInlineText}>Status wird geprüft…</Text>
++          </View>
++        )}
++
++        {!isInitializing && isDownloading && (
++          <View style={{ gap: 6, marginTop: 4 }}>
++            <View style={s.offlineProgressTrack}>
++              <View style={[s.offlineProgressBar, { width: `${percent}%` }]} />
++            </View>
++            <Text style={s.offlineProgressText}>
++              Wird heruntergeladen… {percent} %
++              {status && status.completedResourceSize > 0
++                ? ` · ${formatPackSize(status.completedResourceSize)}`
++                : ""}
++            </Text>
++          </View>
++        )}
++
++        {!isInitializing && isComplete && (
++          <Text style={s.offlinePackMeta}>
++            {`Heruntergeladen: ${formatPackSize(
++              status?.completedResourceSize ?? 0,
++            )}`}
++          </Text>
++        )}
++
++        {error && <Text style={s.errorText}>{error}</Text>}
++
++        {!isInitializing && !isComplete && (
++          <TouchableOpacity
++            style={[
++              s.button,
++              (!isPro || isDownloading) && s.buttonDisabled,
++              { marginTop: 12 },
++            ]}
++            onPress={handleDownload}
++            disabled={!isPro || isDownloading}
++          >
++            {isDownloading ? (
++              <ActivityIndicator color="#fc6c14" />
++            ) : (
++              <Text style={s.buttonText}>
++                {isPro
++                  ? "Bodensee & Allgäu herunterladen"
++                  : "Nur mit Fairführer+ verfügbar"}
++              </Text>
++            )}
++          </TouchableOpacity>
++        )}
++
++        {!isInitializing && isComplete && (
++          <TouchableOpacity
++            style={[s.buttonOutline, isWorking && s.buttonDisabled, { marginTop: 12 }]}
++            onPress={handleDelete}
++            disabled={isWorking}
++          >
++            <Text style={s.buttonOutlineText}>Offline-Karte entfernen</Text>
++          </TouchableOpacity>
++        )}
++      </View>
++    </View>
++  );
++}
++
+ // ─── Premium Section ─────────────────────────────────────────────────────────
+ 
+ function PremiumSection({
+@@ -1715,4 +1932,69 @@ const s = StyleSheet.create({
+     letterSpacing: 1,
+     alignSelf: "center",
+   },
++
++  // Offline-Karten
++  offlinePackCard: {
++    borderWidth: 1.5,
++    borderColor: "#e8e0d8",
++    borderRadius: 16,
++    padding: 18,
++    gap: 8,
++    backgroundColor: "#fafaf9",
++  },
++  offlinePackHeader: {
++    flexDirection: "row",
++    alignItems: "center",
++    justifyContent: "space-between",
++  },
++  offlinePackTitle: {
++    fontSize: 18,
++    fontFamily: "FiraSansCondensed_700Bold",
++    color: "#111",
++  },
++  offlinePackBadge: {
++    backgroundColor: "#2D6A4F",
++    borderRadius: 20,
++    paddingHorizontal: 10,
++    paddingVertical: 3,
++  },
++  offlinePackBadgeText: {
++    fontSize: 11,
++    fontFamily: "FiraSansCondensed_700Bold",
++    color: "#fff",
++    letterSpacing: 0.5,
++  },
++  offlinePackMeta: {
++    fontSize: 13,
++    fontFamily: "FiraSansCondensed_400Regular",
++    color: "#666",
++    lineHeight: 18,
++  },
++  offlineProgressTrack: {
++    width: "100%",
++    height: 8,
++    borderRadius: 4,
++    backgroundColor: "#f0e8e0",
++    overflow: "hidden",
++  },
++  offlineProgressBar: {
++    height: "100%",
++    backgroundColor: "#fc6c14",
++  },
++  offlineProgressText: {
++    fontSize: 13,
++    fontFamily: "FiraSansCondensed_600SemiBold",
++    color: "#fc6c14",
++  },
++  offlineInline: {
++    flexDirection: "row",
++    alignItems: "center",
++    gap: 8,
++    marginTop: 4,
++  },
++  offlineInlineText: {
++    fontSize: 13,
++    fontFamily: "FiraSansCondensed_400Regular",
++    color: "#666",
++  },
+ });
+diff --git alib/offlineMaps.ts blib/offlineMaps.ts
+new file mode 100644
+index 0000000..f8fe3a3
+--- /dev/null
++++ blib/offlineMaps.ts
+@@ -0,0 +1,195 @@
++import Mapbox from "@rnmapbox/maps";
++
++// ─── Konfiguracja paczki offline ─────────────────────────────────────────────
++// MVP: jedna predefiniowana paczka obejmująca obszar Bodensee i Allgäu.
++// Bounding box jest celowo konserwatywny — pokrywa region od zachodniego
++// Bodensee (Konstanz/Singen) po wschodnie Allgäu (Füssen/Oberstdorf), aby
++// uniknąć pobierania ogromnej ilości kafelków. Zakres zoomów: 6–14
++// (poziom kraju → poziom ulic w miastach turystycznych).
++
++export const OFFLINE_PACK_NAME = "bodensee-allgaeu";
++
++export const OFFLINE_PACK_BOUNDS: {
++  ne: [number, number];
++  sw: [number, number];
++} = {
++  // [longitude, latitude]
++  // NE — Füssen / Oberstdorf / Memmingen-okolice
++  ne: [10.85, 47.95],
++  // SW — Singen / zachodni Bodensee
++  sw: [8.7, 47.4],
++};
++
++export const OFFLINE_MIN_ZOOM = 6;
++export const OFFLINE_MAX_ZOOM = 14;
++
++// Styl mapy — musi być zgodny ze stylem używanym w ekranie Karte
++// (Mapbox.StyleURL.Street). Jeśli styl zostanie zmieniony w karte.tsx,
++// należy zaktualizować również tę stałą.
++export const OFFLINE_STYLE_URL = Mapbox.StyleURL.Street;
++
++// Czytelna nazwa do wyświetlenia w UI (de-DE).
++export const OFFLINE_PACK_LABEL = "Bodensee & Allgäu";
++
++// ─── Typy ────────────────────────────────────────────────────────────────────
++
++export type OfflinePackState =
++  | "unknown"
++  | "inactive"
++  | "active"
++  | "complete"
++  | "invalid";
++
++export interface OfflinePackStatus {
++  name: string;
++  state: OfflinePackState;
++  percentage: number;
++  completedResourceCount: number;
++  completedResourceSize: number;
++  requiredResourceCount: number;
++  completedTileCount: number;
++  requiredTileCount: number;
++}
++
++// ─── Helpers ─────────────────────────────────────────────────────────────────
++
++// Surowy typ statusu zwracany przez RNMapbox (numeryczne pola + state jako int).
++// RNMapbox eksportuje state jako liczbę (0=Inactive, 1=Active, 2=Complete, 3=Invalid).
++type RawPackStatus = {
++  name?: string;
++  state?: number | string;
++  percentage?: number;
++  completedResourceCount?: number;
++  completedResourceSize?: number;
++  requiredResourceCount?: number;
++  completedTileCount?: number;
++  requiredTileCount?: number;
++};
++
++function mapState(state: number | string | undefined): OfflinePackState {
++  if (typeof state === "string") {
++    const s = state.toLowerCase();
++    if (s === "inactive" || s === "active" || s === "complete" || s === "invalid")
++      return s as OfflinePackState;
++  }
++  switch (state) {
++    case 0:
++      return "inactive";
++    case 1:
++      return "active";
++    case 2:
++      return "complete";
++    case 3:
++      return "invalid";
++    default:
++      return "unknown";
++  }
++}
++
++export function normalizeStatus(raw: RawPackStatus): OfflinePackStatus {
++  return {
++    name: raw.name ?? OFFLINE_PACK_NAME,
++    state: mapState(raw.state),
++    percentage: typeof raw.percentage === "number" ? raw.percentage : 0,
++    completedResourceCount: raw.completedResourceCount ?? 0,
++    completedResourceSize: raw.completedResourceSize ?? 0,
++    requiredResourceCount: raw.requiredResourceCount ?? 0,
++    completedTileCount: raw.completedTileCount ?? 0,
++    requiredTileCount: raw.requiredTileCount ?? 0,
++  };
++}
++
++// ─── API ─────────────────────────────────────────────────────────────────────
++
++/**
++ * Zwraca aktualny status paczki offline lub `null`, jeśli paczka nie istnieje.
++ */
++export async function getOfflinePackStatus(): Promise<OfflinePackStatus | null> {
++  try {
++    const pack = await Mapbox.offlineManager.getPack(OFFLINE_PACK_NAME);
++    if (!pack) return null;
++    const raw = (await pack.status()) as RawPackStatus;
++    return normalizeStatus(raw);
++  } catch {
++    return null;
++  }
++}
++
++/**
++ * Rozpoczyna pobieranie paczki offline. Jeśli paczka już istnieje, zwraca jej
++ * aktualny status bez ponownego tworzenia.
++ *
++ * Callbacki `onProgress` i `onError` są wywoływane przez natywny moduł RNMapbox
++ * w trakcie pobierania. Wartość zwracana to status z momentu zakończenia
++ * wywołania `createPack` (zwykle stan początkowy, 0 %).
++ */
++export async function startOfflinePackDownload(
++  onProgress: (status: OfflinePackStatus) => void,
++  onError: (error: { message: string }) => void,
++): Promise<OfflinePackStatus> {
++  const existing = await getOfflinePackStatus();
++  if (existing) return existing;
++
++  const progressListener = (_pack: unknown, status: RawPackStatus) => {
++    onProgress(normalizeStatus(status));
++  };
++  const errorListener = (_pack: unknown, err: unknown) => {
++    const message =
++      typeof err === "object" && err !== null && "message" in err
++        ? String((err as { message: unknown }).message)
++        : "Unbekannter Fehler beim Herunterladen der Offline-Karte.";
++    onError({ message });
++  };
++
++  await Mapbox.offlineManager.createPack(
++    {
++      name: OFFLINE_PACK_NAME,
++      styleURL: OFFLINE_STYLE_URL,
++      bounds: [OFFLINE_PACK_BOUNDS.ne, OFFLINE_PACK_BOUNDS.sw],
++      minZoom: OFFLINE_MIN_ZOOM,
++      maxZoom: OFFLINE_MAX_ZOOM,
++    },
++    progressListener,
++    errorListener,
++  );
++
++  const status = await getOfflinePackStatus();
++  return (
++    status ?? {
++      name: OFFLINE_PACK_NAME,
++      state: "active",
++      percentage: 0,
++      completedResourceCount: 0,
++      completedResourceSize: 0,
++      requiredResourceCount: 0,
++      completedTileCount: 0,
++      requiredTileCount: 0,
++    }
++  );
++}
++
++/**
++ * Usuwa paczkę offline. No-op, jeśli paczka nie istnieje.
++ */
++export async function deleteOfflinePack(): Promise<void> {
++  try {
++    const pack = await Mapbox.offlineManager.getPack(OFFLINE_PACK_NAME);
++    if (!pack) return;
++    await Mapbox.offlineManager.deletePack(OFFLINE_PACK_NAME);
++  } catch {
++    // Brak paczki / błąd natywny — traktujemy jako zakończone.
++  }
++}
++
++/**
++ * Konwersja rozmiaru w bajtach na czytelny ciąg po niemiecku (KB / MB).
++ */
++export function formatPackSize(bytes: number): string {
++  if (!bytes || bytes <= 0) return "0 MB";
++  const mb = bytes / (1024 * 1024);
++  if (mb < 1) {
++    const kb = bytes / 1024;
++    return `${kb.toFixed(0)} KB`;
++  }
++  return `${mb.toFixed(1)} MB`;
++}

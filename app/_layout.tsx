@@ -63,6 +63,15 @@ function RootLayoutNav() {
           }}
         />
         <Stack.Screen
+          name="custom-paywall"
+          options={{
+            presentation: "modal",
+            animation: "slide_from_bottom",
+            gestureEnabled: true,
+            gestureDirection: "vertical",
+          }}
+        />
+        <Stack.Screen
           name="(drawer)"
           options={{ presentation: "card", animation: "slide_from_right" }}
         />
