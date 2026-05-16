@@ -24,18 +24,18 @@ const PACKAGE_META: Record<
   string,
   { label: string; sub: string; perMonth: string; popular?: boolean }
 > = {
-  fairfuehrer_small: {
+  $rc_monthly: {
     label: "Kleine Unterstützung",
     sub: "Ein Kaffee fürs Team",
     perMonth: "0,42 €/Monat",
   },
-  fairfuehrer_fair: {
+  $rc_annual: {
     label: "Faire Unterstützung",
     sub: "Empfohlen · deckt deinen Anteil",
     perMonth: "0,83 €/Monat",
     popular: true,
   },
-  fairfuehrer_large: {
+  $rc_lifetime: {
     label: "Große Unterstützung",
     sub: "Du machst den Unterschied",
     perMonth: "1,67 €/Monat",
@@ -101,7 +101,7 @@ export default function PaywallScreen() {
   const selectedPrice = selected?.product.priceString ?? "";
 
   return (
-    <SafeAreaView style={s.container} edges={["top"]}>
+    <SafeAreaView style={s.container} edges={["top", "bottom"]}>
       <ScrollView
         contentContainerStyle={s.scroll}
         showsVerticalScrollIndicator={false}
