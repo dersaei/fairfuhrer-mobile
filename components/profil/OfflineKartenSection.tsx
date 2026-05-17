@@ -10,28 +10,58 @@ import {
   unsubscribeOfflinePack,
   type OfflinePackStatus,
 } from "@/lib/offlineMaps";
-import { clearPlacesCache, formatCacheDate, loadPlacesCache } from "@/lib/placesCache";
-import { clearAllMediaCache } from "@/lib/mediaCache";
+import {
+  clearPlacesCache,
+  formatCacheDate,
+  isCacheStale,
+  loadPlacesCache,
+  CACHE_STALE_AFTER_DAYS,
+} from "@/lib/placesCache";
+import { clearAllMediaCache, getAvailableDiskSpace } from "@/lib/mediaCache";
+import { setOfflineDataOwner } from "@/lib/offlineOwnership";
 import { usePlacesStore } from "@/stores/placesStore";
+import { useAuth } from "@/context/AuthContext";
 import { OfflineMedienCard } from "@/components/profil/OfflineMedienCard";
 
 export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
+  const { user } = useAuth();
   const [status, setStatus] = useState<OfflinePackStatus | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isWorking, setIsWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Datum der zuletzt gespeicherten Offline-Daten (Orte), formatiert DD.MM.YYYY.
   const [cacheDate, setCacheDate] = useState<string | null>(null);
+  // true, wenn die Offline-Daten älter als der Schwellwert sind.
+  const [cacheStale, setCacheStale] = useState(false);
+  // true, während der manuelle „Aktualisieren"-Vorgang läuft.
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const isMountedRef = useRef(true);
   const cacheCurrentPlaces = usePlacesStore((st) => st.cacheCurrentPlaces);
+  const refreshOfflineData = usePlacesStore((st) => st.refreshOfflineData);
 
-  // Liest das Datum des lokalen Orte-Cache neu ein.
+  // Liest Datum und Aktualität des lokalen Orte-Cache neu ein.
   const refreshCacheDate = useCallback(async () => {
     const cached = await loadPlacesCache();
     if (isMountedRef.current) {
       setCacheDate(cached ? formatCacheDate(cached.savedAt) : null);
+      setCacheStale(cached ? isCacheStale(cached.savedAt) : false);
     }
   }, []);
+
+  // Manuelles Aktualisieren der Offline-Daten (Pins/Inhalte) aus Directus.
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    setError(null);
+    setIsRefreshing(true);
+    const ok = await refreshOfflineData();
+    if (!isMountedRef.current) return;
+    if (!ok) {
+      setError("Aktualisierung fehlgeschlagen. Bitte prüfe deine Internetverbindung.");
+    } else {
+      await refreshCacheDate();
+    }
+    if (isMountedRef.current) setIsRefreshing(false);
+  }, [isRefreshing, refreshOfflineData, refreshCacheDate]);
 
   // Sprawdź aktualny status paczki przy wejściu na ekran i wyrejestruj
   // listenery RNMapbox przy odmontowaniu.
@@ -54,22 +84,28 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
     };
   }, [refreshCacheDate]);
 
+  // Po pobraniu paczki: zapisz aktualne konto jako właściciela danych
+  // offline, zapisz piny Directusa i odśwież datę. Zdjęcia i audio pobiera
+  // się osobno (OfflineMedienCard). Fire-and-forget.
+  const finalizeDownload = useCallback(() => {
+    if (user?.id) void setOfflineDataOwner(user.id);
+    void cacheCurrentPlaces()
+      .then(refreshCacheDate)
+      .finally(() => {
+        if (isMountedRef.current) setIsWorking(false);
+      });
+  }, [cacheCurrentPlaces, refreshCacheDate, user?.id]);
+
   const handleProgress = useCallback(
     (next: OfflinePackStatus) => {
       if (!isMountedRef.current) return;
       setStatus(next);
       if (next.state === "complete") {
         unsubscribeOfflinePack();
-        // Po pobraniu mapy: zapisz piny Directusa i odśwież datę. Zdjęcia
-        // i audio pobiera się osobno (OfflineMedienCard). Fire-and-forget.
-        void cacheCurrentPlaces()
-          .then(refreshCacheDate)
-          .finally(() => {
-            if (isMountedRef.current) setIsWorking(false);
-          });
+        finalizeDownload();
       }
     },
-    [cacheCurrentPlaces, refreshCacheDate],
+    [finalizeDownload],
   );
 
   const handleError = useCallback((err: { message: string }) => {
@@ -82,6 +118,19 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
   const handleDownload = useCallback(async () => {
     if (!isPro || isWorking) return;
     setError(null);
+
+    // Die Kartenpaket-Region (~130 MB) braucht ausreichend freien Speicher.
+    // Bei vollem Gerät einen klaren Hinweis zeigen, statt nativ abzubrechen.
+    const MIN_FREE_BYTES = 250 * 1024 * 1024;
+    const free = getAvailableDiskSpace();
+    if (free !== null && free < MIN_FREE_BYTES) {
+      setError(
+        "Nicht genügend freier Speicher auf dem Gerät. Bitte gib " +
+          "Speicherplatz frei und versuche es erneut.",
+      );
+      return;
+    }
+
     setIsWorking(true);
     try {
       const initial = await startOfflinePackDownload(handleProgress, handleError, isPro);
@@ -89,12 +138,8 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
       setStatus(initial);
       if (initial.state === "complete") {
         // Paczka mapy istniała już wcześniej (handleProgress się nie odpali) —
-        // upewnij się, że cache pinów też istnieje.
-        void cacheCurrentPlaces()
-          .then(refreshCacheDate)
-          .finally(() => {
-            if (isMountedRef.current) setIsWorking(false);
-          });
+        // upewnij się, że cache pinów i właściciel też są ustawione.
+        finalizeDownload();
       }
     } catch (e) {
       if (!isMountedRef.current) return;
@@ -102,7 +147,7 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
       setError(message);
       setIsWorking(false);
     }
-  }, [cacheCurrentPlaces, handleError, handleProgress, isPro, isWorking, refreshCacheDate]);
+  }, [finalizeDownload, handleError, handleProgress, isPro, isWorking]);
 
   const handleDelete = useCallback(() => {
     if (isWorking) return;
@@ -187,7 +232,9 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
           )}
         </View>
         <Text style={s.offlinePackMeta}>
-          Region rund um den Bodensee und das Allgäu. Zoom-Stufen 6 bis 14.
+          Das Kartenbild deckt die Region rund um den Bodensee und das Allgäu
+          ab (Zoom-Stufen 6 bis 14). Pins, Fotos und Audioguides umfassen alle
+          Orte des Katalogs.
         </Text>
 
         {!isInitializing && !isComplete && !isDownloading && (
@@ -239,6 +286,46 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
                 {`Zuletzt aktualisiert: ${cacheDate}`}
               </Text>
             )}
+
+            {/* Nieaktualna paczka mapy — zmieniły się bounds/zoom/styl. */}
+            {status?.isOutdated && (
+              <View style={s.offlineWarn}>
+                <Text style={s.offlineWarnText}>
+                  Eine neue Version der Offline-Karte ist verfügbar. Bitte lade
+                  die Karte erneut herunter, um die aktuelle Version zu erhalten.
+                </Text>
+              </View>
+            )}
+
+            {/* Stare dane offline — po przekroczeniu progu wieku. */}
+            {cacheStale && !status?.isOutdated && (
+              <View style={s.offlineWarn}>
+                <Text style={s.offlineWarnText}>
+                  {`Die Offline-Daten sind älter als ${CACHE_STALE_AFTER_DAYS} Tage und ` +
+                    "möglicherweise veraltet. Tippe auf „Daten aktualisieren“, " +
+                    "um sie zu erneuern."}
+                </Text>
+              </View>
+            )}
+
+            {/* Manuelles Aktualisieren der Pins/Inhalte. */}
+            {isPro && (
+              <TouchableOpacity
+                style={[
+                  s.buttonOutline,
+                  (isWorking || isRefreshing) && s.buttonDisabled,
+                  { marginTop: 8 },
+                ]}
+                onPress={handleRefresh}
+                disabled={isWorking || isRefreshing}
+              >
+                {isRefreshing ? (
+                  <ActivityIndicator color="#111" />
+                ) : (
+                  <Text style={s.buttonOutlineText}>Daten aktualisieren</Text>
+                )}
+              </TouchableOpacity>
+            )}
           </>
         )}
 
@@ -255,7 +342,7 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
             {isDownloading ? (
               <ActivityIndicator color="#fc6c14" />
             ) : (
-              <Text style={s.buttonText}>Bodensee &amp; Allgäu herunterladen</Text>
+              <Text style={s.buttonText}>Offline-Karte herunterladen</Text>
             )}
           </TouchableOpacity>
         )}
@@ -434,6 +521,20 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontFamily: "FiraSansCondensed_400Regular",
     color: "#7a6a4a",
+    lineHeight: 17,
+  },
+  offlineWarn: {
+    backgroundColor: "#fff4e0",
+    borderWidth: 1,
+    borderColor: "#f0d090",
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 4,
+  },
+  offlineWarnText: {
+    fontSize: 12,
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    color: "#8a5a10",
     lineHeight: 17,
   },
 });

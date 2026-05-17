@@ -9,6 +9,7 @@ import {
   setUserEmail,
   addCustomerInfoListener,
 } from "@/lib/revenuecat";
+import { reconcileOfflineDataOwner } from "@/lib/offlineOwnership";
 
 export interface Profile {
   id: string;
@@ -85,6 +86,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
+        // Czyści dane offline, jeśli to inne konto niż poprzednio na tym
+        // urządzeniu — zapobiega dziedziczeniu danych premium między kontami.
+        await reconcileOfflineDataOwner(session.user.id);
         const [p] = await Promise.all([
           fetchProfile(session.user.id),
           identifyAndAttachEmail(session.user),
@@ -100,6 +104,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       if (session?.user) {
+        // Wykryj zmianę konta i w razie potrzeby wyczyść dane offline
+        // poprzedniego konta przed załadowaniem danych nowego.
+        await reconcileOfflineDataOwner(session.user.id);
         const [p] = await Promise.all([
           fetchProfile(session.user.id),
           identifyAndAttachEmail(session.user),

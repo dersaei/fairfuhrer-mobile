@@ -88,8 +88,26 @@ export default function KarteScreen() {
   const cameraRef = useRef<Camera>(null);
 
   useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+    fetchAll(isPro);
+  }, [fetchAll, isPro]);
+
+  // GPS-Position kommt asynchron. Da die Kamera imperativ ist (defaultSettings
+  // greift nur einmal beim Mount), muss die GPS-Position per setCamera
+  // nachgereicht werden. useTabGpsCenter liefert center/zoom genau einmal —
+  // nach dem ersten Wert ist gpsAppliedRef gesetzt, damit ein späterer
+  // Suchergebnis-Sprung nicht überschrieben wird.
+  const gpsAppliedRef = useRef(false);
+  useEffect(() => {
+    if (gpsAppliedRef.current) return;
+    if (cameraCenter[0] === 10.0 && cameraCenter[1] === 51.0) return; // Default
+    gpsAppliedRef.current = true;
+    cameraRef.current?.setCamera({
+      centerCoordinate: cameraCenter,
+      zoomLevel: cameraZoom,
+      animationMode: "flyTo",
+      animationDuration: 800,
+    });
+  }, [cameraCenter, cameraZoom]);
 
   // GeoJSON — przeliczany tylko gdy zmienia się lista lub filtr
   const geoJSON = useMemo(() => {
@@ -216,10 +234,16 @@ export default function KarteScreen() {
             localizeLabels={{ locale: "de" }}
             compassEnabled
           >
+            {/* Kamera imperatywna: defaultSettings ustawia tylko pozycję
+                startową. Wszystkie ruchy (GPS, wybór z wyszukiwarki) idą przez
+                cameraRef.setCamera — kontrolowane propsy centerCoordinate/
+                zoomLevel ściągałyby widok z powrotem przy re-renderze. */}
             <Camera
               ref={cameraRef}
-              centerCoordinate={cameraCenter}
-              zoomLevel={cameraZoom}
+              defaultSettings={{
+                centerCoordinate: cameraCenter,
+                zoomLevel: cameraZoom,
+              }}
               animationMode="flyTo"
               animationDuration={800}
             />

@@ -84,6 +84,20 @@ export async function hasPlacesCache(): Promise<boolean> {
   }
 }
 
+// Po ilu dniach lokalne dane uznajemy za potencjalnie nieaktualne i
+// zachęcamy użytkownika do odświeżenia.
+export const CACHE_STALE_AFTER_DAYS = 30;
+
+/**
+ * Czy cache jest starszy niż próg CACHE_STALE_AFTER_DAYS. Zwraca `false` dla
+ * braku/nieprawidłowego znacznika (brak danych ≠ nieaktualne dane).
+ */
+export function isCacheStale(savedAt: number | undefined): boolean {
+  if (!savedAt || savedAt <= 0) return false;
+  const ageMs = Date.now() - savedAt;
+  return ageMs > CACHE_STALE_AFTER_DAYS * 24 * 60 * 60 * 1000;
+}
+
 /**
  * Formatuje znacznik czasu cache (Unix-ms) na czytelną datę de-DE
  * w formacie DD.MM.YYYY. Zwraca `null` dla braku/nieprawidłowej wartości.

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import {
   clearMediaCache,
   downloadMedia,
+  getAvailableDiskSpace,
   getMediaCacheSize,
   type MediaDownloadProgress,
   type MediaKind,
@@ -59,6 +60,20 @@ export function OfflineMedienCard() {
       if (activeKind) return;
       const noun = kind === "image" ? "Fotos" : "Audioguides";
       setError(null);
+
+      // Mindestens benötigter freier Speicher — konservativer Schwellwert.
+      // Verhindert, dass der Download bei vollem Gerät mitten im Vorgang
+      // mit einem kryptischen Fehler abbricht.
+      const MIN_FREE_BYTES = 200 * 1024 * 1024;
+      const free = getAvailableDiskSpace();
+      if (free !== null && free < MIN_FREE_BYTES) {
+        setError(
+          "Nicht genügend freier Speicher auf dem Gerät. Bitte gib " +
+            "Speicherplatz frei und versuche es erneut.",
+        );
+        return;
+      }
+
       setActiveKind(kind);
       setLiveSize(0);
       try {
@@ -81,6 +96,13 @@ export function OfflineMedienCard() {
         if (!isMountedRef.current) return;
         if (result.failed > 0 && result.completed === 0) {
           setError(`${noun} konnten nicht heruntergeladen werden.`);
+        } else if (result.failed > 0) {
+          // Teilweiser Fehlschlag — nicht still verschlucken, sonst wundert
+          // sich der Nutzer, warum manche Inhalte offline fehlen.
+          setError(
+            `${result.failed} von ${result.total} ${noun} konnten nicht ` +
+              "geladen werden. Versuche es bei bestehender Verbindung erneut.",
+          );
         }
         refreshSizes();
       } catch {

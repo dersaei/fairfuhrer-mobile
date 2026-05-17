@@ -21,16 +21,20 @@ SplashScreen.preventAutoHideAsync();
 initializePurchases();
 
 function RootLayoutNav() {
-  const { session, isLoading } = useAuth();
+  const { session, isLoading, isPro } = useAuth();
   const { isOpen, closeDrawer } = useDrawer();
   const segments = useSegments();
   const router = useRouter();
   const { status, fetchAll } = usePlacesStore();
   const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
 
+  // Daten erst laden, wenn der Auth-Status (inkl. isPro) feststeht — sonst
+  // würde der Offline-Cache-Fallback bei Premium-Nutzern fälschlich
+  // übersprungen, weil isPro anfangs noch false ist.
   useEffect(() => {
-    fetchAll();
-  }, []);
+    if (isLoading) return;
+    fetchAll(isPro);
+  }, [isLoading, isPro, fetchAll]);
 
   useEffect(() => {
     if (isLoading) return;

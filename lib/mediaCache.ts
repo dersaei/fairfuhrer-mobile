@@ -151,6 +151,19 @@ export function clearMediaCache(kind: MediaKind): void {
 }
 
 /**
+ * Zwraca ilość wolnego miejsca na urządzeniu w bajtach. Zwraca `null`, jeśli
+ * wartości nie da się odczytać.
+ */
+export function getAvailableDiskSpace(): number | null {
+  try {
+    const space = Paths.availableDiskSpace;
+    return typeof space === "number" && space >= 0 ? space : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Usuwa cały cache mediów (zdjęcia + audio).
  */
 export function clearAllMediaCache(): void {

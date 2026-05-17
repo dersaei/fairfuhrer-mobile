@@ -44,6 +44,7 @@ export default function ListeScreen() {
     einstellungen,
     status,
     error,
+    isOffline,
     fetchAll,
     getAllPlacesWithLocked,
   } = usePlacesStore();
@@ -70,10 +71,12 @@ export default function ListeScreen() {
   const [bottomSectionHeight, setBottomSectionHeight] = useState(0);
   const [activeRegionName, setActiveRegionName] = useState<string | null>(null);
 
-  // Fetch danych przy pierwszym montowaniu
+  // Fetch danych przy pierwszym montowaniu. isPro decyduje o tym, czy przy
+  // braku sieci wolno użyć cache offline (funkcja premium). fetchAll ma
+  // wewnętrzny guard — ponowne wywołanie po ustaleniu isPro jest bezpieczne.
   useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+    fetchAll(isPro);
+  }, [fetchAll, isPro]);
 
   const categoryFilteredPlaces = useMemo(() => {
     if (selectedCategoryId === null) return allPlaces;
@@ -194,6 +197,17 @@ export default function ListeScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Logo + Menu */}
       <HomeHeader einstellungen={einstellungen} />
+
+      {/* Offline-Hinweis — sichtbar, wenn gespeicherte Daten verwendet werden.
+          Identisch zur Karte, damit der Modus auf beiden Screens erkennbar ist. */}
+      {isOffline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineBannerText}>
+            Offline-Modus – es werden gespeicherte Daten angezeigt. Fotos und
+            Audioguides sind möglicherweise nicht verfügbar.
+          </Text>
+        </View>
+      )}
 
       {/* Przestrzeń nad kartą — GPS label wyśrodkowany pionowo */}
       <View style={styles.aboveCards}>
@@ -358,5 +372,20 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingTop: 40,
     fontFamily: "FiraSansCondensed_400Regular",
+  },
+  offlineBanner: {
+    backgroundColor: "#fff5ef",
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "#fcd9c2",
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+  },
+  offlineBannerText: {
+    fontFamily: "FiraSansCondensed_400Regular",
+    fontSize: 12,
+    color: "#7a4a22",
+    textAlign: "center",
+    lineHeight: 16,
   },
 });

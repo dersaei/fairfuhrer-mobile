@@ -115,6 +115,70 @@ function computeSightsGating(
   return { visibleSightsIds, lockedSightsIds };
 }
 
+// ─── Pobieranie z Directusa ──────────────────────────────────────────────────
+//
+// Wspólne zapytania dla fetchAll (start aplikacji) i refreshOfflineData
+// (ręczne odświeżanie). Jedno źródło prawdy dla zestawu pól.
+
+interface DirectusFetchResult {
+  settings: DirectusEinstellungen;
+  places: DirectusOrte[];
+  categories: DirectusKategorie[];
+}
+
+async function fetchFromDirectus(): Promise<DirectusFetchResult> {
+  const [settings, places, categories] = await Promise.all([
+    directus.request(
+      readItems("Einstellungen" as never, {
+        fields: ["Logo", "Slogan"] as never[],
+      }),
+    ),
+    directus.request(
+      readItems("Orte" as never, {
+        fields: [
+          "id",
+          "Name",
+          "Adresse",
+          "Stadt",
+          "Land",
+          "Telefon",
+          "Vollbeschreibung",
+          "location",
+          "Hauptbild",
+          "Titelbild",
+          "Audio",
+          "Audio_Datei",
+          "Link_URL",
+          "Link_Text",
+          "Galerie.directus_files_id",
+          "Galerie_Bilder",
+          "Kategorie.Kategorie_id.id",
+          "Kategorie.Kategorie_id.Name",
+          "Kategorie.Kategorie_id.Farbe",
+          "Zertifizierungen.Zertifizierungen_id.id",
+          "Zertifizierungen.Zertifizierungen_id.Name",
+          "Zertifizierungen.Zertifizierungen_id.Image",
+          "Bearbeitungsstatus",
+        ] as never[],
+        limit: -1,
+      }),
+    ),
+    directus.request(
+      readItems("Kategorie" as never, {
+        fields: ["id", "Name", "Farbe", "Reihenfolge"] as never[],
+        sort: ["Reihenfolge"] as never[],
+        limit: -1,
+      }),
+    ),
+  ]);
+
+  return {
+    settings: settings as unknown as DirectusEinstellungen,
+    places: places as unknown as DirectusOrte[],
+    categories: categories as unknown as DirectusKategorie[],
+  };
+}
+
 // ─── Store ──────────────────────────────────────────────────────────────────
 
 interface PlacesState {
@@ -137,10 +201,17 @@ interface PlacesState {
     lockedIds: Set<number>;
   };
   isLockedPlace: (placeId: number, isPro: boolean) => boolean;
-  fetchAll: () => Promise<void>;
+  // isPro decyduje, czy przy braku sieci wolno użyć cache offline —
+  // offline to funkcja premium, więc dla nie-premium fallback jest pomijany.
+  fetchAll: (isPro: boolean) => Promise<void>;
   // Zapisuje aktualnie załadowane dane do lokalnego cache offline.
   // Wywoływane po udanym pobraniu paczki mapy offline (funkcja premium).
   cacheCurrentPlaces: () => Promise<void>;
+  // Pobiera świeże dane z Directusa, aktualizuje store i nadpisuje cache
+  // offline. Używane przez ręczny przycisk „Aktualisieren". W odróżnieniu
+  // od fetchAll nie ma guarda status — zawsze wykonuje request.
+  // Zwraca true przy sukcesie, false przy błędzie sieci.
+  refreshOfflineData: () => Promise<boolean>;
 }
 
 export const usePlacesStore = create<PlacesState>((set, get) => ({
@@ -191,68 +262,26 @@ export const usePlacesStore = create<PlacesState>((set, get) => ({
     return lockedSightsIds.has(placeId);
   },
 
-  fetchAll: async () => {
+  fetchAll: async (isPro: boolean) => {
     if (get().status === "loading" || get().status === "success") return;
 
     set({ status: "loading", error: null });
 
     try {
-      const [settings, places, categories] = await Promise.all([
-        directus.request(
-          readItems("Einstellungen" as never, {
-            fields: ["Logo", "Slogan"] as never[],
-          }),
-        ),
-        directus.request(
-          readItems("Orte" as never, {
-            fields: [
-              "id",
-              "Name",
-              "Adresse",
-              "Stadt",
-              "Land",
-              "Telefon",
-              "Vollbeschreibung",
-              "location",
-              "Hauptbild",
-              "Titelbild",
-              "Audio",
-              "Audio_Datei",
-              "Link_URL",
-              "Link_Text",
-              "Galerie.directus_files_id",
-              "Galerie_Bilder",
-              "Kategorie.Kategorie_id.id",
-              "Kategorie.Kategorie_id.Name",
-              "Kategorie.Kategorie_id.Farbe",
-              "Zertifizierungen.Zertifizierungen_id.id",
-              "Zertifizierungen.Zertifizierungen_id.Name",
-              "Zertifizierungen.Zertifizierungen_id.Image",
-              "Bearbeitungsstatus",
-            ] as never[],
-            limit: -1,
-          }),
-        ),
-        directus.request(
-          readItems("Kategorie" as never, {
-            fields: ["id", "Name", "Farbe", "Reihenfolge"] as never[],
-            sort: ["Reihenfolge"] as never[],
-            limit: -1,
-          }),
-        ),
-      ]);
+      const { settings, places, categories } = await fetchFromDirectus();
 
       set({
-        einstellungen: settings as unknown as DirectusEinstellungen,
-        places: places as unknown as DirectusOrte[],
-        categories: categories as unknown as DirectusKategorie[],
+        einstellungen: settings,
+        places,
+        categories,
         status: "success",
         isOffline: false,
       });
     } catch {
-      // Sieć zawiodła — spróbuj wczytać lokalny cache offline. Cache istnieje
-      // tylko, jeśli użytkownik premium pobrał wcześniej paczkę mapy offline.
-      const cached = await loadPlacesCache();
+      // Sieć zawiodła. Cache offline to funkcja premium — dla nie-premium
+      // (lub po wygaśnięciu premium) NIE używamy go, nawet jeśli pliki
+      // fizycznie istnieją na urządzeniu.
+      const cached = isPro ? await loadPlacesCache() : null;
       if (cached) {
         set({
           einstellungen: cached.einstellungen,
@@ -273,5 +302,26 @@ export const usePlacesStore = create<PlacesState>((set, get) => ({
     // Cache'ujemy tylko realnie załadowane dane online.
     if (status !== "success" || places.length === 0) return;
     await savePlacesCache({ places, categories, einstellungen });
+  },
+
+  refreshOfflineData: async () => {
+    try {
+      const { settings, places, categories } = await fetchFromDirectus();
+      set({
+        einstellungen: settings,
+        places,
+        categories,
+        status: "success",
+        error: null,
+        isOffline: false,
+      });
+      // Nadpisz cache offline świeżymi danymi (savePlacesCache aktualizuje
+      // też savedAt → UI pokaże nową datę „Zuletzt aktualisiert").
+      await savePlacesCache({ places, categories, einstellungen: settings });
+      return true;
+    } catch {
+      // Brak sieci / błąd Directusa — store i cache zostają bez zmian.
+      return false;
+    }
   },
 }));
