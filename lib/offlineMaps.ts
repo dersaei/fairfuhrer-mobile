@@ -33,6 +33,13 @@ export const OFFLINE_STYLE_URL = Mapbox.StyleURL.Street;
 // Czytelna nazwa do wyświetlenia w UI (de-DE).
 export const OFFLINE_PACK_LABEL = "Bodensee & Allgäu";
 
+// Szacowany rozmiar paczki mapy. To stała wartość kafelków Mapbox dla danego
+// regionu (zoom 6–14) — NIE zależy od danych w Directusie, więc bezpiecznie
+// jest ją podać na sztywno. Rozmiary zdjęć/audio są zmienne (zależą od
+// kolekcji Directusa) i NIE są tu hardkodowane — patrz OfflineMedienCard,
+// które pokazuje liczbę plików i rosnący rozmiar na żywo.
+export const OFFLINE_PACK_ESTIMATED_SIZE_LABEL = "ca. 130 MB";
+
 // ─── Typy ────────────────────────────────────────────────────────────────────
 
 export type OfflinePackState =
@@ -150,7 +157,15 @@ export async function getOfflinePackStatus(): Promise<OfflinePackStatus | null> 
 export async function startOfflinePackDownload(
   onProgress: (status: OfflinePackStatus) => void,
   onError: (error: { message: string }) => void,
+  isPro: boolean,
 ): Promise<OfflinePackStatus> {
+  // Harter Premium-Gate: Offline-Karten sind eine Fairführer+-Funktion.
+  // Die UI blendet den Button für Nicht-Premium aus, aber die Logikschicht
+  // verlässt sich nicht darauf — sie prüft selbst.
+  if (!isPro) {
+    throw new Error("Offline-Karten sind nur mit Fairführer+ verfügbar.");
+  }
+
   const existing = await getOfflinePackStatus();
   if (existing) return existing;
 

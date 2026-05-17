@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from "react-native";
 import {
   OFFLINE_PACK_LABEL,
+  OFFLINE_PACK_ESTIMATED_SIZE_LABEL,
   deleteOfflinePack,
   formatPackSize,
   getOfflinePackStatus,
@@ -9,13 +10,28 @@ import {
   unsubscribeOfflinePack,
   type OfflinePackStatus,
 } from "@/lib/offlineMaps";
+import { clearPlacesCache, formatCacheDate, loadPlacesCache } from "@/lib/placesCache";
+import { clearAllMediaCache } from "@/lib/mediaCache";
+import { usePlacesStore } from "@/stores/placesStore";
+import { OfflineMedienCard } from "@/components/profil/OfflineMedienCard";
 
 export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
   const [status, setStatus] = useState<OfflinePackStatus | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isWorking, setIsWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Datum der zuletzt gespeicherten Offline-Daten (Orte), formatiert DD.MM.YYYY.
+  const [cacheDate, setCacheDate] = useState<string | null>(null);
   const isMountedRef = useRef(true);
+  const cacheCurrentPlaces = usePlacesStore((st) => st.cacheCurrentPlaces);
+
+  // Liest das Datum des lokalen Orte-Cache neu ein.
+  const refreshCacheDate = useCallback(async () => {
+    const cached = await loadPlacesCache();
+    if (isMountedRef.current) {
+      setCacheDate(cached ? formatCacheDate(cached.savedAt) : null);
+    }
+  }, []);
 
   // Sprawdź aktualny status paczki przy wejściu na ekran i wyrejestruj
   // listenery RNMapbox przy odmontowaniu.
@@ -30,21 +46,31 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
       } finally {
         if (isMountedRef.current) setIsInitializing(false);
       }
+      await refreshCacheDate();
     })();
     return () => {
       isMountedRef.current = false;
       unsubscribeOfflinePack();
     };
-  }, []);
+  }, [refreshCacheDate]);
 
-  const handleProgress = useCallback((next: OfflinePackStatus) => {
-    if (!isMountedRef.current) return;
-    setStatus(next);
-    if (next.state === "complete") {
-      setIsWorking(false);
-      unsubscribeOfflinePack();
-    }
-  }, []);
+  const handleProgress = useCallback(
+    (next: OfflinePackStatus) => {
+      if (!isMountedRef.current) return;
+      setStatus(next);
+      if (next.state === "complete") {
+        unsubscribeOfflinePack();
+        // Po pobraniu mapy: zapisz piny Directusa i odśwież datę. Zdjęcia
+        // i audio pobiera się osobno (OfflineMedienCard). Fire-and-forget.
+        void cacheCurrentPlaces()
+          .then(refreshCacheDate)
+          .finally(() => {
+            if (isMountedRef.current) setIsWorking(false);
+          });
+      }
+    },
+    [cacheCurrentPlaces, refreshCacheDate],
+  );
 
   const handleError = useCallback((err: { message: string }) => {
     if (!isMountedRef.current) return;
@@ -58,17 +84,25 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
     setError(null);
     setIsWorking(true);
     try {
-      const initial = await startOfflinePackDownload(handleProgress, handleError);
+      const initial = await startOfflinePackDownload(handleProgress, handleError, isPro);
       if (!isMountedRef.current) return;
       setStatus(initial);
-      if (initial.state === "complete") setIsWorking(false);
+      if (initial.state === "complete") {
+        // Paczka mapy istniała już wcześniej (handleProgress się nie odpali) —
+        // upewnij się, że cache pinów też istnieje.
+        void cacheCurrentPlaces()
+          .then(refreshCacheDate)
+          .finally(() => {
+            if (isMountedRef.current) setIsWorking(false);
+          });
+      }
     } catch (e) {
       if (!isMountedRef.current) return;
       const message = e instanceof Error ? e.message : "Download konnte nicht gestartet werden.";
       setError(message);
       setIsWorking(false);
     }
-  }, [handleError, handleProgress, isPro, isWorking]);
+  }, [cacheCurrentPlaces, handleError, handleProgress, isPro, isWorking, refreshCacheDate]);
 
   const handleDelete = useCallback(() => {
     if (isWorking) return;
@@ -87,8 +121,13 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
             setError(null);
             try {
               await deleteOfflinePack();
+              // Usuń też cache pinów i mediów — offline mapa, piny i media
+              // mają być spójne (usunięcie paczki usuwa wszystko).
+              await clearPlacesCache();
+              clearAllMediaCache();
               if (!isMountedRef.current) return;
               setStatus(null);
+              setCacheDate(null);
             } catch {
               if (!isMountedRef.current) return;
               setError("Offline-Karte konnte nicht entfernt werden.");
@@ -116,9 +155,24 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
 
       {!isPro && (
         <View style={s.premiumInfo}>
+          <Text style={s.premiumInfoTitle}>Offline-Karten mit Fairführer+</Text>
           <Text style={s.premiumInfoText}>
-            Offline-Karten sind Teil von Fairführer+. Mit einem Premium-Konto kannst du
-            Kartenregionen auf dein Gerät herunterladen.
+            Mit einem Premium-Konto kannst du die Karte der Region Bodensee &amp;
+            Allgäu auf dein Gerät laden und unterwegs ohne Internetverbindung
+            nutzen – ideal für Wandern, Reisen und Gebiete mit schlechtem Empfang.
+          </Text>
+          <Text style={s.premiumInfoText}>
+            Im Offline-Modus stehen dir zur Verfügung:
+          </Text>
+          <Text style={s.premiumInfoBullet}>
+            • das Kartenbild der Region (Straßen, Orte, Gelände){"\n"}
+            • alle Pins mit Namen und Beschreibungen{"\n"}
+            • die Suche nach gespeicherten Orten
+          </Text>
+          <Text style={s.premiumInfoText}>
+            Fotos und Audioguides kannst du als Premium-Nutzer zusätzlich und
+            einzeln herunterladen. Was du nicht herunterlädst, wird wie gewohnt
+            online geladen und ist ohne Verbindung nicht verfügbar.
           </Text>
         </View>
       )}
@@ -136,6 +190,23 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
           Region rund um den Bodensee und das Allgäu. Zoom-Stufen 6 bis 14.
         </Text>
 
+        {!isInitializing && !isComplete && !isDownloading && (
+          <>
+            <View style={s.offlineNote}>
+              <Text style={s.offlineNoteText}>
+                Dieser Download umfasst nur das Kartenbild der Region. Fotos und Audioguides kannst
+                du anschließend separat herunterladen – so behältst du die Kontrolle über den
+                Speicherbedarf.
+              </Text>
+            </View>
+            <Text style={s.offlinePackMeta}>
+              Geschätzte Größe der Karte: {OFFLINE_PACK_ESTIMATED_SIZE_LABEL}. Du kannst sie sowohl
+              über WLAN als auch über mobile Daten herunterladen – ganz wie es dir passt. Bei
+              mobilen Daten kann dies einen Teil deines Datenvolumens verbrauchen.
+            </Text>
+          </>
+        )}
+
         {isInitializing && (
           <View style={s.offlineInline}>
             <ActivityIndicator color="#fc6c14" />
@@ -149,34 +220,42 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
               <View style={[s.offlineProgressBar, { width: `${percent}%` }]} />
             </View>
             <Text style={s.offlineProgressText}>
-              Wird heruntergeladen… {percent} %
-              {status && status.completedResourceSize > 0
-                ? ` · ${formatPackSize(status.completedResourceSize)}`
-                : ""}
+              {`Wird heruntergeladen… ${percent} %${
+                status && status.completedResourceSize > 0
+                  ? ` · ${formatPackSize(status.completedResourceSize)}`
+                  : ""
+              }`}
             </Text>
           </View>
         )}
 
         {!isInitializing && isComplete && (
-          <Text style={s.offlinePackMeta}>
-            {`Heruntergeladen: ${formatPackSize(status?.completedResourceSize ?? 0)}`}
-          </Text>
+          <>
+            <Text style={s.offlinePackMeta}>
+              {`Heruntergeladen: ${formatPackSize(status?.completedResourceSize ?? 0)}`}
+            </Text>
+            {cacheDate && (
+              <Text style={s.offlinePackMeta}>
+                {`Zuletzt aktualisiert: ${cacheDate}`}
+              </Text>
+            )}
+          </>
         )}
 
         {error && <Text style={s.errorText}>{error}</Text>}
 
-        {!isInitializing && !isComplete && (
+        {/* Download-Button — nur für Premium. Nicht-Premium sieht den
+            Hinweis-Block oben (Fairführer+). Harter Gate. */}
+        {isPro && !isInitializing && !isComplete && (
           <TouchableOpacity
-            style={[s.button, (!isPro || isDownloading) && s.buttonDisabled, { marginTop: 12 }]}
+            style={[s.button, isDownloading && s.buttonDisabled, { marginTop: 12 }]}
             onPress={handleDownload}
-            disabled={!isPro || isDownloading}
+            disabled={isDownloading}
           >
             {isDownloading ? (
               <ActivityIndicator color="#fc6c14" />
             ) : (
-              <Text style={s.buttonText}>
-                {isPro ? "Bodensee & Allgäu herunterladen" : "Nur mit Fairführer+ verfügbar"}
-              </Text>
+              <Text style={s.buttonText}>Bodensee &amp; Allgäu herunterladen</Text>
             )}
           </TouchableOpacity>
         )}
@@ -191,6 +270,10 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Medien-Verwaltung — sichtbar, sobald die Karte geladen ist. Fotos
+          und Audioguides werden dort einzeln verwaltet. */}
+      {!isInitializing && isComplete && <OfflineMedienCard />}
     </View>
   );
 }
@@ -214,13 +297,26 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#fcd9c2",
     borderRadius: 12,
-    padding: 12,
+    padding: 14,
+    gap: 8,
+  },
+  premiumInfoTitle: {
+    fontSize: 15,
+    fontFamily: "FiraSansCondensed_700Bold",
+    color: "#7a4a22",
   },
   premiumInfoText: {
     fontSize: 13,
     fontFamily: "FiraSansCondensed_400Regular",
     color: "#7a4a22",
     lineHeight: 18,
+  },
+  premiumInfoBullet: {
+    fontSize: 13,
+    fontFamily: "FiraSansCondensed_400Regular",
+    color: "#7a4a22",
+    lineHeight: 20,
+    paddingLeft: 4,
   },
   errorText: {
     color: "#c0392b",
@@ -325,5 +421,19 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontFamily: "FiraSansCondensed_400Regular",
     color: "#666",
+  },
+  offlineNote: {
+    backgroundColor: "#fff9f0",
+    borderWidth: 1,
+    borderColor: "#f0e0c8",
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 4,
+  },
+  offlineNoteText: {
+    fontSize: 12,
+    fontFamily: "FiraSansCondensed_400Regular",
+    color: "#7a6a4a",
+    lineHeight: 17,
   },
 });

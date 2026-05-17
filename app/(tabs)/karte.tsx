@@ -66,6 +66,7 @@ export default function KarteScreen() {
     categories: allCategories,
     einstellungen,
     status,
+    isOffline,
     fetchAll,
     getAllPlacesWithLocked,
   } = usePlacesStore();
@@ -101,14 +102,19 @@ export default function KarteScreen() {
     return placesToGeoJSON(filtered, lockedIds);
   }, [allPlaces, lockedIds, selectedCategoryId]);
 
-  const handleSelectGeo = useCallback((item: { name: string; lat: number; lon: number }) => {
-    cameraRef.current?.setCamera({
-      centerCoordinate: [item.lon, item.lat],
-      zoomLevel: 13,
-      animationMode: "flyTo",
-      animationDuration: 800,
-    });
-  }, []);
+  const handleSelectGeo = useCallback(
+    (item: { name: string; lat: number; lon: number; isLocalPlace: boolean }) => {
+      // Lokaler Ort (Offline-Suche) → nah heranzoomen, da es eine genaue
+      // Pin-Position ist. Geografischer Treffer (Stadt/Region) → Stadt-Zoom.
+      cameraRef.current?.setCamera({
+        centerCoordinate: [item.lon, item.lat],
+        zoomLevel: item.isLocalPlace ? 16 : 13,
+        animationMode: "flyTo",
+        animationDuration: 800,
+      });
+    },
+    [],
+  );
 
   const handleMapPress = useCallback(
     async (event: { features: GeoJSON.Feature[] }) => {
@@ -186,6 +192,16 @@ export default function KarteScreen() {
           <Text style={styles.tagline}>Der Audioguide für nachhaltiges Leben und Reisen</Text>
         )}
       </View>
+
+      {/* Offline-Hinweis — sichtbar, wenn gespeicherte Daten verwendet werden */}
+      {isOffline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineBannerText}>
+            Offline-Modus – es werden gespeicherte Daten angezeigt. Fotos und
+            Audioguides sind möglicherweise nicht verfügbar.
+          </Text>
+        </View>
+      )}
 
       {/* Mapa */}
       <View style={styles.mapArea}>
@@ -346,6 +362,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 60,
     color: "#fc6c14",
     textAlign: "center",
+  },
+  offlineBanner: {
+    backgroundColor: "#fff5ef",
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "#fcd9c2",
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+  },
+  offlineBannerText: {
+    fontFamily: "FiraSansCondensed_400Regular",
+    fontSize: 12,
+    color: "#7a4a22",
+    textAlign: "center",
+    lineHeight: 16,
   },
   mapArea: { flex: 1 },
   map: { flex: 1 },

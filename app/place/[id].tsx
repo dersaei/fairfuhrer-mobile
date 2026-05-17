@@ -19,6 +19,12 @@ import Svg, { Line, Path } from "react-native-svg";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
+import {
+  getMainImageUrl,
+  getAudioUrl,
+  getGalleryUrls,
+} from "@/lib/mediaUrls";
+import { resolveMediaUri } from "@/lib/mediaCache";
 
 import type { DirectusKategorie, DirectusOrte } from "@/types";
 
@@ -30,23 +36,8 @@ const AUDIO_OVERLAP = 52;
 const AUDIO_HEIGHT = 130;
 
 const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function getImageUrl(place: DirectusOrte): string | null {
-  if (place.Titelbild) return `${DIRECTUS_URL}/assets/${place.Titelbild}`;
-  if (place.Hauptbild)
-    return `${SUPABASE_URL}/storage/v1/object/public/media-files/places/images/main/${place.Hauptbild}`;
-  return null;
-}
-
-function getAudioUrl(place: DirectusOrte): string | null {
-  if (place.Audio) return `${DIRECTUS_URL}/assets/${place.Audio}`;
-  if (place.Audio_Datei)
-    return `${SUPABASE_URL}/storage/v1/object/public/media-files/places/audio/${place.Audio_Datei}`;
-  return null;
-}
 
 function getCategories(place: DirectusOrte): DirectusKategorie[] {
   if (!place.Kategorie) return [];
@@ -334,8 +325,10 @@ export default function PlaceScreen() {
   // While paywall is being shown for a locked place, render nothing.
   if (isLocked) return null;
 
-  const imageUrl = getImageUrl(place);
-  const audioUrl = getAudioUrl(place);
+  // Medien werden über den Offline-Cache aufgelöst: existiert eine lokale
+  // Kopie, wird sie verwendet, sonst die Remote-URL.
+  const imageUrl = resolveMediaUri(getMainImageUrl(place), "image");
+  const audioUrl = resolveMediaUri(getAudioUrl(place), "audio");
   const categories = getCategories(place);
 
   const headerHeight = imageUrl
@@ -346,18 +339,12 @@ export default function PlaceScreen() {
       ? AUDIO_HEIGHT
       : 0;
 
-  const directusGallery = place.Galerie?.filter((g) => g?.directus_files_id) ?? [];
-  const supabaseGallery = place.Galerie_Bilder ?? [];
-  const galleryImages =
-    directusGallery.length > 0
-      ? directusGallery.map((g) => ({
-          key: g.directus_files_id,
-          uri: `${DIRECTUS_URL}/assets/${g.directus_files_id}`,
-        }))
-      : supabaseGallery.map((f) => ({
-          key: f,
-          uri: `${SUPABASE_URL}/storage/v1/object/public/media-files/places/images/gallery/${f}`,
-        }));
+  // Galerie wird offline nicht gecacht (Umfang Etap 4: Hauptbild + Zertifikate).
+  // resolveMediaUri liefert hier also i. d. R. die Remote-URL zurück.
+  const galleryImages = getGalleryUrls(place).map((url) => ({
+    key: url,
+    uri: resolveMediaUri(url, "image") ?? url,
+  }));
 
   return (
     <View style={styles.container}>
@@ -476,7 +463,11 @@ export default function PlaceScreen() {
                       {item.Image ? (
                         <Image
                           source={{
-                            uri: `${DIRECTUS_URL}/assets/${item.Image}`,
+                            uri:
+                              resolveMediaUri(
+                                `${DIRECTUS_URL}/assets/${item.Image}`,
+                                "image",
+                              ) ?? `${DIRECTUS_URL}/assets/${item.Image}`,
                           }}
                           style={styles.zertLogo}
                           resizeMode="contain"

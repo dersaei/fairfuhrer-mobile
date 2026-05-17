@@ -10,20 +10,72 @@ import {
   Keyboard,
   Platform,
 } from "react-native";
+import { usePlacesStore } from "@/stores/placesStore";
+import type { DirectusOrte } from "@/types";
 
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
 
+// ─── Offline-Fallback ────────────────────────────────────────────────────────
+// Wenn die Mapbox-Geocoding-API nicht erreichbar ist (kein Internet), durchsucht
+// die Suche stattdessen die lokal vorhandenen Orte aus dem placesStore. So
+// funktioniert die Suche auch mit heruntergeladener Offline-Karte.
+
+// Eine Suchvorschlag-Zeile. `isLocalPlace` unterscheidet einen konkreten Ort
+// (Offline-Fallback) von einem geografischen Treffer der Mapbox-API (Stadt /
+// Region). Davon hängt die Zoom-Stufe beim Auswählen ab.
+export interface Suggestion {
+  name: string;
+  place_formatted: string;
+  lat: number;
+  lon: number;
+  isLocalPlace: boolean;
+}
+
+function normalizeSearch(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/ä/g, "a")
+    .replace(/ö/g, "o")
+    .replace(/ü/g, "u")
+    .replace(/ß/g, "ss")
+    .trim();
+}
+
+function searchLocalPlaces(text: string, places: DirectusOrte[]): Suggestion[] {
+  const q = normalizeSearch(text);
+  if (!q) return [];
+  return places
+    .filter((p) => {
+      if (!p.location?.coordinates) return false;
+      const haystack = normalizeSearch(
+        `${p.Name ?? ""} ${p.Stadt ?? ""} ${p.Adresse ?? ""}`,
+      );
+      return haystack.includes(q);
+    })
+    .slice(0, 7)
+    .map((p) => ({
+      name: p.Name ?? "",
+      place_formatted: [p.Stadt, p.Land].filter(Boolean).join(", "),
+      lat: p.location!.coordinates[1],
+      lon: p.location!.coordinates[0],
+      isLocalPlace: true,
+    }));
+}
+
 interface SearchSectionProps {
-  onSelectGeo: (item: { name: string; lat: number; lon: number }) => void;
+  onSelectGeo: (item: {
+    name: string;
+    lat: number;
+    lon: number;
+    isLocalPlace: boolean;
+  }) => void;
   onClear: () => void;
   bottomSectionHeight: number;
 }
 
 export function SearchSection({ onSelectGeo, onClear, bottomSectionHeight }: SearchSectionProps) {
   const [query, setQuery] = useState("");
-  const [geoSuggestions, setGeoSuggestions] = useState<
-    { name: string; place_formatted: string; lat: number; lon: number }[]
-  >([]);
+  const [geoSuggestions, setGeoSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -44,32 +96,33 @@ export function SearchSection({ onSelectGeo, onClear, bottomSectionHeight }: Sea
         )}&language=de&limit=7&types=country,region,district,place&autocomplete=true&access_token=${MAPBOX_TOKEN}`;
         const res = await fetch(url);
         const json = await res.json();
-        const suggestions = (json.features ?? []).map((f: Record<string, unknown>) => {
-          const props = f.properties as Record<string, unknown>;
-          const geom = f.geometry as { coordinates: [number, number] };
-          return {
-            name: props.name as string,
-            place_formatted: (props.place_formatted ?? "") as string,
-            lat: geom.coordinates[1],
-            lon: geom.coordinates[0],
-          };
-        });
+        const suggestions: Suggestion[] = (json.features ?? []).map(
+          (f: Record<string, unknown>) => {
+            const props = f.properties as Record<string, unknown>;
+            const geom = f.geometry as { coordinates: [number, number] };
+            return {
+              name: props.name as string,
+              place_formatted: (props.place_formatted ?? "") as string,
+              lat: geom.coordinates[1],
+              lon: geom.coordinates[0],
+              isLocalPlace: false,
+            };
+          },
+        );
         setGeoSuggestions(suggestions);
         setShowSuggestions(suggestions.length > 0);
       } catch {
-        setGeoSuggestions([]);
+        // Kein Internet → Offline-Fallback: lokale Orte durchsuchen.
+        const local = searchLocalPlaces(text, usePlacesStore.getState().places);
+        setGeoSuggestions(local);
+        setShowSuggestions(local.length > 0);
       } finally {
         setIsFetchingSuggestions(false);
       }
     }, 300);
   }, []);
 
-  const handleSelect = (item: {
-    name: string;
-    place_formatted: string;
-    lat: number;
-    lon: number;
-  }) => {
+  const handleSelect = (item: Suggestion) => {
     setQuery(item.name);
     setShowSuggestions(false);
     setGeoSuggestions([]);

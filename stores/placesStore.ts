@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { readItems } from "@directus/sdk";
 import { directus } from "@/lib/directus";
+import { loadPlacesCache, savePlacesCache } from "@/lib/placesCache";
 import type {
   DirectusOrte,
   DirectusKategorie,
@@ -122,6 +123,9 @@ interface PlacesState {
   einstellungen: DirectusEinstellungen | null;
   status: "idle" | "loading" | "success" | "error";
   error: string | null;
+  // true, gdy aktualne dane pochodzą z lokalnego cache offline
+  // (sieć była niedostępna, a cache istniał).
+  isOffline: boolean;
 
   getPlaceById: (id: number) => DirectusOrte | undefined;
   getVisiblePlaces: (isPro: boolean) => DirectusOrte[];
@@ -134,6 +138,9 @@ interface PlacesState {
   };
   isLockedPlace: (placeId: number, isPro: boolean) => boolean;
   fetchAll: () => Promise<void>;
+  // Zapisuje aktualnie załadowane dane do lokalnego cache offline.
+  // Wywoływane po udanym pobraniu paczki mapy offline (funkcja premium).
+  cacheCurrentPlaces: () => Promise<void>;
 }
 
 export const usePlacesStore = create<PlacesState>((set, get) => ({
@@ -142,6 +149,7 @@ export const usePlacesStore = create<PlacesState>((set, get) => ({
   einstellungen: null,
   status: "idle",
   error: null,
+  isOffline: false,
 
   getPlaceById: (id) => get().places.find((p) => p.id === id),
 
@@ -239,9 +247,31 @@ export const usePlacesStore = create<PlacesState>((set, get) => ({
         places: places as unknown as DirectusOrte[],
         categories: categories as unknown as DirectusKategorie[],
         status: "success",
+        isOffline: false,
       });
     } catch {
+      // Sieć zawiodła — spróbuj wczytać lokalny cache offline. Cache istnieje
+      // tylko, jeśli użytkownik premium pobrał wcześniej paczkę mapy offline.
+      const cached = await loadPlacesCache();
+      if (cached) {
+        set({
+          einstellungen: cached.einstellungen,
+          places: cached.places,
+          categories: cached.categories,
+          status: "success",
+          error: null,
+          isOffline: true,
+        });
+        return;
+      }
       set({ status: "error", error: "Daten konnten nicht geladen werden." });
     }
+  },
+
+  cacheCurrentPlaces: async () => {
+    const { places, categories, einstellungen, status } = get();
+    // Cache'ujemy tylko realnie załadowane dane online.
+    if (status !== "success" || places.length === 0) return;
+    await savePlacesCache({ places, categories, einstellungen });
   },
 }));
