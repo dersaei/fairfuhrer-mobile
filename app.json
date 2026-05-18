@@ -41,7 +41,8 @@
       "expo-audio",
       "expo-asset",
       "expo-secure-store",
-      "expo-image-picker"
+      "expo-image-picker",
+      "@react-native-google-signin/google-signin"
     ]
   }
 }

@@ -14,6 +14,7 @@ import { Link, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "@/lib/supabase";
 import MenuButton from "@/components/MenuButton";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState("");
@@ -109,6 +110,14 @@ export default function RegisterScreen() {
           <Text style={styles.title}>Registrieren</Text>
 
           {error && <Text style={styles.error}>{error}</Text>}
+
+          <GoogleSignInButton onError={setError} onSuccess={() => router.back()} />
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>oder mit E-Mail</Text>
+            <View style={styles.dividerLine} />
+          </View>
 
           <TextInput
             style={styles.input}
@@ -257,5 +266,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "FiraSansCondensed_600SemiBold",
     marginTop: 4,
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginVertical: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#e8e8e8",
+  },
+  dividerText: {
+    color: "#999",
+    fontSize: 13,
+    fontFamily: "FiraSansCondensed_400Regular",
   },
 });

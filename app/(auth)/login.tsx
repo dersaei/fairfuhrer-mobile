@@ -13,6 +13,7 @@ import { Link, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "@/lib/supabase";
 import MenuButton from "@/components/MenuButton";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -95,6 +96,14 @@ export default function LoginScreen() {
             <Text style={styles.buttonText}>Anmelden</Text>
           )}
         </TouchableOpacity>
+
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>oder</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <GoogleSignInButton onError={setError} onSuccess={() => router.back()} />
 
         <Link href="/(auth)/passwort-vergessen" style={styles.linkSecondary}>
           Passwort vergessen?
@@ -185,6 +194,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "FiraSansCondensed_600SemiBold",
     marginTop: 4,
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginVertical: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#e8e8e8",
+  },
+  dividerText: {
+    color: "#999",
+    fontSize: 13,
+    fontFamily: "FiraSansCondensed_400Regular",
   },
   linkSecondary: {
     textAlign: "center",
