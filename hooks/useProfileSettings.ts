@@ -3,6 +3,7 @@ import { Alert } from "react-native";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { Profile } from "@/context/AuthContext";
+import { getAuthRedirectUrl } from "@/lib/authRedirect";
 
 export function useProfileSettings(
   user: User | null,
@@ -60,7 +61,8 @@ export function useProfileSettings(
     setEmailLoading(true);
     const { error } = await supabase.auth.updateUser(
       { email: newEmail.trim() },
-      { emailRedirectTo: process.env.EXPO_PUBLIC_SITE_URL },
+      // Deep Link zurück in die App statt auf die Website.
+      { emailRedirectTo: getAuthRedirectUrl() },
     );
     setEmailLoading(false);
     if (error) {
