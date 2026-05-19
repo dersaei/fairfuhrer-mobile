@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import {
@@ -9,6 +9,8 @@ import {
 } from "@react-native-google-signin/google-signin";
 import { supabase } from "@/lib/supabase";
 
+const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+
 /**
  * Nativer Google-Login (Android/iOS) via Credential Manager / GoogleSignIn-iOS.
  * Holt einen ID-Token von Google und tauscht ihn bei Supabase gegen eine Session
@@ -16,10 +18,6 @@ import { supabase } from "@/lib/supabase";
  *
  * webClientId MUSS die Web-OAuth-Client-ID sein – nicht die Android-ID.
  */
-GoogleSignin.configure({
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-});
-
 export default function GoogleSignInButton({
   onError,
   onSuccess,
@@ -31,7 +29,25 @@ export default function GoogleSignInButton({
 }) {
   const [isLoading, setIsLoading] = useState(false);
 
+  // configure() lokal im Effekt – nie auf Modulebene, damit ein fehlender
+  // oder fehlerhafter nativer Modul-Zustand den Screen nicht zum Absturz bringt.
+  useEffect(() => {
+    if (!WEB_CLIENT_ID) {
+      console.warn("GoogleSignInButton: EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID fehlt.");
+      return;
+    }
+    try {
+      GoogleSignin.configure({ webClientId: WEB_CLIENT_ID });
+    } catch (e) {
+      console.warn("GoogleSignInButton: configure() fehlgeschlagen.", e);
+    }
+  }, []);
+
   const handlePress = async () => {
+    if (!WEB_CLIENT_ID) {
+      onError?.("Google-Anmeldung ist derzeit nicht verfügbar.");
+      return;
+    }
     setIsLoading(true);
     try {
       await GoogleSignin.hasPlayServices();
@@ -122,9 +138,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    borderWidth: 1,
+    width: "100%",
+    borderWidth: 1.5,
     borderColor: "#ddd",
-    borderRadius: 6,
+    borderRadius: 12,
     paddingVertical: 14,
     backgroundColor: "#fff",
   },

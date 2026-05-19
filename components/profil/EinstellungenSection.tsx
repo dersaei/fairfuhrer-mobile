@@ -22,6 +22,12 @@ export default function EinstellungenSection({
     deleteAccount,
   );
 
+  // Nutzer, die sich nur über Google angemeldet haben, besitzen noch kein
+  // Passwort – für sie heißt die Aktion "festlegen", nicht "ändern".
+  const providers: string[] = user?.app_metadata?.providers ?? [];
+  const hasPassword = providers.includes("email");
+  const passwordTitle = hasPassword ? "Passwort ändern" : "Passwort festlegen";
+
   return (
     <View style={s.section}>
       <Text style={s.sectionTitle}>E-Mail-Adresse ändern</Text>
@@ -98,9 +104,19 @@ export default function EinstellungenSection({
       </TouchableOpacity>
       <View style={s.divider} />
 
-      <Text style={s.sectionTitle}>Passwort ändern</Text>
+      <Text style={s.sectionTitle}>{passwordTitle}</Text>
+      {!hasPassword && (
+        <Text style={s.sectionHint}>
+          Du hast dich mit Google angemeldet. Lege optional ein Passwort fest, um dich
+          zusätzlich mit E-Mail und Passwort anmelden zu können.
+        </Text>
+      )}
       {passwordForm.pwError && <Text style={s.errorText}>{passwordForm.pwError}</Text>}
-      {passwordForm.pwSuccess && <Text style={s.successMsg}>Passwort erfolgreich geändert.</Text>}
+      {passwordForm.pwSuccess && (
+        <Text style={s.successMsg}>
+          {hasPassword ? "Passwort erfolgreich geändert." : "Passwort erfolgreich festgelegt."}
+        </Text>
+      )}
       <View style={s.fieldGroup}>
         <Text style={s.fieldLabel}>Neues Passwort</Text>
         <TextInput
@@ -129,7 +145,7 @@ export default function EinstellungenSection({
         {passwordForm.pwLoading ? (
           <ActivityIndicator color="#fc6c14" />
         ) : (
-          <Text style={s.buttonText}>Passwort aktualisieren</Text>
+          <Text style={s.buttonText}>{hasPassword ? "Passwort aktualisieren" : "Passwort festlegen"}</Text>
         )}
       </TouchableOpacity>
 
