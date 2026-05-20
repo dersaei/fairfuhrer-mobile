@@ -1,26 +1,19 @@
 // Metro-Konfiguration für Expo.
-// Erweitert die Standard-Konfiguration mit einem Alias, der @opentelemetry/api
-// auf einen leeren Stub umleitet. Hintergrund: @supabase/supabase-js verwendet
-// `import("@opentelemetry/api")` für optionale Instrumentation; Hermes (im
-// Production-Bundling) kann dieses dynamische import() nicht parsen, wenn das
-// Modul nicht installiert ist – der Build bricht ab. Mit diesem Alias liefert
-// Metro stattdessen ein leeres Modul, die Instrumentation wird übersprungen.
+//
+// Deaktiviert `unstable_enablePackageExports`, weil Metros Package-Exports-
+// Auflösung bei einigen Libraries (z. B. @supabase/supabase-js) den
+// Node-spezifischen Eintrag wählt. Dieser enthält dynamische import()-Aufrufe
+// mit Webpack-Kommentaren (`/* webpackIgnore: true */`), die Hermes beim
+// Production-Bundling nicht parsen kann – der Build bricht ab mit:
+//   "Invalid expression encountered ... otelModulePromise = import(...)"
+//
+// Mit dieser Einstellung greift Metro wieder auf den klassischen
+// `main`/`react-native`-Eintrag zurück, der für React Native passt.
+// Empfohlene Workaround aus expo/expo Discussion #36551.
 const { getDefaultConfig } = require("expo/metro-config");
-const path = require("path");
 
 const config = getDefaultConfig(__dirname);
 
-const emptyModulePath = path.resolve(__dirname, "empty-module.js");
-
-const originalResolveRequest = config.resolver.resolveRequest;
-config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (moduleName === "@opentelemetry/api") {
-    return { type: "sourceFile", filePath: emptyModulePath };
-  }
-  if (originalResolveRequest) {
-    return originalResolveRequest(context, moduleName, platform);
-  }
-  return context.resolveRequest(context, moduleName, platform);
-};
+config.resolver.unstable_enablePackageExports = false;
 
 module.exports = config;
