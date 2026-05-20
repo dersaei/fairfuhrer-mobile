@@ -7,7 +7,8 @@
     "android": "doppler run -- expo start --android",
     "ios": "doppler run -- expo start --ios",
     "web": "doppler run -- expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@directus/sdk": "^21.3.0",
@@ -55,6 +56,7 @@
     "@types/react": "^19.2.14",
     "eslint": "^9.0.0",
     "eslint-config-expo": "^55.0.1",
+    "patch-package": "^8.0.1",
     "typescript": "~5.9.2"
   },
   "private": true,
