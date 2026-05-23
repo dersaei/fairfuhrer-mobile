@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
-import { useAuthFlowStore } from "@/stores/authFlowStore";
 import MenuButton from "@/components/MenuButton";
 import AuthScreen from "@/components/auth/AuthScreen";
 import ProfilSection from "@/components/profil/ProfilSection";
@@ -118,7 +117,6 @@ function AccountScreen() {
 
 export default function ProfilScreen() {
   const { user, isLoading } = useAuth();
-  const pendingPasswordReset = useAuthFlowStore((st) => st.pendingPasswordReset);
 
   if (isLoading) {
     return (
@@ -129,10 +127,6 @@ export default function ProfilScreen() {
       </SafeAreaView>
     );
   }
-
-  // Beim Passwort-Reset besteht zwar eine Session, der Nutzer soll aber zuerst
-  // den AuthScreen ("reset"-Modus) sehen, nicht das eingeloggte Konto.
-  if (pendingPasswordReset) return <AuthScreen />;
 
   return user ? <AccountScreen /> : <AuthScreen />;
 }

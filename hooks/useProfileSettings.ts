@@ -60,9 +60,8 @@ export function useProfileSettings(
     setEmailLoading(true);
     const { error } = await supabase.auth.updateUser(
       { email: newEmail.trim() },
-      // Web-Bridge statt direktem Deep Link – Supabase /verify konsumiert
-      // sonst den Einmal-Token vor der App.
-      { emailRedirectTo: `${process.env.EXPO_PUBLIC_SITE_URL}/callback-mobile` },
+      // Bestätigungslink öffnet sich im Browser auf der Website.
+      { emailRedirectTo: process.env.EXPO_PUBLIC_SITE_URL },
     );
     setEmailLoading(false);
     if (error) {

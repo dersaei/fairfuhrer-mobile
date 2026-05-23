@@ -57,7 +57,6 @@ function RootLayoutNav() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" />
-        <Stack.Screen name="auth/callback" />
         <Stack.Screen
           name="place/[id]"
           options={{

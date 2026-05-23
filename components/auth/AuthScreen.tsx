@@ -20,9 +20,8 @@ import { AuthWeakPasswordError } from "@supabase/supabase-js";
 import MenuButton from "@/components/MenuButton";
 import PlanCompareCard from "@/components/PlanCompareCard";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
-import { useAuthFlowStore } from "@/stores/authFlowStore";
 
-type AuthView = "welcome" | "login" | "register" | "forgot" | "reset";
+type AuthView = "welcome" | "login" | "register" | "forgot";
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -35,7 +34,6 @@ export default function AuthScreen() {
   const [error, setError] = useState<string | null>(null);
   const [registerSuccess, setRegisterSuccess] = useState(false);
   const [forgotSuccess, setForgotSuccess] = useState(false);
-  const [resetSuccess, setResetSuccess] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
 
   const reset = () => {
@@ -46,7 +44,6 @@ export default function AuthScreen() {
     setError(null);
     setRegisterSuccess(false);
     setForgotSuccess(false);
-    setResetSuccess(false);
   };
 
   const switchView = (v: AuthView) => {
@@ -54,16 +51,6 @@ export default function AuthScreen() {
     setView(v);
   };
 
-  // Wurde die App über einen Passwort-Reset-Deep-Link geöffnet
-  // (gesetzt in app/_layout.tsx), direkt in den "reset"-Modus wechseln.
-  const pendingPasswordReset = useAuthFlowStore((st) => st.pendingPasswordReset);
-  const setPendingPasswordReset = useAuthFlowStore((st) => st.setPendingPasswordReset);
-  useEffect(() => {
-    if (pendingPasswordReset) {
-      setView("reset");
-      setPendingPasswordReset(false);
-    }
-  }, [pendingPasswordReset, setPendingPasswordReset]);
 
   const handleLogin = async () => {
     setError(null);
@@ -87,12 +74,9 @@ export default function AuthScreen() {
       return;
     }
     setIsLoading(true);
-    // redirectTo wird vom E-Mail-Template (Recovery) genutzt, nicht direkt
-    // vom Supabase /verify-Endpoint. Beide Geräte-Links im Template laufen
-    // über die Web-Domain – mobile via /callback-mobile (leitet zum Deep
-    // Link weiter), Desktop via /callback (verifiziert serverseitig).
+    // Link führt zum Web-Reset-Flow – mobile öffnet ihn im Browser.
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${process.env.EXPO_PUBLIC_SITE_URL}/callback-mobile`,
+      redirectTo: `${process.env.EXPO_PUBLIC_SITE_URL}/passwort-zuruecksetzen`,
     });
     setIsLoading(false);
     // Aus Sicherheitsgründen immer Erfolg anzeigen (keine Account-Enumeration).
@@ -103,26 +87,6 @@ export default function AuthScreen() {
     }
   };
 
-  const handleResetPassword = async () => {
-    setError(null);
-    if (password.length < 8) {
-      setError("Passwort muss mindestens 8 Zeichen lang sein.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError("Passwörter stimmen nicht überein.");
-      return;
-    }
-    setIsLoading(true);
-    // Die Session stammt aus dem Reset-Deep-Link (gesetzt in app/_layout.tsx).
-    const { error } = await supabase.auth.updateUser({ password });
-    setIsLoading(false);
-    if (error) {
-      setError("Passwort konnte nicht geändert werden. Bitte fordere einen neuen Link an.");
-    } else {
-      setResetSuccess(true);
-    }
-  };
 
   const handleRegister = async () => {
     setError(null);
@@ -152,9 +116,8 @@ export default function AuthScreen() {
       password,
       options: {
         data: { role: "consumer", username },
-        // Web-Bridge statt direktem Deep Link – Supabase /verify konsumiert
-        // sonst den Einmal-Token vor der App.
-        emailRedirectTo: `${process.env.EXPO_PUBLIC_SITE_URL}/callback-mobile`,
+        // Bestätigungslink öffnet sich im Browser auf der Website.
+        emailRedirectTo: process.env.EXPO_PUBLIC_SITE_URL,
       },
     });
     setIsLoading(false);
@@ -342,88 +305,6 @@ export default function AuthScreen() {
     );
   }
 
-  if (view === "reset") {
-    return (
-      <SafeAreaView style={s.container} edges={["top"]}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ flex: 1 }}
-        >
-          <View style={s.headerPlaceholder}>
-            <View style={s.headerSpacer} />
-            <View style={s.headerMenuSlot}>
-              <MenuButton />
-            </View>
-          </View>
-
-          <ScrollView contentContainerStyle={s.formContent} keyboardShouldPersistTaps="handled">
-            <Text style={s.formTitle}>FAIRFÜHRER</Text>
-            <Text style={s.formHeadline}>Neues Passwort</Text>
-
-            {resetSuccess ? (
-              <>
-                <Text style={s.successText}>
-                  Dein Passwort wurde erfolgreich geändert. Du bist jetzt angemeldet.
-                </Text>
-                <TouchableOpacity
-                  style={s.button}
-                  onPress={() => router.replace("/(tabs)")}
-                >
-                  <Text style={s.buttonText}>Zur App</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Text style={s.googleHint}>
-                  Lege ein neues Passwort für dein Konto fest.
-                </Text>
-
-                {error && <Text style={s.errorText}>{error}</Text>}
-
-                <View style={s.fieldGroup}>
-                  <Text style={s.fieldLabel}>Neues Passwort</Text>
-                  <TextInput
-                    style={s.input}
-                    placeholder="min. 8 Zeichen"
-                    placeholderTextColor="rgba(24, 23, 22, 0.5)"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    autoComplete="new-password"
-                  />
-                </View>
-
-                <View style={s.fieldGroup}>
-                  <Text style={s.fieldLabel}>Passwort wiederholen</Text>
-                  <TextInput
-                    style={s.input}
-                    placeholder="Passwort bestätigen"
-                    placeholderTextColor="rgba(24, 23, 22, 0.5)"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry
-                    autoComplete="new-password"
-                  />
-                </View>
-
-                <TouchableOpacity
-                  style={[s.button, isLoading && s.buttonDisabled]}
-                  onPress={handleResetPassword}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="#fc6c14" />
-                  ) : (
-                    <Text style={s.buttonText}>Passwort speichern</Text>
-                  )}
-                </TouchableOpacity>
-              </>
-            )}
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    );
-  }
 
   const isReg = view === "register";
   return (
