@@ -3,7 +3,6 @@ import { Alert } from "react-native";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { Profile } from "@/context/AuthContext";
-import { getAuthRedirectUrl } from "@/lib/authRedirect";
 
 export function useProfileSettings(
   user: User | null,
@@ -61,8 +60,9 @@ export function useProfileSettings(
     setEmailLoading(true);
     const { error } = await supabase.auth.updateUser(
       { email: newEmail.trim() },
-      // Deep Link zurück in die App statt auf die Website.
-      { emailRedirectTo: getAuthRedirectUrl() },
+      // Web-Bridge statt direktem Deep Link – Supabase /verify konsumiert
+      // sonst den Einmal-Token vor der App.
+      { emailRedirectTo: `${process.env.EXPO_PUBLIC_SITE_URL}/callback-mobile` },
     );
     setEmailLoading(false);
     if (error) {

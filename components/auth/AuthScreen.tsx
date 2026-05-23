@@ -20,7 +20,6 @@ import { AuthWeakPasswordError } from "@supabase/supabase-js";
 import MenuButton from "@/components/MenuButton";
 import PlanCompareCard from "@/components/PlanCompareCard";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
-import { getAuthRedirectUrl } from "@/lib/authRedirect";
 import { useAuthFlowStore } from "@/stores/authFlowStore";
 
 type AuthView = "welcome" | "login" | "register" | "forgot" | "reset";
@@ -88,9 +87,12 @@ export default function AuthScreen() {
       return;
     }
     setIsLoading(true);
+    // redirectTo wird vom E-Mail-Template (Recovery) genutzt, nicht direkt
+    // vom Supabase /verify-Endpoint. Beide Geräte-Links im Template laufen
+    // über die Web-Domain – mobile via /callback-mobile (leitet zum Deep
+    // Link weiter), Desktop via /callback (verifiziert serverseitig).
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      // Deep Link zurück in die App – führt zum "reset"-Bildschirm.
-      redirectTo: getAuthRedirectUrl(),
+      redirectTo: `${process.env.EXPO_PUBLIC_SITE_URL}/callback-mobile`,
     });
     setIsLoading(false);
     // Aus Sicherheitsgründen immer Erfolg anzeigen (keine Account-Enumeration).
@@ -150,8 +152,9 @@ export default function AuthScreen() {
       password,
       options: {
         data: { role: "consumer", username },
-        // Deep Link zurück in die App statt auf die Website.
-        emailRedirectTo: getAuthRedirectUrl(),
+        // Web-Bridge statt direktem Deep Link – Supabase /verify konsumiert
+        // sonst den Einmal-Token vor der App.
+        emailRedirectTo: `${process.env.EXPO_PUBLIC_SITE_URL}/callback-mobile`,
       },
     });
     setIsLoading(false);
