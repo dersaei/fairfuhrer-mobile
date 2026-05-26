@@ -6,7 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Keyboard,
-  Dimensions,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePlacesStore } from "@/stores/placesStore";
@@ -19,22 +19,11 @@ import { CityChips, placesInRegion, type Region } from "@/components/CityChips";
 import { supabase } from "@/lib/supabase";
 import { useGpsSort } from "@/hooks/useGpsSort";
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
-
 const CARD_GAP = 12; // odstęp między kartami i od lewej krawędzi
 const CARD_PEEK = 44; // ile px następnej karty widać po prawej
-const CARD_WIDTH = SCREEN_WIDTH - CARD_GAP * 2 - CARD_PEEK;
-// Każda karta zajmuje swoją szerokość + gap po prawej
-const CARD_STEP = CARD_WIDTH + CARD_GAP;
+const MAX_CARD_WIDTH = 420; // cap dla tabletów — karta nie szersza niż na większym telefonie
 
-// Stałe poza komponentem — nie tworzą nowych obiektów przy każdym renderze
-const FLATLIST_HEADER = <View style={{ width: CARD_GAP }} />;
 const keyExtractor = (id: number) => String(id);
-const getItemLayout = (_: unknown, index: number) => ({
-  length: CARD_STEP,
-  offset: CARD_GAP + CARD_STEP * index,
-  index,
-});
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
@@ -49,6 +38,36 @@ export default function ListeScreen() {
     getAllPlacesWithLocked,
   } = usePlacesStore();
   const { isPro } = useAuth();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+
+  // Wymiary kart — capped dla tabletów, wycentrowane gdy ekran szerszy niż karta + peek.
+  // Wysokość ograniczona wysokością ekranu, żeby chipsy/search/kategoryBar się mieściły.
+  const { CARD_WIDTH, CARD_HEIGHT, CARD_STEP, LIST_HORIZONTAL_PADDING } = useMemo(() => {
+    const naturalWidth = screenWidth - CARD_GAP * 2 - CARD_PEEK;
+    const width = Math.min(naturalWidth, MAX_CARD_WIDTH);
+    const step = width + CARD_GAP;
+    // Pad po lewej, żeby na szerokich ekranach karta + peek były wycentrowane
+    const padding = Math.max(CARD_GAP, (screenWidth - width - CARD_PEEK) / 2);
+    // Wysokość: max ~38% ekranu — zostawia ~62% na header + GPS label + chipsy + search + kategorie.
+    // Na telefonie portrait najczęściej ograniczy aspect ratio (1.1× szerokości), na tablecie height.
+    const height = Math.min(width * 1.1, screenHeight * 0.38);
+    return { CARD_WIDTH: width, CARD_HEIGHT: height, CARD_STEP: step, LIST_HORIZONTAL_PADDING: padding };
+  }, [screenWidth, screenHeight]);
+
+  const getItemLayout = useCallback(
+    (_: unknown, index: number) => ({
+      length: CARD_STEP,
+      offset: LIST_HORIZONTAL_PADDING + CARD_STEP * index,
+      index,
+    }),
+    [CARD_STEP, LIST_HORIZONTAL_PADDING],
+  );
+
+  const flatListHeader = useMemo(
+    () => <View style={{ width: LIST_HORIZONTAL_PADDING }} />,
+    [LIST_HORIZONTAL_PADDING],
+  );
+
   // All places shown; locked ones open paywall on tap (same logic as map).
   const { places: allPlaces } = useMemo(
     () => getAllPlacesWithLocked(isPro),
@@ -168,13 +187,13 @@ export default function ListeScreen() {
 
   const renderCard = useCallback(
     ({ item: placeId }: { item: number }) => (
-      <View style={styles.cardWrapperOuter}>
-        <View style={styles.cardWrapper}>
+      <View style={[styles.cardWrapperOuter, { width: CARD_STEP }]}>
+        <View style={[styles.cardWrapper, { width: CARD_WIDTH, height: CARD_HEIGHT }]}>
           <PinCard placeId={placeId} />
         </View>
       </View>
     ),
-    [],
+    [CARD_WIDTH, CARD_HEIGHT, CARD_STEP],
   );
 
   if (isLoading) {
@@ -212,7 +231,7 @@ export default function ListeScreen() {
       {/* Przestrzeń nad kartą — GPS label wyśrodkowany pionowo */}
       <View style={styles.aboveCards}>
         {orderedIds && (
-          <View style={styles.gpsLabel}>
+          <View style={[styles.gpsLabel, { marginLeft: LIST_HORIZONTAL_PADDING }]}>
             <Text style={styles.gpsLabelText}>Nach Entfernung sortiert</Text>
           </View>
         )}
@@ -234,7 +253,7 @@ export default function ListeScreen() {
             snapToAlignment="start"
             decelerationRate="fast"
             style={styles.flatList}
-            ListHeaderComponent={FLATLIST_HEADER}
+            ListHeaderComponent={flatListHeader}
             initialNumToRender={3}
             maxToRenderPerBatch={2}
             windowSize={3}
@@ -307,6 +326,7 @@ const styles = StyleSheet.create({
   // Przestrzeń nad kartami — GPS label wyśrodkowany pionowo
   aboveCards: {
     flex: 1,
+    minHeight: 36,
     justifyContent: "center",
     alignItems: "flex-start",
   },
@@ -314,22 +334,23 @@ const styles = StyleSheet.create({
   cardsArea: {
     flexShrink: 0,
   },
-  // Przestrzeń pod kartami — chips wyśrodkowane pionowo
+  // Przestrzeń pod kartami — chips wyśrodkowane pionowo, z gwarantowanym oddechem
   belowCards: {
     flex: 1,
+    minHeight: 64,
     justifyContent: "center",
+    paddingVertical: 8,
   },
   flatList: {
     flexGrow: 0,
   },
-  // Outer: karta + gap po prawej stronie (tworzy odstęp między kartami)
+  // Outer: karta + gap po prawej stronie (tworzy odstęp między kartami).
+  // Wymiary (width) podawane inline — zależą od szerokości ekranu.
   cardWrapperOuter: {
-    width: CARD_STEP,
     paddingRight: CARD_GAP,
   },
+  // Wymiary (width/height) podawane inline.
   cardWrapper: {
-    width: CARD_WIDTH,
-    height: SCREEN_WIDTH * 0.85,
     borderRadius: 12,
     overflow: "hidden",
     shadowColor: "#000",
@@ -345,13 +366,13 @@ const styles = StyleSheet.create({
     elevation: 10,
     overflow: "visible",
   },
-  // GPS sort label — czarne tło, biały tekst
+  // GPS sort label — czarne tło, biały tekst.
+  // marginLeft podawane inline (musi pasować do paddingu listy).
   gpsLabel: {
     backgroundColor: "#fafafa",
     paddingHorizontal: 10,
     borderRadius: 10,
     paddingVertical: 3,
-    marginLeft: CARD_GAP,
   },
   gpsLabelText: {
     fontSize: 12,
