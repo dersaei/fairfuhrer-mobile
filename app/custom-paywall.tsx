@@ -18,29 +18,43 @@ import { useAuth } from "@/context/AuthContext";
 
 const HERO_IMAGE = require("@/assets/images/engagement-unsplash.jpeg");
 
-// Identyfikatory pakietów z RevenueCat Dashboard → Offerings → Packages
-// Zaktualizuj jeśli użyłeś innych nazw w RC
+// Identyfikatory pakietów z RevenueCat Dashboard → Offerings → Packages.
+// Sortowanie tablicy = kolejność na ekranie (od najtańszego do najdroższego).
 const PACKAGE_META: Record<
   string,
-  { label: string; sub: string; perMonth: string; popular?: boolean }
+  { label: string; sub: string; popular?: boolean; order: number }
 > = {
-  $rc_monthly: {
+  small_yearly: {
     label: "Kleine Unterstützung",
     sub: "Ein Kaffee fürs Team",
-    perMonth: "0,42 €/Monat",
+    order: 1,
   },
-  $rc_annual: {
+  fair_yearly: {
     label: "Faire Unterstützung",
     sub: "Empfohlen · deckt deinen Anteil",
-    perMonth: "0,83 €/Monat",
     popular: true,
+    order: 2,
   },
-  $rc_lifetime: {
+  large_yearly: {
     label: "Große Unterstützung",
     sub: "Du machst den Unterschied",
-    perMonth: "1,67 €/Monat",
+    order: 3,
   },
 };
+
+/**
+ * Liczy cenę miesięczną z rocznego pakietu. Zwraca string w lokalnej walucie
+ * pakietu (RC ustawia ją automatycznie wg sklepu). Format dostosowany do
+ * niemieckich konwencji (przecinek jako separator dziesiętny).
+ */
+function formatPerMonth(pkg: PurchasesPackage): string {
+  const yearlyPrice = pkg.product.price; // liczba (np. 9.99)
+  const monthly = yearlyPrice / 12;
+  // Symbol waluty z lokalnego stringa, np. "9,99 €" -> "€"
+  const currencySymbol = pkg.product.priceString.replace(/[\d.,\s]/g, "");
+  const formatted = monthly.toFixed(2).replace(".", ",");
+  return `${formatted} ${currencySymbol}/Monat`;
+}
 
 export default function PaywallScreen() {
   const router = useRouter();
@@ -54,13 +68,17 @@ export default function PaywallScreen() {
   useEffect(() => {
     Purchases.getOfferings()
       .then((offerings) => {
-        const pkgs = offerings.current?.availablePackages ?? [];
-        setPackages(pkgs);
-        // Domyślnie zaznacz pakiet €9,99 (Faire Unterstützung)
-        const medium = pkgs.find(
-          (p) => p.product.priceString.includes("9,99") || p.product.priceString.includes("9.99"),
-        );
-        setSelected(medium ?? pkgs[0] ?? null);
+        const raw = offerings.current?.availablePackages ?? [];
+        // Sortuj wg PACKAGE_META.order, nieznane identyfikatory na końcu.
+        const sorted = [...raw].sort((a, b) => {
+          const oa = PACKAGE_META[a.identifier]?.order ?? 99;
+          const ob = PACKAGE_META[b.identifier]?.order ?? 99;
+          return oa - ob;
+        });
+        setPackages(sorted);
+        // Domyślnie zaznacz Faire Unterstützung (środkowy, oznaczony jako BELIEBT).
+        const fair = sorted.find((p) => p.identifier === "fair_yearly");
+        setSelected(fair ?? sorted[0] ?? null);
       })
       .catch((e) => console.error("[Paywall] getOfferings error:", e))
       .finally(() => setLoading(false));
@@ -154,7 +172,7 @@ export default function PaywallScreen() {
               const meta = PACKAGE_META[pkg.identifier];
               const label = meta?.label ?? pkg.product.title;
               const sub = meta?.sub ?? "Jährlich";
-              const perMonth = meta?.perMonth ?? "";
+              const perMonth = formatPerMonth(pkg);
               const isPopular = meta?.popular ?? false;
 
               return (
