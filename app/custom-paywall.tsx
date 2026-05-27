@@ -8,6 +8,7 @@ import {
   ScrollView,
   ImageBackground,
   Alert,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -41,6 +42,12 @@ const PACKAGE_META: Record<
     order: 3,
   },
 };
+
+// Plattformspezifische Bezeichnungen für rechtliche Hinweise zum Abo.
+// Google Play und App Store haben unterschiedliche Konto- und
+// Verwaltungs-Begriffe – beide Stores prüfen diese Texte in der Review.
+const STORE_ACCOUNT = Platform.OS === "ios" ? "Apple-ID-Konto" : "Google-Konto";
+const STORE_NAME = Platform.OS === "ios" ? "App Store" : "Google Play";
 
 /**
  * Liczy cenę miesięczną z rocznego pakietu. Zwraca string w lokalnej walucie
@@ -229,13 +236,13 @@ export default function PaywallScreen() {
           <View style={s.legalBlock}>
             <Text style={s.legalText}>
               <Text style={s.legalStrong}>Jahres-Abo · {selectedPrice}/Jahr.</Text> Zahlung wird
-              nach Bestätigung des Kaufs deinem Apple-ID-Konto belastet. Das Abo verlängert sich
+              nach Bestätigung des Kaufs deinem {STORE_ACCOUNT} belastet. Das Abo verlängert sich
               automatisch um 12 Monate zum dann gültigen Preis, sofern es nicht mindestens 24
               Stunden vor Ablauf der laufenden Periode gekündigt wird.
             </Text>
             <Text style={s.legalText}>
-              Du kannst dein Abo jederzeit in den Einstellungen deines App-Store-Kontos verwalten
-              und kündigen — eine Erstattung des laufenden Zeitraums ist nicht möglich.
+              Du kannst dein Abo jederzeit in den Einstellungen deines {STORE_NAME}-Kontos
+              verwalten und kündigen — eine Erstattung des laufenden Zeitraums ist nicht möglich.
             </Text>
             <View style={s.legalLinks}>
               <Text style={s.legalLink} onPress={() => router.push("/(drawer)/agb")}>
