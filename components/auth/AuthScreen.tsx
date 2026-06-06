@@ -20,6 +20,7 @@ import { AuthWeakPasswordError } from "@supabase/supabase-js";
 import MenuButton from "@/components/MenuButton";
 import PlanCompareCard from "@/components/PlanCompareCard";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
+import AppleSignInButton from "@/components/AppleSignInButton";
 
 type AuthView = "welcome" | "login" | "register" | "forgot";
 
@@ -341,6 +342,7 @@ export default function AuthScreen() {
             </TouchableOpacity>
           </View>
 
+          <AppleSignInButton onError={setError} />
           <GoogleSignInButton onError={setError} />
 
           <View style={s.dividerRow}>

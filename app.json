@@ -15,7 +15,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.fairfuehrer.app"
+      "bundleIdentifier": "com.fairfuehrer.app",
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -42,7 +43,8 @@
       "expo-asset",
       "expo-secure-store",
       "expo-image-picker",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "expo-apple-authentication"
     ]
   }
 }
