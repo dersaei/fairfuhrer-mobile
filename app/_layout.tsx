@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack, useRouter, useSegments, useNavigationContainerRef } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
+import * as Sentry from "@sentry/react-native";
 import { useFonts, Anton_400Regular } from "@expo-google-fonts/anton";
 import {
   FiraSansCondensed_400Regular,
@@ -16,6 +17,34 @@ import { usePlacesStore } from "@/stores/placesStore";
 import AnimatedSplash from "@/components/AnimatedSplash";
 import AppDrawer from "@/components/AppDrawer";
 import { initializePurchases } from "@/lib/revenuecat";
+
+// Tracing für die Navigation (expo-router nutzt React Navigation darunter).
+// Wird unten via registerNavigationContainer mit dem Router verbunden.
+const navigationIntegration = Sentry.reactNavigationIntegration({
+  enableTimeToInitialDisplay: true,
+});
+
+Sentry.init({
+  dsn: "https://56408b4e34df2ce6230499434808286c@o4511537387339776.ingest.de.sentry.io/4511537588338768",
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Performance Monitoring: 20 % der Transaktionen sampeln (in Produktion sinnvoll).
+  tracesSampleRate: 0.2,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), navigationIntegration],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 SplashScreen.preventAutoHideAsync();
 initializePurchases();
@@ -90,7 +119,16 @@ function RootLayoutNav() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
+  // Navigation-Container an Sentry binden, damit Routenwechsel als
+  // Transaktionen erfasst werden (Performance-Tracing für expo-router).
+  const navigationRef = useNavigationContainerRef();
+  useEffect(() => {
+    if (navigationRef) {
+      navigationIntegration.registerNavigationContainer(navigationRef);
+    }
+  }, [navigationRef]);
+
   const [fontsLoaded] = useFonts({
     Anton_400Regular,
     FiraSansCondensed_400Regular,
@@ -112,3 +150,5 @@ export default function RootLayout() {
     </AuthProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);

@@ -44,7 +44,16 @@
       "expo-secure-store",
       "expo-image-picker",
       "@react-native-google-signin/google-signin",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "siemiatkowski"
+        }
+      ],
+      "@sentry/react-native"
     ]
   }
 }

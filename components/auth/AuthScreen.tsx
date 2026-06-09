@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import * as Sentry from "@sentry/react-native";
 import { supabase } from "@/lib/supabase";
 import { AuthWeakPasswordError } from "@supabase/supabase-js";
 import MenuButton from "@/components/MenuButton";
@@ -52,7 +53,6 @@ export default function AuthScreen() {
     setView(v);
   };
 
-
   const handleLogin = async () => {
     setError(null);
     if (!email || !password) {
@@ -87,7 +87,6 @@ export default function AuthScreen() {
       setForgotSuccess(true);
     }
   };
-
 
   const handleRegister = async () => {
     setError(null);
@@ -257,8 +256,8 @@ export default function AuthScreen() {
             {forgotSuccess ? (
               <>
                 <Text style={s.successText}>
-                  Wenn ein Konto mit dieser E-Mail-Adresse existiert, haben wir dir einen
-                  Link zum Zurücksetzen des Passworts gesendet. Bitte prüfe dein Postfach.
+                  Wenn ein Konto mit dieser E-Mail-Adresse existiert, haben wir dir einen Link zum
+                  Zurücksetzen des Passworts gesendet. Bitte prüfe dein Postfach.
                 </Text>
                 <TouchableOpacity onPress={() => switchView("login")}>
                   <Text style={s.link}>Zurück zum Login</Text>
@@ -267,8 +266,8 @@ export default function AuthScreen() {
             ) : (
               <>
                 <Text style={s.googleHint}>
-                  Gib deine E-Mail-Adresse ein. Wir senden dir einen Link, mit dem du ein
-                  neues Passwort festlegen kannst.
+                  Gib deine E-Mail-Adresse ein. Wir senden dir einen Link, mit dem du ein neues
+                  Passwort festlegen kannst.
                 </Text>
 
                 {error && <Text style={s.errorText}>{error}</Text>}
@@ -305,7 +304,6 @@ export default function AuthScreen() {
       </SafeAreaView>
     );
   }
-
 
   const isReg = view === "register";
   return (
@@ -461,8 +459,8 @@ export default function AuthScreen() {
 
           {!isReg && (
             <Text style={s.googleHint}>
-              Du hast dich mit Google registriert? Melde dich mit dem Google-Button an
-              statt mit E-Mail und Passwort.
+              Du hast dich mit Google registriert? Melde dich mit dem Google-Button an statt mit
+              E-Mail und Passwort.
             </Text>
           )}
 
@@ -475,6 +473,16 @@ export default function AuthScreen() {
               Hier erfahren Sie mehr.
             </Text>
           </Text>
+
+          {/* TODO: Sentry-Testbutton – nach erfolgreicher Verifizierung entfernen. */}
+          {!isReg && (
+            <TouchableOpacity
+              style={s.sentryTestBtn}
+              onPress={() => Sentry.captureException(new Error("First error"))}
+            >
+              <Text style={s.sentryTestBtnText}>Sentry-Testfehler senden</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -791,5 +799,20 @@ const s = StyleSheet.create({
     color: "#fc6c14",
     fontFamily: "FiraSansCondensed_600SemiBold",
     textAlign: "center",
+  },
+  sentryTestBtn: {
+    width: "100%",
+    borderWidth: 1.5,
+    borderColor: "#999",
+    borderStyle: "dashed",
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  sentryTestBtnText: {
+    color: "#999",
+    fontSize: 14,
+    fontFamily: "FiraSansCondensed_600SemiBold",
   },
 });
