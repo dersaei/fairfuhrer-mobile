@@ -68,5 +68,8 @@
         "react"
       ]
     }
+  },
+  "allowScripts": {
+    "sharp@0.34.5": true
   }
 }
