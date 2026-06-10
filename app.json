@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Fairführer Audiopins",
+    "name": "Fairführer+",
     "slug": "fairfuhrer-mobile",
     "scheme": "fairfuhrer",
     "owner": "darsim",
@@ -9,14 +9,17 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/logo-fairfuehrer.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FE6918"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.fairfuehrer.app",
-      "usesAppleSignIn": true
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "CFBundleDisplayName": "Fairführer+"
+      }
     },
     "android": {
       "adaptiveIcon": {

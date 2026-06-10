@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -15,7 +15,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import * as Sentry from "@sentry/react-native";
 import { supabase } from "@/lib/supabase";
 import { AuthWeakPasswordError } from "@supabase/supabase-js";
 import MenuButton from "@/components/MenuButton";
@@ -473,16 +472,6 @@ export default function AuthScreen() {
               Hier erfahren Sie mehr.
             </Text>
           </Text>
-
-          {/* TODO: Sentry-Testbutton – nach erfolgreicher Verifizierung entfernen. */}
-          {!isReg && (
-            <TouchableOpacity
-              style={s.sentryTestBtn}
-              onPress={() => Sentry.captureException(new Error("First error"))}
-            >
-              <Text style={s.sentryTestBtnText}>Sentry-Testfehler senden</Text>
-            </TouchableOpacity>
-          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -799,20 +788,5 @@ const s = StyleSheet.create({
     color: "#fc6c14",
     fontFamily: "FiraSansCondensed_600SemiBold",
     textAlign: "center",
-  },
-  sentryTestBtn: {
-    width: "100%",
-    borderWidth: 1.5,
-    borderColor: "#999",
-    borderStyle: "dashed",
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  sentryTestBtnText: {
-    color: "#999",
-    fontSize: 14,
-    fontFamily: "FiraSansCondensed_600SemiBold",
   },
 });

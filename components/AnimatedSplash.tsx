@@ -30,20 +30,20 @@ export default function AnimatedSplash({ onFinished }: Props) {
 
   return (
     <Animated.View style={[StyleSheet.absoluteFill, styles.container, animatedStyle]}>
-      <Image source={require("@/assets/logo-fairfuehrer.png")} style={styles.logo} resizeMode="contain" />
+      <Image source={require("@/assets/splash.png")} style={styles.logo} resizeMode="contain" />
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#FE6918",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 999,
   },
   logo: {
-    width: 260,
-    height: 75,
+    width: 230,
+    height: 293,
   },
 });
