@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
+import { Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import {
   GoogleSignin,
@@ -10,6 +10,13 @@ import {
 import { supabase } from "@/lib/supabase";
 
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+
+// Auf iOS rendern wir den Button nicht: das native @react-native-google-signin
+// SDK kollidiert mit Mapbox dynamic-framework + Expo SDK 55 precompiled
+// modules (AppCheckCore Pod-Konflikt). Apple-Nutzer haben "Sign in with Apple"
+// (Apple App Store erfordert es ohnehin) plus E-Mail/Passwort.
+// Auf Android läuft der Flow unverändert.
+const GOOGLE_SIGN_IN_SUPPORTED = Platform.OS === "android";
 
 /**
  * Nativer Google-Login (Android/iOS) via Credential Manager / GoogleSignIn-iOS.
@@ -32,6 +39,7 @@ export default function GoogleSignInButton({
   // configure() lokal im Effekt – nie auf Modulebene, damit ein fehlender
   // oder fehlerhafter nativer Modul-Zustand den Screen nicht zum Absturz bringt.
   useEffect(() => {
+    if (!GOOGLE_SIGN_IN_SUPPORTED) return;
     if (!WEB_CLIENT_ID) {
       console.warn("GoogleSignInButton: EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID fehlt.");
       return;
@@ -42,6 +50,10 @@ export default function GoogleSignInButton({
       console.warn("GoogleSignInButton: configure() fehlgeschlagen.", e);
     }
   }, []);
+
+  if (!GOOGLE_SIGN_IN_SUPPORTED) {
+    return null;
+  }
 
   const handlePress = async () => {
     if (!WEB_CLIENT_ID) {

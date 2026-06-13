@@ -46,7 +46,6 @@
       "expo-asset",
       "expo-secure-store",
       "expo-image-picker",
-      "@react-native-google-signin/google-signin",
       "expo-apple-authentication",
       [
         "@sentry/react-native/expo",
@@ -56,33 +55,7 @@
           "organization": "siemiatkowski"
         }
       ],
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "useFrameworks": "static",
-            "usePrecompiledModules": false,
-            "extraPods": [
-              {
-                "name": "GoogleSignIn",
-                "modular_headers": true
-              },
-              {
-                "name": "GoogleUtilities",
-                "modular_headers": true
-              },
-              {
-                "name": "AppCheckCore",
-                "modular_headers": true
-              },
-              {
-                "name": "RecaptchaInterop",
-                "modular_headers": true
-              }
-            ]
-          }
-        }
-      ]
+      "expo-build-properties"
     ]
   }
 }
