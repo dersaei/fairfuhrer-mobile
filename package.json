@@ -68,6 +68,13 @@
       "exclude": [
         "react"
       ]
+    },
+    "autolinking": {
+      "ios": {
+        "exclude": [
+          "@react-native-google-signin/google-signin"
+        ]
+      }
     }
   },
   "allowScripts": {
