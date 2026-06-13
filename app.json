@@ -60,25 +60,7 @@
         "expo-build-properties",
         {
           "ios": {
-            "useFrameworks": "static",
-            "extraPods": [
-              {
-                "name": "GoogleSignIn",
-                "modular_headers": true
-              },
-              {
-                "name": "GoogleUtilities",
-                "modular_headers": true
-              },
-              {
-                "name": "AppCheckCore",
-                "modular_headers": true
-              },
-              {
-                "name": "RecaptchaInterop",
-                "modular_headers": true
-              }
-            ]
+            "useFrameworks": "dynamic"
           }
         }
       ]
