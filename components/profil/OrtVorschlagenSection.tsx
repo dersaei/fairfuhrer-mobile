@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -9,6 +10,24 @@ import {
 import { User } from "@supabase/supabase-js";
 import { Profile } from "@/context/AuthContext";
 import { useSubmitPlaceProposal } from "@/hooks/useSubmitPlaceProposal";
+import { getOrtVorschlagenContent, type OrtVorschlagenContent } from "@/lib/directus";
+
+// Fallback-Texte, falls Directus nichts liefert
+const DEFAULTS = {
+  intro: "Kennen Sie einen fairen Ort, der auf unsere Karte gehört? Füllen Sie das Formular aus!",
+  premium_info:
+    "Das Einreichen von Ortsvorschlägen ist ausschließlich für Premium-Mitglieder verfügbar.",
+  label_name: "Name des Ortes",
+  label_adresse: "Adresse",
+  label_beschreibung: "Warum sollte dieser Ort auf der Karte stehen?",
+  button_text: "Vorschlag einreichen",
+  hint_intro: "Ihr Vorschlag wird zusammen mit Ihrer E-Mail-Adresse übermittelt.",
+  hint_with_name:
+    "Vor- und Nachname werden ebenfalls gesendet, da sie in Ihrem Profil hinterlegt sind.",
+  hint_without_name:
+    "Vor- und Nachname werden nicht gesendet, da sie in Ihrem Profil nicht hinterlegt sind.",
+  success_message: "Vielen Dank für Ihren Vorschlag! Wir prüfen ihn und melden uns.",
+};
 
 interface Props {
   user: User | null;
@@ -30,31 +49,50 @@ export default function OrtVorschlagenSection({ user, profile, isPremium }: Prop
     handleSubmit,
   } = useSubmitPlaceProposal(user, profile);
 
+  const [content, setContent] = useState<OrtVorschlagenContent | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getOrtVorschlagenContent().then((c) => {
+      if (active) setContent(c);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const t = {
+    intro: content?.intro || DEFAULTS.intro,
+    premium_info: content?.premium_info || DEFAULTS.premium_info,
+    label_name: content?.label_name || DEFAULTS.label_name,
+    label_adresse: content?.label_adresse || DEFAULTS.label_adresse,
+    label_beschreibung: content?.label_beschreibung || DEFAULTS.label_beschreibung,
+    button_text: content?.button_text || DEFAULTS.button_text,
+    hint_intro: content?.hint_intro || DEFAULTS.hint_intro,
+    hint_with_name: content?.hint_with_name || DEFAULTS.hint_with_name,
+    hint_without_name: content?.hint_without_name || DEFAULTS.hint_without_name,
+    success_message: content?.success_message || DEFAULTS.success_message,
+  };
+
   return (
     <View style={s.section}>
-      <Text style={s.sectionHint}>
-        Kennen Sie einen fairen Ort, der auf unsere Karte gehört? Füllen Sie das Formular aus!
-      </Text>
+      <Text style={s.sectionHint}>{t.intro}</Text>
 
       {!isPremium && (
         <View style={s.premiumInfo}>
-          <Text style={s.premiumInfoText}>
-            Das Einreichen von Ortsvorschlägen ist ausschließlich für Premium-Mitglieder verfügbar.
-          </Text>
+          <Text style={s.premiumInfoText}>{t.premium_info}</Text>
         </View>
       )}
 
       {success ? (
         <View style={s.successBox}>
-          <Text style={s.successMsg}>
-            Vielen Dank für Ihren Vorschlag! Wir prüfen ihn und melden uns.
-          </Text>
+          <Text style={s.successMsg}>{t.success_message}</Text>
         </View>
       ) : (
         <>
           {error && <Text style={s.errorText}>{error}</Text>}
           <View style={s.fieldGroup}>
-            <Text style={s.fieldLabel}>Name des Ortes</Text>
+            <Text style={s.fieldLabel}>{t.label_name}</Text>
             <TextInput
               style={[s.input, !isPremium && s.inputDisabled]}
               value={name}
@@ -63,7 +101,7 @@ export default function OrtVorschlagenSection({ user, profile, isPremium }: Prop
             />
           </View>
           <View style={s.fieldGroup}>
-            <Text style={s.fieldLabel}>Adresse</Text>
+            <Text style={s.fieldLabel}>{t.label_adresse}</Text>
             <TextInput
               style={[s.input, !isPremium && s.inputDisabled]}
               value={address}
@@ -72,7 +110,7 @@ export default function OrtVorschlagenSection({ user, profile, isPremium }: Prop
             />
           </View>
           <View style={s.fieldGroup}>
-            <Text style={s.fieldLabel}>Warum sollte dieser Ort auf der Karte stehen?</Text>
+            <Text style={s.fieldLabel}>{t.label_beschreibung}</Text>
             <TextInput
               style={[s.input, s.textarea, !isPremium && s.inputDisabled]}
               value={description}
@@ -84,10 +122,8 @@ export default function OrtVorschlagenSection({ user, profile, isPremium }: Prop
           </View>
           {isPremium && (
             <Text style={s.hint}>
-              Ihr Vorschlag wird zusammen mit Ihrer E-Mail-Adresse übermittelt.
-              {profile?.first_name || profile?.last_name
-                ? " Vor- und Nachname werden ebenfalls gesendet, da sie in Ihrem Profil hinterlegt sind."
-                : " Vor- und Nachname werden nicht gesendet, da sie in Ihrem Profil nicht hinterlegt sind."}
+              {t.hint_intro}{" "}
+              {profile?.first_name || profile?.last_name ? t.hint_with_name : t.hint_without_name}
             </Text>
           )}
           <TouchableOpacity
@@ -98,7 +134,7 @@ export default function OrtVorschlagenSection({ user, profile, isPremium }: Prop
             {isLoading ? (
               <ActivityIndicator color="#fc6c14" />
             ) : (
-              <Text style={s.buttonText}>Vorschlag einreichen</Text>
+              <Text style={s.buttonText}>{t.button_text}</Text>
             )}
           </TouchableOpacity>
         </>

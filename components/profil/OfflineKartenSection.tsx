@@ -22,9 +22,38 @@ import { setOfflineDataOwner } from "@/lib/offlineOwnership";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
 import { OfflineMedienCard } from "@/components/profil/OfflineMedienCard";
+import { getOfflineKartenContent, type OfflineKartenContent } from "@/lib/directus";
+
+// Fallback-Texte, falls Directus nichts liefert
+const DEFAULTS = {
+  section_title: "Offline-Karten",
+  section_hint:
+    "Lade Kartenkacheln für eine ausgewählte Region auf dein Gerät, damit die Karte auch ohne Internetverbindung funktioniert. Die Inhalte (Pins und Beschreibungen) bleiben weiterhin online.",
+  premium_info_title: "Offline-Karten mit Fairführer+",
+  premium_info_text1:
+    "Mit einem Premium-Konto kannst du die Karte der Region Bodensee & Allgäu auf dein Gerät laden und unterwegs ohne Internetverbindung nutzen – ideal für Wandern, Reisen und Gebiete mit schlechtem Empfang.",
+  premium_info_text2: "Im Offline-Modus stehen dir zur Verfügung:",
+  premium_info_bullets:
+    "das Kartenbild der Region (Straßen, Orte, Gelände)\nalle Pins mit Namen und Beschreibungen\ndie Suche nach gespeicherten Orten",
+  premium_info_text3:
+    "Fotos und Audioguides kannst du als Premium-Nutzer zusätzlich und einzeln herunterladen. Was du nicht herunterlädst, wird wie gewohnt online geladen und ist ohne Verbindung nicht verfügbar.",
+  pack_badge_available: "Verfügbar",
+  pack_meta_region:
+    "Das Kartenbild deckt die Region rund um den Bodensee und das Allgäu ab (Zoom-Stufen 6 bis 14). Pins, Fotos und Audioguides umfassen alle Orte des Katalogs.",
+  pack_note:
+    "Dieser Download umfasst nur das Kartenbild der Region. Fotos und Audioguides kannst du anschließend separat herunterladen – so behältst du die Kontrolle über den Speicherbedarf.",
+  pack_size_info:
+    "Du kannst sie sowohl über WLAN als auch über mobile Daten herunterladen – ganz wie es dir passt. Bei mobilen Daten kann dies einen Teil deines Datenvolumens verbrauchen.",
+  btn_download: "Offline-Karte herunterladen",
+  btn_refresh: "Daten aktualisieren",
+  btn_delete: "Offline-Karte entfernen",
+  warn_outdated:
+    "Eine neue Version der Offline-Karte ist verfügbar. Bitte lade die Karte erneut herunter, um die aktuelle Version zu erhalten.",
+};
 
 export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
   const { user } = useAuth();
+  const [content, setContent] = useState<OfflineKartenContent | null>(null);
   const [status, setStatus] = useState<OfflinePackStatus | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isWorking, setIsWorking] = useState(false);
@@ -38,6 +67,35 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
   const isMountedRef = useRef(true);
   const cacheCurrentPlaces = usePlacesStore((st) => st.cacheCurrentPlaces);
   const refreshOfflineData = usePlacesStore((st) => st.refreshOfflineData);
+
+  // CMS-Texte laden.
+  useEffect(() => {
+    let active = true;
+    getOfflineKartenContent().then((c) => {
+      if (active) setContent(c);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const t = {
+    section_title: content?.section_title || DEFAULTS.section_title,
+    section_hint: content?.section_hint || DEFAULTS.section_hint,
+    premium_info_title: content?.premium_info_title || DEFAULTS.premium_info_title,
+    premium_info_text1: content?.premium_info_text1 || DEFAULTS.premium_info_text1,
+    premium_info_text2: content?.premium_info_text2 || DEFAULTS.premium_info_text2,
+    premium_info_bullets: content?.premium_info_bullets || DEFAULTS.premium_info_bullets,
+    premium_info_text3: content?.premium_info_text3 || DEFAULTS.premium_info_text3,
+    pack_badge_available: content?.pack_badge_available || DEFAULTS.pack_badge_available,
+    pack_meta_region: content?.pack_meta_region || DEFAULTS.pack_meta_region,
+    pack_note: content?.pack_note || DEFAULTS.pack_note,
+    pack_size_info: content?.pack_size_info || DEFAULTS.pack_size_info,
+    btn_download: content?.btn_download || DEFAULTS.btn_download,
+    btn_refresh: content?.btn_refresh || DEFAULTS.btn_refresh,
+    btn_delete: content?.btn_delete || DEFAULTS.btn_delete,
+    warn_outdated: content?.warn_outdated || DEFAULTS.warn_outdated,
+  };
 
   // Liest Datum und Aktualität des lokalen Orte-Cache neu ein.
   const refreshCacheDate = useCallback(async () => {
@@ -191,34 +249,21 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
 
   return (
     <View style={s.section}>
-      <Text style={s.sectionTitle}>Offline-Karten</Text>
-      <Text style={s.sectionHint}>
-        Lade Kartenkacheln für eine ausgewählte Region auf dein Gerät, damit die Karte auch ohne
-        Internetverbindung funktioniert. Die Inhalte (Pins und Beschreibungen) bleiben weiterhin
-        online.
-      </Text>
+      <Text style={s.sectionTitle}>{t.section_title}</Text>
+      <Text style={s.sectionHint}>{t.section_hint}</Text>
 
       {!isPro && (
         <View style={s.premiumInfo}>
-          <Text style={s.premiumInfoTitle}>Offline-Karten mit Fairführer+</Text>
-          <Text style={s.premiumInfoText}>
-            Mit einem Premium-Konto kannst du die Karte der Region Bodensee &amp;
-            Allgäu auf dein Gerät laden und unterwegs ohne Internetverbindung
-            nutzen – ideal für Wandern, Reisen und Gebiete mit schlechtem Empfang.
-          </Text>
-          <Text style={s.premiumInfoText}>
-            Im Offline-Modus stehen dir zur Verfügung:
-          </Text>
+          <Text style={s.premiumInfoTitle}>{t.premium_info_title}</Text>
+          <Text style={s.premiumInfoText}>{t.premium_info_text1}</Text>
+          <Text style={s.premiumInfoText}>{t.premium_info_text2}</Text>
           <Text style={s.premiumInfoBullet}>
-            • das Kartenbild der Region (Straßen, Orte, Gelände){"\n"}
-            • alle Pins mit Namen und Beschreibungen{"\n"}
-            • die Suche nach gespeicherten Orten
+            {t.premium_info_bullets
+              .split("\n")
+              .map((line) => `• ${line}`)
+              .join("\n")}
           </Text>
-          <Text style={s.premiumInfoText}>
-            Fotos und Audioguides kannst du als Premium-Nutzer zusätzlich und
-            einzeln herunterladen. Was du nicht herunterlädst, wird wie gewohnt
-            online geladen und ist ohne Verbindung nicht verfügbar.
-          </Text>
+          <Text style={s.premiumInfoText}>{t.premium_info_text3}</Text>
         </View>
       )}
 
@@ -227,29 +272,20 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
           <Text style={s.offlinePackTitle}>{OFFLINE_PACK_LABEL}</Text>
           {isComplete && (
             <View style={s.offlinePackBadge}>
-              <Text style={s.offlinePackBadgeText}>Verfügbar</Text>
+              <Text style={s.offlinePackBadgeText}>{t.pack_badge_available}</Text>
             </View>
           )}
         </View>
-        <Text style={s.offlinePackMeta}>
-          Das Kartenbild deckt die Region rund um den Bodensee und das Allgäu
-          ab (Zoom-Stufen 6 bis 14). Pins, Fotos und Audioguides umfassen alle
-          Orte des Katalogs.
-        </Text>
+        <Text style={s.offlinePackMeta}>{t.pack_meta_region}</Text>
 
         {!isInitializing && !isComplete && !isDownloading && (
           <>
             <View style={s.offlineNote}>
-              <Text style={s.offlineNoteText}>
-                Dieser Download umfasst nur das Kartenbild der Region. Fotos und Audioguides kannst
-                du anschließend separat herunterladen – so behältst du die Kontrolle über den
-                Speicherbedarf.
-              </Text>
+              <Text style={s.offlineNoteText}>{t.pack_note}</Text>
             </View>
             <Text style={s.offlinePackMeta}>
-              Geschätzte Größe der Karte: {OFFLINE_PACK_ESTIMATED_SIZE_LABEL}. Du kannst sie sowohl
-              über WLAN als auch über mobile Daten herunterladen – ganz wie es dir passt. Bei
-              mobilen Daten kann dies einen Teil deines Datenvolumens verbrauchen.
+              {`Geschätzte Größe der Karte: ${OFFLINE_PACK_ESTIMATED_SIZE_LABEL}. `}
+              {t.pack_size_info}
             </Text>
           </>
         )}
@@ -282,18 +318,13 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
               {`Heruntergeladen: ${formatPackSize(status?.completedResourceSize ?? 0)}`}
             </Text>
             {cacheDate && (
-              <Text style={s.offlinePackMeta}>
-                {`Zuletzt aktualisiert: ${cacheDate}`}
-              </Text>
+              <Text style={s.offlinePackMeta}>{`Zuletzt aktualisiert: ${cacheDate}`}</Text>
             )}
 
             {/* Nieaktualna paczka mapy — zmieniły się bounds/zoom/styl. */}
             {status?.isOutdated && (
               <View style={s.offlineWarn}>
-                <Text style={s.offlineWarnText}>
-                  Eine neue Version der Offline-Karte ist verfügbar. Bitte lade
-                  die Karte erneut herunter, um die aktuelle Version zu erhalten.
-                </Text>
+                <Text style={s.offlineWarnText}>{t.warn_outdated}</Text>
               </View>
             )}
 
@@ -322,7 +353,7 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
                 {isRefreshing ? (
                   <ActivityIndicator color="#111" />
                 ) : (
-                  <Text style={s.buttonOutlineText}>Daten aktualisieren</Text>
+                  <Text style={s.buttonOutlineText}>{t.btn_refresh}</Text>
                 )}
               </TouchableOpacity>
             )}
@@ -342,7 +373,7 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
             {isDownloading ? (
               <ActivityIndicator color="#fc6c14" />
             ) : (
-              <Text style={s.buttonText}>Offline-Karte herunterladen</Text>
+              <Text style={s.buttonText}>{t.btn_download}</Text>
             )}
           </TouchableOpacity>
         )}
@@ -353,14 +384,14 @@ export default function OfflineKartenSection({ isPro }: { isPro: boolean }) {
             onPress={handleDelete}
             disabled={isWorking}
           >
-            <Text style={s.buttonOutlineText}>Offline-Karte entfernen</Text>
+            <Text style={s.buttonOutlineText}>{t.btn_delete}</Text>
           </TouchableOpacity>
         )}
       </View>
 
       {/* Medien-Verwaltung — sichtbar, sobald die Karte geladen ist. Fotos
           und Audioguides werden dort einzeln verwaltet. */}
-      {!isInitializing && isComplete && <OfflineMedienCard />}
+      {!isInitializing && isComplete && <OfflineMedienCard content={content} />}
     </View>
   );
 }

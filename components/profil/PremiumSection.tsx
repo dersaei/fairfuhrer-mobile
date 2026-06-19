@@ -1,19 +1,44 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from "react-native";
 import Purchases from "react-native-purchases";
 import RevenueCatUI from "react-native-purchases-ui";
 import { useRouter } from "expo-router";
 import { type Profile } from "@/context/AuthContext";
 import KontaktForm from "@/components/profil/KontaktForm";
+import {
+  getPremiumPageContent,
+  getPremiumComparisonFeatures,
+  type PremiumPageContent,
+  type PremiumComparisonFeature,
+} from "@/lib/directus";
 
-const TABLE_ROWS = [
-  { label: "Alle Kategorien auf der Karte", free: true, pro: true },
-  { label: "20 % der Sehenswertes-Pins", free: true, pro: true },
-  { label: "100 % der Sehenswertes-Pins", free: false, pro: true },
-  { label: "Offline-Karten", free: false, pro: true },
-  { label: "Orte vorschlagen", free: false, pro: true },
-  { label: "Community-Funktionen", free: false, pro: true },
+// Fallback-Tabelle, falls Directus nichts liefert
+const FALLBACK_ROWS: { feature: string; free: boolean; pro: boolean }[] = [
+  { feature: "Alle Kategorien auf der Karte", free: true, pro: true },
+  { feature: "20 % der Sehenswertes-Pins", free: true, pro: true },
+  { feature: "100 % der Sehenswertes-Pins", free: false, pro: true },
+  { feature: "Offline-Karten", free: false, pro: true },
+  { feature: "Orte vorschlagen", free: false, pro: true },
+  { feature: "Community-Funktionen", free: false, pro: true },
 ];
+
+// Einfaches **fett** Rendering für Lead-/Hinweistexte
+function BoldText({ text, style }: { text: string; style?: any }) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return (
+    <Text style={style}>
+      {parts.map((part, i) =>
+        part.startsWith("**") && part.endsWith("**") ? (
+          <Text key={i} style={{ fontFamily: "FiraSansCondensed_700Bold" }}>
+            {part.slice(2, -2)}
+          </Text>
+        ) : (
+          part
+        ),
+      )}
+    </Text>
+  );
+}
 
 export default function PremiumSection({
   isPro,
@@ -26,6 +51,22 @@ export default function PremiumSection({
 }) {
   const router = useRouter();
   const [restoring, setRestoring] = useState(false);
+  const [content, setContent] = useState<PremiumPageContent | null>(null);
+  const [features, setFeatures] = useState<PremiumComparisonFeature[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([getPremiumPageContent(), getPremiumComparisonFeatures()]).then(([c, f]) => {
+      if (!active) return;
+      setContent(c);
+      setFeatures(f);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const tableRows = features.length > 0 ? features : FALLBACK_ROWS;
 
   const handlePurchase = () => {
     router.push("/custom-paywall");
@@ -56,15 +97,15 @@ export default function PremiumSection({
 
   return (
     <View style={s.section}>
-      <Text style={s.heading}>FAIRFÜHRER+</Text>
+      <Text style={s.heading}>{content?.title ?? "FAIRFÜHRER+"}</Text>
 
       {isPro ? (
         <View style={s.proActiveBox}>
           <Text style={s.proActiveIcon}>★</Text>
-          <Text style={s.proActiveTitle}>FAIRFÜHRER+ aktiv</Text>
+          <Text style={s.proActiveTitle}>{content?.pro_active_title ?? "FAIRFÜHRER+ aktiv"}</Text>
           {premiumUntil && (
             <Text style={s.proActiveDate}>
-              {"Gültig bis: "}
+              {`${content?.pro_active_date_label ?? "Gültig bis:"} `}
               <Text style={s.proActiveDateBold}>
                 {premiumUntil.toLocaleDateString("de-DE", {
                   day: "2-digit",
@@ -75,9 +116,12 @@ export default function PremiumSection({
             </Text>
           )}
           <Text style={s.proActiveHint}>
-            {`Dein Abonnement wird über den App Store (iOS) oder Google Play (Android) verwaltet. Um dein Abo zu kündigen oder zu ändern, gehe zu Profil → Premium → Abonnement verwalten.`}
+            {content?.pro_active_hint ??
+              `Dein Abonnement wird über den App Store (iOS) oder Google Play (Android) verwaltet. Um dein Abo zu kündigen oder zu ändern, gehe zu Profil → Premium → Abonnement verwalten.`}
           </Text>
         </View>
+      ) : content?.lead_text ? (
+        <BoldText text={content.lead_text} style={s.lead} />
       ) : (
         <Text style={s.lead}>
           {"Mit "}
@@ -90,16 +134,18 @@ export default function PremiumSection({
 
       {/* Tabela porównawcza */}
       <View style={s.tableBlock}>
-        <Text style={s.sectionLabel}>Kostenlos vs. Premium</Text>
+        <Text style={s.sectionLabel}>{content?.comparison_title ?? "Kostenlos vs. Premium"}</Text>
         <View style={s.table}>
           <View style={s.tableHead}>
-            <Text style={[s.thCell, s.thFeature]}>Funktion</Text>
-            <Text style={[s.thCell, s.thFree]}>Kostenlos</Text>
-            <Text style={[s.thCell, s.thPro]}>FAIRFÜHRER+</Text>
+            <Text style={[s.thCell, s.thFeature]}>
+              {content?.comparison_th_feature ?? "Funktion"}
+            </Text>
+            <Text style={[s.thCell, s.thFree]}>{content?.comparison_th_free ?? "Kostenlos"}</Text>
+            <Text style={[s.thCell, s.thPro]}>{content?.comparison_th_pro ?? "FAIRFÜHRER+"}</Text>
           </View>
-          {TABLE_ROWS.map((row, i) => (
+          {tableRows.map((row, i) => (
             <View key={i} style={[s.tableRow, i % 2 === 1 && s.tableRowAlt]}>
-              <Text style={s.tdFeature}>{row.label}</Text>
+              <Text style={s.tdFeature}>{row.feature}</Text>
               <Text style={[s.tdCenter, row.free ? s.check : s.cross]}>{row.free ? "✓" : "—"}</Text>
               <Text style={[s.tdCenter, row.pro ? s.check : s.cross]}>{row.pro ? "✓" : "—"}</Text>
             </View>
@@ -125,7 +171,9 @@ export default function PremiumSection({
       ) : (
         <>
           <View style={s.appBox}>
-            <Text style={s.sectionLabel}>So kaufst du FAIRFÜHRER+</Text>
+            <Text style={s.sectionLabel}>
+              {content?.app_box_title ?? "So kaufst du FAIRFÜHRER+"}
+            </Text>
             <TouchableOpacity style={s.btnPrimary} onPress={handlePurchase} activeOpacity={0.85}>
               <Text style={s.btnPrimaryText}>FAIRFÜHRER+ aktivieren</Text>
               <Text style={s.btnPrimarySub}>{"Pläne & Preise im nächsten Schritt"}</Text>

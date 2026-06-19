@@ -16,6 +16,34 @@ import { useRouter } from "expo-router";
 import Purchases, { PurchasesPackage } from "react-native-purchases";
 import { ENTITLEMENT_ID } from "@/lib/revenuecat";
 import { useAuth } from "@/context/AuthContext";
+import { getPaywallContent, type PaywallContent } from "@/lib/directus";
+
+// Fallback-Texte, falls Directus nichts liefert
+const DEFAULTS = {
+  hero_eyebrow: "FAIRFÜHRER+",
+  hero_headline: "WERDE\nFAIR-\nMACHER:IN.",
+  hero_subtitle:
+    "Fairführer wird von einem kleinen Team gemacht. Mit deinem Beitrag bleiben wir frei und unabhängig — alle Funktionen gehören dazu.",
+  features: [
+    "Alle Sehenswürdigkeiten — nicht nur 20 %",
+    "Offline-Karten für unterwegs",
+    "Eigene Orte vorschlagen & Pins erstellen",
+    "Redaktionelle Prüfung deiner Pins",
+  ],
+  popular_badge: "BELIEBT",
+  cta_prefix: "FAIRFÜHRER+ aktivieren",
+  restore_text: "Käufe wiederherstellen",
+  legal_link_terms: "Nutzungsbedingungen",
+  legal_link_privacy: "Datenschutz",
+};
+
+// CMS-Felder pro Paket-Identifier (Label/Sub). Preise/order/popular bleiben im Code.
+const PACKAGE_CMS_KEYS: Record<string, { label: keyof PaywallContent; sub: keyof PaywallContent }> =
+  {
+    small_yearly: { label: "package_small_label", sub: "package_small_sub" },
+    fair_yearly: { label: "package_fair_label", sub: "package_fair_sub" },
+    large_yearly: { label: "package_large_label", sub: "package_large_sub" },
+  };
 
 const HERO_IMAGE = require("@/assets/images/engagement-unsplash.jpeg");
 
@@ -71,6 +99,32 @@ export default function PaywallScreen() {
   const [selected, setSelected] = useState<PurchasesPackage | null>(null);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
+  const [content, setContent] = useState<PaywallContent | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getPaywallContent().then((c) => {
+      if (active) setContent(c);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const t = {
+    hero_eyebrow: content?.hero_eyebrow || DEFAULTS.hero_eyebrow,
+    hero_headline: content?.hero_headline || DEFAULTS.hero_headline,
+    hero_subtitle: content?.hero_subtitle || DEFAULTS.hero_subtitle,
+    features:
+      content?.features && content.features.length > 0
+        ? content.features.map((f) => f.text)
+        : DEFAULTS.features,
+    popular_badge: content?.popular_badge || DEFAULTS.popular_badge,
+    cta_prefix: content?.cta_prefix || DEFAULTS.cta_prefix,
+    restore_text: content?.restore_text || DEFAULTS.restore_text,
+    legal_link_terms: content?.legal_link_terms || DEFAULTS.legal_link_terms,
+    legal_link_privacy: content?.legal_link_privacy || DEFAULTS.legal_link_privacy,
+  };
 
   useEffect(() => {
     Purchases.getOfferings()
@@ -144,23 +198,15 @@ export default function PaywallScreen() {
           </TouchableOpacity>
 
           <View style={s.heroContent}>
-            <Text style={s.heroEyebrow}>FAIRFÜHRER+</Text>
-            <Text style={s.heroHeadline}>{"WERDE\nFAIR-\nMACHER:IN."}</Text>
-            <Text style={s.heroSubtitle}>
-              Fairführer wird von einem kleinen Team gemacht. Mit deinem Beitrag bleiben wir frei
-              und unabhängig — alle Funktionen gehören dazu.
-            </Text>
+            <Text style={s.heroEyebrow}>{t.hero_eyebrow}</Text>
+            <Text style={s.heroHeadline}>{t.hero_headline}</Text>
+            <Text style={s.heroSubtitle}>{t.hero_subtitle}</Text>
           </View>
         </ImageBackground>
 
         {/* ── Features ── */}
         <View style={s.featuresSection}>
-          {[
-            "Alle Sehenswürdigkeiten — nicht nur 20 %",
-            "Offline-Karten für unterwegs",
-            "Eigene Orte vorschlagen & Pins erstellen",
-            "Redaktionelle Prüfung deiner Pins",
-          ].map((f) => (
+          {t.features.map((f) => (
             <View key={f} style={s.featureRow}>
               <Text style={s.featureCheck}>✓</Text>
               <Text style={s.featureText}>{f}</Text>
@@ -177,8 +223,13 @@ export default function PaywallScreen() {
               const isSelected = selected?.identifier === pkg.identifier;
               const price = pkg.product.priceString;
               const meta = PACKAGE_META[pkg.identifier];
-              const label = meta?.label ?? pkg.product.title;
-              const sub = meta?.sub ?? "Jährlich";
+              const cmsKeys = PACKAGE_CMS_KEYS[pkg.identifier];
+              const label =
+                (cmsKeys && (content?.[cmsKeys.label] as string)) ||
+                meta?.label ||
+                pkg.product.title;
+              const sub =
+                (cmsKeys && (content?.[cmsKeys.sub] as string)) || meta?.sub || "Jährlich";
               const perMonth = formatPerMonth(pkg);
               const isPopular = meta?.popular ?? false;
 
@@ -205,7 +256,7 @@ export default function PaywallScreen() {
 
                   {isPopular && (
                     <View style={s.popularBadge}>
-                      <Text style={s.popularBadgeText}>BELIEBT</Text>
+                      <Text style={s.popularBadgeText}>{t.popular_badge}</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -224,12 +275,14 @@ export default function PaywallScreen() {
             {purchasing ? (
               <ActivityIndicator color="#fc6c14" />
             ) : (
-              <Text style={s.ctaBtnText}>FAIRFÜHRER+ aktivieren · {selectedPrice}/Jahr</Text>
+              <Text style={s.ctaBtnText}>
+                {t.cta_prefix} · {selectedPrice}/Jahr
+              </Text>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={handleRestore} style={s.restoreBtn}>
-            <Text style={s.restoreBtnText}>Käufe wiederherstellen</Text>
+            <Text style={s.restoreBtnText}>{t.restore_text}</Text>
           </TouchableOpacity>
 
           {/* ── Legal (Voll) ── */}
@@ -241,16 +294,16 @@ export default function PaywallScreen() {
               Stunden vor Ablauf der laufenden Periode gekündigt wird.
             </Text>
             <Text style={s.legalText}>
-              Du kannst dein Abo jederzeit in den Einstellungen deines {STORE_NAME}-Kontos
-              verwalten und kündigen — eine Erstattung des laufenden Zeitraums ist nicht möglich.
+              Du kannst dein Abo jederzeit in den Einstellungen deines {STORE_NAME}-Kontos verwalten
+              und kündigen — eine Erstattung des laufenden Zeitraums ist nicht möglich.
             </Text>
             <View style={s.legalLinks}>
               <Text style={s.legalLink} onPress={() => router.push("/(drawer)/agb")}>
-                Nutzungsbedingungen
+                {t.legal_link_terms}
               </Text>
               <Text style={s.legalSep}> · </Text>
               <Text style={s.legalLink} onPress={() => router.push("/(drawer)/datenschutz")}>
-                Datenschutz
+                {t.legal_link_privacy}
               </Text>
             </View>
           </View>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,8 +8,24 @@ import {
   StyleSheet,
 } from "react-native";
 import { useAuth } from "@/context/AuthContext";
+import { getAccountContactFormContent, type AccountContactFormContent } from "@/lib/directus";
 
 const WEB_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "";
+
+// Fallback-Texte, falls Directus nichts liefert
+const DEFAULTS = {
+  title: "Kontakt aufnehmen",
+  lead_text:
+    "Sie haben eine Frage oder ein Anliegen? Schreiben Sie uns direkt — wir antworten in der Regel innerhalb von 1–2 Werktagen.",
+  label_absender: "Absender",
+  label_betreff: "Betreff",
+  label_nachricht: "Nachricht",
+  button_text: "Nachricht senden",
+  success_message:
+    "Vielen Dank für Ihre Nachricht! Wir melden uns so schnell wie möglich bei Ihnen.",
+  error_message: "Ein Fehler ist aufgetreten.",
+  validation_message: "Bitte fülle alle Felder aus.",
+};
 
 export default function KontaktForm() {
   const { user, profile } = useAuth();
@@ -17,13 +33,36 @@ export default function KontaktForm() {
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | undefined>();
+  const [content, setContent] = useState<AccountContactFormContent | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getAccountContactFormContent().then((c) => {
+      if (active) setContent(c);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const t = {
+    title: content?.title || DEFAULTS.title,
+    lead_text: content?.lead_text || DEFAULTS.lead_text,
+    label_absender: content?.label_absender || DEFAULTS.label_absender,
+    label_betreff: content?.label_betreff || DEFAULTS.label_betreff,
+    label_nachricht: content?.label_nachricht || DEFAULTS.label_nachricht,
+    button_text: content?.button_text || DEFAULTS.button_text,
+    success_message: content?.success_message || DEFAULTS.success_message,
+    error_message: content?.error_message || DEFAULTS.error_message,
+    validation_message: content?.validation_message || DEFAULTS.validation_message,
+  };
 
   const displayEmail = user?.email ?? "";
   const displayName = profile?.username ?? "";
 
   const handleSubmit = async () => {
     if (!subject.trim() || !message.trim()) {
-      setErrorMsg("Bitte fülle alle Felder aus.");
+      setErrorMsg(t.validation_message);
       return;
     }
     setErrorMsg(undefined);
@@ -50,11 +89,11 @@ export default function KontaktForm() {
         setMessage("");
       } else {
         const data = await res.json().catch(() => ({}));
-        setErrorMsg(data.error ?? "Ein Fehler ist aufgetreten.");
+        setErrorMsg(data.error ?? t.error_message);
         setStatus("error");
       }
     } catch {
-      setErrorMsg("Ein Fehler ist aufgetreten. Bitte versuche es erneut.");
+      setErrorMsg(t.error_message);
       setStatus("error");
     }
   };
@@ -63,9 +102,7 @@ export default function KontaktForm() {
     return (
       <View style={s.section}>
         <View style={s.successBox}>
-          <Text style={s.successText}>
-            Vielen Dank für Ihre Nachricht! Wir melden uns so schnell wie möglich bei Ihnen.
-          </Text>
+          <Text style={s.successText}>{t.success_message}</Text>
         </View>
       </View>
     );
@@ -73,23 +110,20 @@ export default function KontaktForm() {
 
   return (
     <View style={s.section}>
-      <Text style={s.title}>Kontakt aufnehmen</Text>
-      <Text style={s.lead}>
-        Sie haben eine Frage oder ein Anliegen? Schreiben Sie uns direkt — wir antworten in der
-        Regel innerhalb von 1–2 Werktagen.
-      </Text>
+      <Text style={s.title}>{t.title}</Text>
+      <Text style={s.lead}>{t.lead_text}</Text>
 
       {status === "error" && errorMsg && <Text style={s.errorMsg}>{errorMsg}</Text>}
 
       <View style={s.infoRow}>
-        <Text style={s.infoLabel}>Absender</Text>
+        <Text style={s.infoLabel}>{t.label_absender}</Text>
         <Text style={s.infoValue} numberOfLines={1}>
           {displayName ? `${displayName} (${displayEmail})` : displayEmail}
         </Text>
       </View>
 
       <View style={s.field}>
-        <Text style={s.label}>Betreff</Text>
+        <Text style={s.label}>{t.label_betreff}</Text>
         <TextInput
           style={s.input}
           value={subject}
@@ -102,7 +136,7 @@ export default function KontaktForm() {
       </View>
 
       <View style={s.field}>
-        <Text style={s.label}>Nachricht</Text>
+        <Text style={s.label}>{t.label_nachricht}</Text>
         <TextInput
           style={s.textarea}
           value={message}
@@ -123,7 +157,7 @@ export default function KontaktForm() {
         {status === "submitting" ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={s.buttonText}>Nachricht senden</Text>
+          <Text style={s.buttonText}>{t.button_text}</Text>
         )}
       </TouchableOpacity>
     </View>

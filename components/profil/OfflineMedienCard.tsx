@@ -11,6 +11,15 @@ import {
 import { collectOfflineAudioUrls, collectOfflineImageUrls } from "@/lib/mediaUrls";
 import { formatPackSize } from "@/lib/offlineMaps";
 import { usePlacesStore } from "@/stores/placesStore";
+import { type OfflineKartenContent } from "@/lib/directus";
+
+const DEFAULTS = {
+  medien_title: "Offline-Medien",
+  medien_meta:
+    "Fotos und Audioguides werden nicht automatisch mit der Karte geladen. Du kannst sie hier einzeln herunterladen und so den Speicherbedarf selbst bestimmen. Audioguides können je nach Anzahl sehr viel Speicherplatz belegen.",
+  medien_label_fotos: "Fotos",
+  medien_label_audio: "Audioguides",
+};
 
 // ─── Offline-Medien-Karte ────────────────────────────────────────────────────
 //
@@ -23,7 +32,14 @@ import { usePlacesStore } from "@/stores/placesStore";
 // Sammlung ändert sich). Stattdessen wird die Anzahl der Dateien aus den
 // aktuellen Daten berechnet, und während des Downloads wächst die Größe live.
 
-export function OfflineMedienCard() {
+export function OfflineMedienCard({ content }: { content?: OfflineKartenContent | null }) {
+  const t = {
+    medien_title: content?.medien_title || DEFAULTS.medien_title,
+    medien_meta: content?.medien_meta || DEFAULTS.medien_meta,
+    medien_label_fotos: content?.medien_label_fotos || DEFAULTS.medien_label_fotos,
+    medien_label_audio: content?.medien_label_audio || DEFAULTS.medien_label_audio,
+  };
+
   const [imageSize, setImageSize] = useState(0);
   const [audioSize, setAudioSize] = useState(0);
   // Welcher Medientyp gerade lädt (null = kein Download aktiv).
@@ -78,10 +94,7 @@ export function OfflineMedienCard() {
       setLiveSize(0);
       try {
         const all = usePlacesStore.getState().places;
-        const urls =
-          kind === "image"
-            ? collectOfflineImageUrls(all)
-            : collectOfflineAudioUrls(all);
+        const urls = kind === "image" ? collectOfflineImageUrls(all) : collectOfflineAudioUrls(all);
         if (urls.length === 0) {
           setError(`Keine ${noun} zum Herunterladen verfügbar.`);
           return;
@@ -180,8 +193,7 @@ export function OfflineMedienCard() {
     hasCache: boolean,
   ) => {
     if (activeKind === kind && progress) {
-      const pct =
-        progress.total > 0 ? Math.round((progressCount / progress.total) * 100) : 0;
+      const pct = progress.total > 0 ? Math.round((progressCount / progress.total) * 100) : 0;
       return (
         <View style={{ gap: 6, marginTop: 8 }}>
           <View style={s.progressTrack}>
@@ -211,21 +223,20 @@ export function OfflineMedienCard() {
 
   return (
     <View style={s.card}>
-      <Text style={s.cardTitle}>Offline-Medien</Text>
-      <Text style={s.cardMeta}>
-        Fotos und Audioguides werden nicht automatisch mit der Karte geladen.
-        Du kannst sie hier einzeln herunterladen und so den Speicherbedarf
-        selbst bestimmen. Audioguides können je nach Anzahl sehr viel
-        Speicherplatz belegen.
-      </Text>
+      <Text style={s.cardTitle}>{t.medien_title}</Text>
+      <Text style={s.cardMeta}>{t.medien_meta}</Text>
 
       {/* Speichernutzung */}
       <View style={s.usageRow}>
-        <Text style={s.usageLabel}>Fotos ({imageCount})</Text>
+        <Text style={s.usageLabel}>
+          {t.medien_label_fotos} ({imageCount})
+        </Text>
         <Text style={s.usageValue}>{hasImages ? formatPackSize(imageSize) : "—"}</Text>
       </View>
       <View style={s.usageRow}>
-        <Text style={s.usageLabel}>Audioguides ({audioCount})</Text>
+        <Text style={s.usageLabel}>
+          {t.medien_label_audio} ({audioCount})
+        </Text>
         <Text style={s.usageValue}>{hasAudio ? formatPackSize(audioSize) : "—"}</Text>
       </View>
 
