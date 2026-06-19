@@ -1,5 +1,5 @@
-import { Platform } from 'react-native';
-import Purchases, { LOG_LEVEL, CustomerInfo } from 'react-native-purchases';
+import { Platform } from "react-native";
+import Purchases, { LOG_LEVEL, CustomerInfo } from "react-native-purchases";
 
 // ─── API keys ────────────────────────────────────────────────────────────────
 // RevenueCat public SDK keys are safe to ship in the client, but we still
@@ -12,15 +12,15 @@ import Purchases, { LOG_LEVEL, CustomerInfo } from 'react-native-purchases';
 //   3. Hard-coded RC sandbox test key fallback (only for `expo start` /
 //      detached dev clients without env wiring — RevenueCat's published
 //      "test_" prefixed key is safe for development).
-const FALLBACK_TEST_KEY = 'test_xldOopxcqijWSVcxYwaAdxnykjl';
+const FALLBACK_TEST_KEY = "test_xldOopxcqijWSVcxYwaAdxnykjl";
 
 function resolveApiKey(): string {
   const iosKey = process.env.EXPO_PUBLIC_RC_KEY_IOS;
   const androidKey = process.env.EXPO_PUBLIC_RC_KEY_ANDROID;
   const testKey = process.env.EXPO_PUBLIC_RC_KEY_TEST;
 
-  if (Platform.OS === 'ios' && iosKey) return iosKey;
-  if (Platform.OS === 'android' && androidKey) return androidKey;
+  if (Platform.OS === "ios" && iosKey) return iosKey;
+  if (Platform.OS === "android" && androidKey) return androidKey;
   if (testKey) return testKey;
   return FALLBACK_TEST_KEY;
 }
@@ -34,8 +34,8 @@ function resolveApiKey(): string {
 // entitlement key. We keep both forms in `KNOWN_ENTITLEMENT_IDS` so an
 // existing dashboard configuration with the legacy ID continues to grant
 // premium until the dashboard is migrated to the canonical ASCII ID.
-export const ENTITLEMENT_ID = 'fairfuehrer_pro';
-export const LEGACY_ENTITLEMENT_ID = 'Fairführer Pro';
+export const ENTITLEMENT_ID = "fairfuehrer_pro";
+export const LEGACY_ENTITLEMENT_ID = "Fairführer Pro";
 const KNOWN_ENTITLEMENT_IDS = [ENTITLEMENT_ID, LEGACY_ENTITLEMENT_ID];
 
 // ─── Initialization ─────────────────────────────────────────────────────────
@@ -53,7 +53,7 @@ export async function identifyUser(userId: string) {
   try {
     await Purchases.logIn(userId);
   } catch (e) {
-    console.error('[RevenueCat] identifyUser error:', e);
+    console.error("[RevenueCat] identifyUser error:", e);
   }
 }
 
@@ -64,18 +64,18 @@ export async function setUserEmail(email: string | null | undefined) {
     // native SubscriberAttributes API.
     await Purchases.setEmail(email);
   } catch (e) {
-    console.error('[RevenueCat] setUserEmail error:', e);
+    console.error("[RevenueCat] setUserEmail error:", e);
   }
 }
 
 export async function resetUser() {
   try {
     const info = await Purchases.getCustomerInfo();
-    if (!info.originalAppUserId.startsWith('$RCAnonymous')) {
+    if (!info.originalAppUserId.startsWith("$RCAnonymous")) {
       await Purchases.logOut();
     }
   } catch (e) {
-    console.error('[RevenueCat] resetUser error:', e);
+    console.error("[RevenueCat] resetUser error:", e);
   }
 }
 
@@ -85,16 +85,14 @@ export async function getCustomerInfo(): Promise<CustomerInfo | null> {
   try {
     return await Purchases.getCustomerInfo();
   } catch (e) {
-    console.error('[RevenueCat] getCustomerInfo error:', e);
+    console.error("[RevenueCat] getCustomerInfo error:", e);
     return null;
   }
 }
 
 export function hasPro(customerInfo: CustomerInfo | null): boolean {
   if (!customerInfo) return false;
-  return KNOWN_ENTITLEMENT_IDS.some(
-    (id) => id in customerInfo.entitlements.active,
-  );
+  return KNOWN_ENTITLEMENT_IDS.some((id) => id in customerInfo.entitlements.active);
 }
 
 export type CustomerInfoListener = (info: CustomerInfo) => void;
@@ -105,7 +103,7 @@ export function addCustomerInfoListener(listener: CustomerInfoListener): () => v
     try {
       Purchases.removeCustomerInfoUpdateListener(listener);
     } catch (e) {
-      console.error('[RevenueCat] removeCustomerInfoUpdateListener error:', e);
+      console.error("[RevenueCat] removeCustomerInfoUpdateListener error:", e);
     }
   };
 }

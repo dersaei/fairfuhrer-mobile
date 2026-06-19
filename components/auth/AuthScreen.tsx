@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -21,8 +21,43 @@ import MenuButton from "@/components/MenuButton";
 import PlanCompareCard from "@/components/PlanCompareCard";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
 import AppleSignInButton from "@/components/AppleSignInButton";
+import { getAuthScreenContent, type AuthScreenContent } from "@/lib/directus";
 
 type AuthView = "welcome" | "login" | "register" | "forgot";
+
+// Fallback-Texte, falls Directus nichts liefert
+const DEFAULTS = {
+  welcome_eyebrow: "DEIN FAIRFÜHRER-KONTO",
+  welcome_headline: "ENTDECKE\nMEHR.\nBEWEGE\nMEHR.",
+  welcome_subtitle:
+    "Kostenlos registrieren – Audio-Guides hören, faire Orte entdecken und die Community mitgestalten.",
+  welcome_btn_register: "Kostenlos registrieren",
+  welcome_btn_login: "Ich habe schon ein Konto",
+  welcome_btn_premium: "Jetzt FAIRFÜHRER+ holen",
+  brand_title: "FAIRFÜHRER",
+  headline_register: "Konto erstellen",
+  headline_login: "Reisender",
+  tab_login: "Anmelden",
+  tab_register: "Registrieren",
+  divider_text: "oder mit E-Mail",
+  btn_register: "Konto erstellen",
+  btn_login: "Anmelden",
+  forgot_link: "Passwort vergessen?",
+  google_hint:
+    "Du hast dich mit Google registriert? Melde dich mit dem Google-Button an statt mit E-Mail und Passwort.",
+  partner_info: "Werde unser Partner.",
+  partner_link: "Hier erfahren Sie mehr.",
+  forgot_headline: "Passwort vergessen",
+  forgot_hint:
+    "Gib deine E-Mail-Adresse ein. Wir senden dir einen Link, mit dem du ein neues Passwort festlegen kannst.",
+  forgot_success:
+    "Wenn ein Konto mit dieser E-Mail-Adresse existiert, haben wir dir einen Link zum Zurücksetzen des Passworts gesendet. Bitte prüfe dein Postfach.",
+  forgot_btn: "Link senden",
+  back_to_login: "Zurück zum Login",
+  reg_success_title: "Fast fertig!",
+  reg_success_text: "Bitte prüfe deine E-Mails und bestätige deine Registrierung.",
+  back_btn: "← Zurück",
+};
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -36,6 +71,46 @@ export default function AuthScreen() {
   const [registerSuccess, setRegisterSuccess] = useState(false);
   const [forgotSuccess, setForgotSuccess] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
+  const [content, setContent] = useState<AuthScreenContent | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getAuthScreenContent().then((c) => {
+      if (active) setContent(c);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const t = {
+    welcome_eyebrow: content?.welcome_eyebrow || DEFAULTS.welcome_eyebrow,
+    welcome_headline: content?.welcome_headline || DEFAULTS.welcome_headline,
+    welcome_subtitle: content?.welcome_subtitle || DEFAULTS.welcome_subtitle,
+    welcome_btn_register: content?.welcome_btn_register || DEFAULTS.welcome_btn_register,
+    welcome_btn_login: content?.welcome_btn_login || DEFAULTS.welcome_btn_login,
+    welcome_btn_premium: content?.welcome_btn_premium || DEFAULTS.welcome_btn_premium,
+    brand_title: content?.brand_title || DEFAULTS.brand_title,
+    headline_register: content?.headline_register || DEFAULTS.headline_register,
+    headline_login: content?.headline_login || DEFAULTS.headline_login,
+    tab_login: content?.tab_login || DEFAULTS.tab_login,
+    tab_register: content?.tab_register || DEFAULTS.tab_register,
+    divider_text: content?.divider_text || DEFAULTS.divider_text,
+    btn_register: content?.btn_register || DEFAULTS.btn_register,
+    btn_login: content?.btn_login || DEFAULTS.btn_login,
+    forgot_link: content?.forgot_link || DEFAULTS.forgot_link,
+    google_hint: content?.google_hint || DEFAULTS.google_hint,
+    partner_info: content?.partner_info || DEFAULTS.partner_info,
+    partner_link: content?.partner_link || DEFAULTS.partner_link,
+    forgot_headline: content?.forgot_headline || DEFAULTS.forgot_headline,
+    forgot_hint: content?.forgot_hint || DEFAULTS.forgot_hint,
+    forgot_success: content?.forgot_success || DEFAULTS.forgot_success,
+    forgot_btn: content?.forgot_btn || DEFAULTS.forgot_btn,
+    back_to_login: content?.back_to_login || DEFAULTS.back_to_login,
+    reg_success_title: content?.reg_success_title || DEFAULTS.reg_success_title,
+    reg_success_text: content?.reg_success_text || DEFAULTS.reg_success_text,
+    back_btn: content?.back_btn || DEFAULTS.back_btn,
+  };
 
   const reset = () => {
     setEmail("");
@@ -139,13 +214,11 @@ export default function AuthScreen() {
     return (
       <SafeAreaView style={s.container}>
         <View style={s.centerContent}>
-          <Text style={s.formTitle}>FAIRFÜHRER</Text>
-          <Text style={s.successTitle}>Fast fertig!</Text>
-          <Text style={s.successText}>
-            Bitte prüfe deine E-Mails und bestätige deine Registrierung.
-          </Text>
+          <Text style={s.formTitle}>{t.brand_title}</Text>
+          <Text style={s.successTitle}>{t.reg_success_title}</Text>
+          <Text style={s.successText}>{t.reg_success_text}</Text>
           <TouchableOpacity onPress={() => switchView("login")}>
-            <Text style={s.link}>Zurück zum Login</Text>
+            <Text style={s.link}>{t.back_to_login}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -173,18 +246,15 @@ export default function AuthScreen() {
               <MenuButton tint="#fff" />
             </View>
             <View style={s.welcomeHeroContent}>
-              <Text style={s.welcomeEyebrow}>DEIN FAIRFÜHRER-KONTO</Text>
-              <Text style={s.welcomeHeadline}>{"ENTDECKE\nMEHR.\nBEWEGE\nMEHR."}</Text>
-              <Text style={s.welcomeSubtitle}>
-                Kostenlos registrieren – Audio-Guides hören, faire Orte entdecken und die Community
-                mitgestalten.
-              </Text>
+              <Text style={s.welcomeEyebrow}>{t.welcome_eyebrow}</Text>
+              <Text style={s.welcomeHeadline}>{t.welcome_headline}</Text>
+              <Text style={s.welcomeSubtitle}>{t.welcome_subtitle}</Text>
 
               <TouchableOpacity style={s.welcomeBtnPrimary} onPress={() => switchView("register")}>
-                <Text style={s.welcomeBtnPrimaryText}>Kostenlos registrieren</Text>
+                <Text style={s.welcomeBtnPrimaryText}>{t.welcome_btn_register}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.welcomeBtnSecondary} onPress={() => switchView("login")}>
-                <Text style={s.welcomeBtnSecondaryText}>Ich habe schon ein Konto</Text>
+                <Text style={s.welcomeBtnSecondaryText}>{t.welcome_btn_login}</Text>
               </TouchableOpacity>
             </View>
           </ImageBackground>
@@ -218,7 +288,7 @@ export default function AuthScreen() {
                   style={s.welcomeBtnPremium}
                   onPress={() => switchView("register")}
                 >
-                  <Text style={s.welcomeBtnPremiumText}>Jetzt FAIRFÜHRER+ holen</Text>
+                  <Text style={s.welcomeBtnPremiumText}>{t.welcome_btn_premium}</Text>
                 </TouchableOpacity>
               }
             />
@@ -241,7 +311,7 @@ export default function AuthScreen() {
               style={s.headerSpacer}
               hitSlop={8}
             >
-              <Text style={s.backBtnText}>← Zurück</Text>
+              <Text style={s.backBtnText}>{t.back_btn}</Text>
             </TouchableOpacity>
             <View style={s.headerMenuSlot}>
               <MenuButton />
@@ -249,25 +319,19 @@ export default function AuthScreen() {
           </View>
 
           <ScrollView contentContainerStyle={s.formContent} keyboardShouldPersistTaps="handled">
-            <Text style={s.formTitle}>FAIRFÜHRER</Text>
-            <Text style={s.formHeadline}>Passwort vergessen</Text>
+            <Text style={s.formTitle}>{t.brand_title}</Text>
+            <Text style={s.formHeadline}>{t.forgot_headline}</Text>
 
             {forgotSuccess ? (
               <>
-                <Text style={s.successText}>
-                  Wenn ein Konto mit dieser E-Mail-Adresse existiert, haben wir dir einen Link zum
-                  Zurücksetzen des Passworts gesendet. Bitte prüfe dein Postfach.
-                </Text>
+                <Text style={s.successText}>{t.forgot_success}</Text>
                 <TouchableOpacity onPress={() => switchView("login")}>
-                  <Text style={s.link}>Zurück zum Login</Text>
+                  <Text style={s.link}>{t.back_to_login}</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <>
-                <Text style={s.googleHint}>
-                  Gib deine E-Mail-Adresse ein. Wir senden dir einen Link, mit dem du ein neues
-                  Passwort festlegen kannst.
-                </Text>
+                <Text style={s.googleHint}>{t.forgot_hint}</Text>
 
                 {error && <Text style={s.errorText}>{error}</Text>}
 
@@ -293,7 +357,7 @@ export default function AuthScreen() {
                   {isLoading ? (
                     <ActivityIndicator color="#fc6c14" />
                   ) : (
-                    <Text style={s.buttonText}>Link senden</Text>
+                    <Text style={s.buttonText}>{t.forgot_btn}</Text>
                   )}
                 </TouchableOpacity>
               </>
@@ -317,7 +381,7 @@ export default function AuthScreen() {
             style={s.headerSpacer}
             hitSlop={8}
           >
-            <Text style={s.backBtnText}>← Zurück</Text>
+            <Text style={s.backBtnText}>{t.back_btn}</Text>
           </TouchableOpacity>
           <View style={s.headerMenuSlot}>
             <MenuButton />
@@ -325,16 +389,16 @@ export default function AuthScreen() {
         </View>
 
         <ScrollView contentContainerStyle={s.formContent} keyboardShouldPersistTaps="handled">
-          <Text style={s.formTitle}>FAIRFÜHRER</Text>
-          <Text style={s.formHeadline}>{isReg ? "Konto erstellen" : "Reisender"}</Text>
+          <Text style={s.formTitle}>{t.brand_title}</Text>
+          <Text style={s.formHeadline}>{isReg ? t.headline_register : t.headline_login}</Text>
 
           <View style={s.tabRow}>
             <TouchableOpacity style={s.tabBtn} onPress={() => switchView("login")}>
-              <Text style={[s.tabBtnText, !isReg && s.tabBtnTextActive]}>Anmelden</Text>
+              <Text style={[s.tabBtnText, !isReg && s.tabBtnTextActive]}>{t.tab_login}</Text>
               {!isReg && <View style={s.tabUnderline} />}
             </TouchableOpacity>
             <TouchableOpacity style={s.tabBtn} onPress={() => switchView("register")}>
-              <Text style={[s.tabBtnText, isReg && s.tabBtnTextActive]}>Registrieren</Text>
+              <Text style={[s.tabBtnText, isReg && s.tabBtnTextActive]}>{t.tab_register}</Text>
               {isReg && <View style={s.tabUnderline} />}
             </TouchableOpacity>
           </View>
@@ -344,7 +408,7 @@ export default function AuthScreen() {
 
           <View style={s.dividerRow}>
             <View style={s.dividerLine} />
-            <Text style={s.dividerText}>oder mit E-Mail</Text>
+            <Text style={s.dividerText}>{t.divider_text}</Text>
             <View style={s.dividerLine} />
           </View>
 
@@ -446,30 +510,25 @@ export default function AuthScreen() {
             {isLoading ? (
               <ActivityIndicator color="#fc6c14" />
             ) : (
-              <Text style={s.buttonText}>{isReg ? "Konto erstellen" : "Anmelden"}</Text>
+              <Text style={s.buttonText}>{isReg ? t.btn_register : t.btn_login}</Text>
             )}
           </TouchableOpacity>
 
           {!isReg && (
             <TouchableOpacity onPress={() => switchView("forgot")} hitSlop={8}>
-              <Text style={s.forgotLink}>Passwort vergessen?</Text>
+              <Text style={s.forgotLink}>{t.forgot_link}</Text>
             </TouchableOpacity>
           )}
 
-          {!isReg && (
-            <Text style={s.googleHint}>
-              Du hast dich mit Google registriert? Melde dich mit dem Google-Button an statt mit
-              E-Mail und Passwort.
-            </Text>
-          )}
+          {!isReg && <Text style={s.googleHint}>{t.google_hint}</Text>}
 
           <Text style={s.partnerInfo}>
-            Werde unser Partner.{" "}
+            {t.partner_info}{" "}
             <Text
               style={s.partnerLink}
               onPress={() => Linking.openURL("https://www.fairfuehrer.guide/partner-werden")}
             >
-              Hier erfahren Sie mehr.
+              {t.partner_link}
             </Text>
           </Text>
         </ScrollView>

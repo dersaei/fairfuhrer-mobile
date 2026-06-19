@@ -14,16 +14,12 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Line, Path } from "react-native-svg";
+import Svg, { Line } from "react-native-svg";
 
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
-import {
-  getMainImageUrl,
-  getAudioUrl,
-  getGalleryUrls,
-} from "@/lib/mediaUrls";
+import { getMainImageUrl, getAudioUrl, getGalleryUrls } from "@/lib/mediaUrls";
 import { resolveMediaUri } from "@/lib/mediaCache";
 
 import type { DirectusKategorie, DirectusOrte } from "@/types";
@@ -464,10 +460,8 @@ export default function PlaceScreen() {
                         <Image
                           source={{
                             uri:
-                              resolveMediaUri(
-                                `${DIRECTUS_URL}/assets/${item.Image}`,
-                                "image",
-                              ) ?? `${DIRECTUS_URL}/assets/${item.Image}`,
+                              resolveMediaUri(`${DIRECTUS_URL}/assets/${item.Image}`, "image") ??
+                              `${DIRECTUS_URL}/assets/${item.Image}`,
                           }}
                           style={styles.zertLogo}
                           resizeMode="contain"

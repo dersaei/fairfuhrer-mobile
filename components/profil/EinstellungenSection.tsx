@@ -107,8 +107,8 @@ export default function EinstellungenSection({
       <Text style={s.sectionTitle}>{passwordTitle}</Text>
       {!hasPassword && (
         <Text style={s.sectionHint}>
-          Du hast dich mit Google angemeldet. Lege optional ein Passwort fest, um dich
-          zusätzlich mit E-Mail und Passwort anmelden zu können.
+          Du hast dich mit Google angemeldet. Lege optional ein Passwort fest, um dich zusätzlich
+          mit E-Mail und Passwort anmelden zu können.
         </Text>
       )}
       {passwordForm.pwError && <Text style={s.errorText}>{passwordForm.pwError}</Text>}
@@ -145,7 +145,9 @@ export default function EinstellungenSection({
         {passwordForm.pwLoading ? (
           <ActivityIndicator color="#fc6c14" />
         ) : (
-          <Text style={s.buttonText}>{hasPassword ? "Passwort aktualisieren" : "Passwort festlegen"}</Text>
+          <Text style={s.buttonText}>
+            {hasPassword ? "Passwort aktualisieren" : "Passwort festlegen"}
+          </Text>
         )}
       </TouchableOpacity>
 

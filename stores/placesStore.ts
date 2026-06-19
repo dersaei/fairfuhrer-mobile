@@ -2,11 +2,7 @@ import { create } from "zustand";
 import { readItems } from "@directus/sdk";
 import { directus } from "@/lib/directus";
 import { loadPlacesCache, savePlacesCache } from "@/lib/placesCache";
-import type {
-  DirectusOrte,
-  DirectusKategorie,
-  DirectusEinstellungen,
-} from "@/types";
+import type { DirectusOrte, DirectusKategorie, DirectusEinstellungen } from "@/types";
 
 // ─── Sehenswürdigkeiten gating ───────────────────────────────────────────────
 //
@@ -42,9 +38,7 @@ function envSightsCategoryId(): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function isSightsCategory(
-  cat: DirectusKategorie | undefined | null,
-): boolean {
+export function isSightsCategory(cat: DirectusKategorie | undefined | null): boolean {
   if (!cat) return false;
   const overrideId = envSightsCategoryId();
   if (overrideId !== null && cat.id === overrideId) return true;
@@ -53,14 +47,9 @@ export function isSightsCategory(
 
 export const FREE_SIGHTS_VISIBLE_RATIO = FREE_VISIBLE_RATIO;
 
-function placeHasSights(
-  place: DirectusOrte,
-  sightsCategoryIds: Set<number>,
-): boolean {
+function placeHasSights(place: DirectusOrte, sightsCategoryIds: Set<number>): boolean {
   if (!place.Kategorie) return false;
-  return place.Kategorie.some(
-    (k) => k.Kategorie_id && sightsCategoryIds.has(k.Kategorie_id.id),
-  );
+  return place.Kategorie.some((k) => k.Kategorie_id && sightsCategoryIds.has(k.Kategorie_id.id));
 }
 
 // FNV-1a 32-bit — stable, no external deps, well-distributed enough that a
@@ -90,9 +79,7 @@ function computeSightsGating(
   places: DirectusOrte[],
   categories: DirectusKategorie[],
 ): { visibleSightsIds: Set<number>; lockedSightsIds: Set<number> } {
-  const sightsCategoryIds = new Set(
-    categories.filter(isSightsCategory).map((c) => c.id),
-  );
+  const sightsCategoryIds = new Set(categories.filter(isSightsCategory).map((c) => c.id));
   if (sightsCategoryIds.size === 0) {
     return { visibleSightsIds: new Set(), lockedSightsIds: new Set() };
   }
@@ -236,12 +223,9 @@ export const usePlacesStore = create<PlacesState>((set, get) => ({
     const { visibleSightsIds, lockedSightsIds } = computeSightsGating(places, categories);
     if (visibleSightsIds.size === 0 && lockedSightsIds.size === 0) return places;
 
-    const sightsCategoryIds = new Set(
-      categories.filter(isSightsCategory).map((c) => c.id),
-    );
+    const sightsCategoryIds = new Set(categories.filter(isSightsCategory).map((c) => c.id));
     return places.filter(
-      (p) =>
-        !placeHasSights(p, sightsCategoryIds) || visibleSightsIds.has(p.id),
+      (p) => !placeHasSights(p, sightsCategoryIds) || visibleSightsIds.has(p.id),
     );
   },
 

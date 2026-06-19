@@ -20,11 +20,7 @@ import { supabase } from "@/lib/supabase";
  * Hinweis zu fullName: Apple liefert den vollen Namen NUR beim ersten Login.
  * Wir speichern ihn dann via updateUser ins user_metadata.
  */
-export default function AppleSignInButton({
-  onError,
-}: {
-  onError?: (message: string) => void;
-}) {
+export default function AppleSignInButton({ onError }: { onError?: (message: string) => void }) {
   const [isLoading, setIsLoading] = useState(false);
 
   // --- iOS: nativer Flow ---

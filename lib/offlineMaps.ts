@@ -54,11 +54,7 @@ export const OFFLINE_PACK_ESTIMATED_SIZE_LABEL = "ca. 130 MB";
 
 // ─── Typy ────────────────────────────────────────────────────────────────────
 
-export type OfflinePackState =
-  | "unknown"
-  | "inactive"
-  | "active"
-  | "complete";
+export type OfflinePackState = "unknown" | "inactive" | "active" | "complete";
 
 export interface OfflinePackStatus {
   name: string;
@@ -138,10 +134,7 @@ function extractPackVersion(metadata: unknown): number {
   return 0;
 }
 
-export function normalizeStatus(
-  raw: RawPackStatus,
-  packVersion: number,
-): OfflinePackStatus {
+export function normalizeStatus(raw: RawPackStatus, packVersion: number): OfflinePackStatus {
   return {
     name: raw.name ?? OFFLINE_PACK_NAME,
     state: mapState(raw.state),

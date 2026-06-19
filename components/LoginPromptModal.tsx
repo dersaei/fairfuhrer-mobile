@@ -1,7 +1,20 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Modal, View, Text, TouchableOpacity, StyleSheet, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import Svg, { Path, Circle } from "react-native-svg";
+import { getLoginPromptContent, type LoginPromptContent } from "@/lib/directus";
+
+// Fallback-Texte, falls Directus nichts liefert
+const DEFAULTS = {
+  title: "FAIRFÜHRER+",
+  body_prefix:
+    "Dieser Audiopin ist Teil unserer Premium-Kollektion. Um ihn freizuschalten, erstelle ein kostenloses Konto und upgrade auf",
+  body_highlight: "FAIRFÜHRER+",
+  body_suffix: "in der App.",
+  hint: "Du hast bereits ein Konto? Melde dich an und kaufe FAIRFÜHRER+ im Bereich Mein Konto.",
+  btn_primary: "Zum Profil & Anmelden",
+  close_link: "Vielleicht später",
+};
 
 function LockIcon() {
   return (
@@ -32,6 +45,27 @@ interface LoginPromptModalProps {
 
 export function LoginPromptModal({ visible, onClose }: LoginPromptModalProps) {
   const router = useRouter();
+  const [content, setContent] = useState<LoginPromptContent | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getLoginPromptContent().then((c) => {
+      if (active) setContent(c);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const t = {
+    title: content?.title || DEFAULTS.title,
+    body_prefix: content?.body_prefix || DEFAULTS.body_prefix,
+    body_highlight: content?.body_highlight || DEFAULTS.body_highlight,
+    body_suffix: content?.body_suffix || DEFAULTS.body_suffix,
+    hint: content?.hint || DEFAULTS.hint,
+    btn_primary: content?.btn_primary || DEFAULTS.btn_primary,
+    close_link: content?.close_link || DEFAULTS.close_link,
+  };
 
   const handleLogin = () => {
     onClose();
@@ -50,26 +84,22 @@ export function LoginPromptModal({ visible, onClose }: LoginPromptModalProps) {
         <Pressable style={styles.card} onPress={() => {}}>
           <LockIcon />
 
-          <Text style={styles.title}>FAIRFÜHRER+</Text>
+          <Text style={styles.title}>{t.title}</Text>
 
           <Text style={styles.body}>
-            Dieser Audiopin ist Teil unserer Premium-Kollektion. Um ihn freizuschalten, erstelle ein
-            kostenloses Konto und upgrade auf <Text style={styles.highlight}>FAIRFÜHRER+</Text> in
-            der App.
+            {t.body_prefix} <Text style={styles.highlight}>{t.body_highlight}</Text> {t.body_suffix}
           </Text>
 
-          <Text style={styles.hint}>
-            Du hast bereits ein Konto? Melde dich an und kaufe FAIRFÜHRER+ im Bereich Mein Konto.
-          </Text>
+          <Text style={styles.hint}>{t.hint}</Text>
 
           <View style={styles.buttons}>
             <TouchableOpacity style={styles.btnPrimary} onPress={handleLogin} activeOpacity={0.85}>
-              <Text style={styles.btnPrimaryText}>Zum Profil &amp; Anmelden</Text>
+              <Text style={styles.btnPrimaryText}>{t.btn_primary}</Text>
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity onPress={onClose} style={styles.closeLink}>
-            <Text style={styles.closeLinkText}>Vielleicht später</Text>
+            <Text style={styles.closeLinkText}>{t.close_link}</Text>
           </TouchableOpacity>
         </Pressable>
       </Pressable>

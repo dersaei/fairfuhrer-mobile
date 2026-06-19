@@ -51,7 +51,12 @@ export default function ListeScreen() {
     // Wysokość: max ~38% ekranu — zostawia ~62% na header + GPS label + chipsy + search + kategorie.
     // Na telefonie portrait najczęściej ograniczy aspect ratio (1.1× szerokości), na tablecie height.
     const height = Math.min(width * 1.1, screenHeight * 0.38);
-    return { CARD_WIDTH: width, CARD_HEIGHT: height, CARD_STEP: step, LIST_HORIZONTAL_PADDING: padding };
+    return {
+      CARD_WIDTH: width,
+      CARD_HEIGHT: height,
+      CARD_STEP: step,
+      LIST_HORIZONTAL_PADDING: padding,
+    };
   }, [screenWidth, screenHeight]);
 
   const getItemLayout = useCallback(
@@ -222,8 +227,8 @@ export default function ListeScreen() {
       {isOffline && (
         <View style={styles.offlineBanner}>
           <Text style={styles.offlineBannerText}>
-            Offline-Modus – es werden gespeicherte Daten angezeigt. Fotos und
-            Audioguides sind möglicherweise nicht verfügbar.
+            Offline-Modus – es werden gespeicherte Daten angezeigt. Fotos und Audioguides sind
+            möglicherweise nicht verfügbar.
           </Text>
         </View>
       )}

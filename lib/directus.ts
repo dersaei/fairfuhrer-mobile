@@ -5,27 +5,6 @@ const directusToken = process.env.EXPO_PUBLIC_DIRECTUS_TOKEN!;
 
 export const directus = createDirectus(directusUrl).with(staticToken(directusToken)).with(rest());
 
-// ─── DEBUG: CMS-Inhalt vs. Fallback ──────────────────────────────────────────
-// Temporäre Logs zum Prüfen, ob Texte aus Directus geladen werden oder auf den
-// Code-Fallback zurückfallen. TODO: nach dem Verifizieren wieder entfernen.
-const DEBUG_CMS = __DEV__;
-
-function logCms(name: string, ok: boolean, extra?: unknown) {
-  if (!DEBUG_CMS) return;
-  if (ok) {
-    console.log(`[CMS] ✅ ${name}: aus Directus geladen`, extra ?? "");
-  } else {
-    console.warn(`[CMS] ⚠️ ${name}: FALLBACK (kein Directus-Inhalt)`, extra ?? "");
-  }
-}
-
-// Einmaliger Hinweis, ob die Directus-Env-Variablen überhaupt im Bundle sind.
-if (DEBUG_CMS) {
-  console.log(
-    `[CMS] ENV → URL: ${directusUrl ? "gesetzt" : "FEHLT"} · Token: ${directusToken ? "gesetzt" : "FEHLT"}`,
-  );
-}
-
 // ========================================
 // Premium-Seite / Kontaktformular (gemeinsame Inhalte mit der Web-App)
 // ========================================
@@ -67,10 +46,8 @@ export async function getPremiumPageContent(): Promise<PremiumPageContent | null
     const data = await directus.request(
       readSingleton("premium_page_content" as any, { fields: ["*"] }),
     );
-    logCms("premium_page_content", !!data);
     return (data as PremiumPageContent) ?? null;
-  } catch (e) {
-    logCms("premium_page_content", false, e);
+  } catch {
     return null;
   }
 }
@@ -84,14 +61,8 @@ export async function getPremiumComparisonFeatures(): Promise<PremiumComparisonF
         fields: ["id", "feature", "free", "pro"],
       }),
     );
-    logCms(
-      "premium_comparison_features",
-      Array.isArray(data) && data.length > 0,
-      `${(data as unknown[])?.length ?? 0} Einträge`,
-    );
     return (data as PremiumComparisonFeature[]) ?? [];
-  } catch (e) {
-    logCms("premium_comparison_features", false, e);
+  } catch {
     return [];
   }
 }
@@ -101,10 +72,8 @@ export async function getAccountContactFormContent(): Promise<AccountContactForm
     const data = await directus.request(
       readSingleton("account_contact_form_content" as any, { fields: ["*"] }),
     );
-    logCms("account_contact_form_content", !!data);
     return (data as AccountContactFormContent) ?? null;
-  } catch (e) {
-    logCms("account_contact_form_content", false, e);
+  } catch {
     return null;
   }
 }
@@ -127,10 +96,8 @@ export async function getOrtVorschlagenContent(): Promise<OrtVorschlagenContent 
     const data = await directus.request(
       readSingleton("ort_vorschlagen_content" as any, { fields: ["*"] }),
     );
-    logCms("ort_vorschlagen_content", !!data);
     return (data as OrtVorschlagenContent) ?? null;
-  } catch (e) {
-    logCms("ort_vorschlagen_content", false, e);
+  } catch {
     return null;
   }
 }
@@ -166,10 +133,8 @@ export async function getOfflineKartenContent(): Promise<OfflineKartenContent | 
     const data = await directus.request(
       readSingleton("offline_karten_content" as any, { fields: ["*"] }),
     );
-    logCms("offline_karten_content", !!data);
     return (data as OfflineKartenContent) ?? null;
-  } catch (e) {
-    logCms("offline_karten_content", false, e);
+  } catch {
     return null;
   }
 }
@@ -199,10 +164,77 @@ export interface PaywallContent {
 export async function getPaywallContent(): Promise<PaywallContent | null> {
   try {
     const data = await directus.request(readSingleton("paywall_content" as any, { fields: ["*"] }));
-    logCms("paywall_content", !!data);
     return (data as PaywallContent) ?? null;
-  } catch (e) {
-    logCms("paywall_content", false, e);
+  } catch {
+    return null;
+  }
+}
+
+// ========================================
+// Auth-Bildschirm (Login/Registrierung, nur Mobile)
+// ========================================
+
+export interface AuthScreenContent {
+  welcome_eyebrow?: string;
+  welcome_headline?: string;
+  welcome_subtitle?: string;
+  welcome_btn_register?: string;
+  welcome_btn_login?: string;
+  welcome_btn_premium?: string;
+  brand_title?: string;
+  headline_register?: string;
+  headline_login?: string;
+  tab_login?: string;
+  tab_register?: string;
+  divider_text?: string;
+  btn_register?: string;
+  btn_login?: string;
+  forgot_link?: string;
+  google_hint?: string;
+  partner_info?: string;
+  partner_link?: string;
+  forgot_headline?: string;
+  forgot_hint?: string;
+  forgot_success?: string;
+  forgot_btn?: string;
+  back_to_login?: string;
+  reg_success_title?: string;
+  reg_success_text?: string;
+  back_btn?: string;
+}
+
+export async function getAuthScreenContent(): Promise<AuthScreenContent | null> {
+  try {
+    const data = await directus.request(
+      readSingleton("auth_screen_content" as any, { fields: ["*"] }),
+    );
+    return (data as AuthScreenContent) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ========================================
+// Login-Hinweis-Dialog (gesperrte Premium-Pins, nur Mobile)
+// ========================================
+
+export interface LoginPromptContent {
+  title?: string;
+  body_prefix?: string;
+  body_highlight?: string;
+  body_suffix?: string;
+  hint?: string;
+  btn_primary?: string;
+  close_link?: string;
+}
+
+export async function getLoginPromptContent(): Promise<LoginPromptContent | null> {
+  try {
+    const data = await directus.request(
+      readSingleton("login_prompt_content" as any, { fields: ["*"] }),
+    );
+    return (data as LoginPromptContent) ?? null;
+  } catch {
     return null;
   }
 }

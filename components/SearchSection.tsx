@@ -47,9 +47,7 @@ function searchLocalPlaces(text: string, places: DirectusOrte[]): Suggestion[] {
   return places
     .filter((p) => {
       if (!p.location?.coordinates) return false;
-      const haystack = normalizeSearch(
-        `${p.Name ?? ""} ${p.Stadt ?? ""} ${p.Adresse ?? ""}`,
-      );
+      const haystack = normalizeSearch(`${p.Name ?? ""} ${p.Stadt ?? ""} ${p.Adresse ?? ""}`);
       return haystack.includes(q);
     })
     .slice(0, 7)
@@ -63,12 +61,7 @@ function searchLocalPlaces(text: string, places: DirectusOrte[]): Suggestion[] {
 }
 
 interface SearchSectionProps {
-  onSelectGeo: (item: {
-    name: string;
-    lat: number;
-    lon: number;
-    isLocalPlace: boolean;
-  }) => void;
+  onSelectGeo: (item: { name: string; lat: number; lon: number; isLocalPlace: boolean }) => void;
   onClear: () => void;
   bottomSectionHeight: number;
 }

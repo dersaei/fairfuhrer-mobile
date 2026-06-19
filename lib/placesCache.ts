@@ -1,9 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type {
-  DirectusOrte,
-  DirectusKategorie,
-  DirectusEinstellungen,
-} from "@/types";
+import type { DirectusOrte, DirectusKategorie, DirectusEinstellungen } from "@/types";
 
 // ─── Offline cache danych Directusa ──────────────────────────────────────────
 //
@@ -34,9 +30,7 @@ export interface PlacesCacheEnvelope extends PlacesCachePayload {
  * paczki mapy offline. Błąd zapisu jest świadomie połykany — brak cache nie
  * może zablokować ukończenia pobierania paczki.
  */
-export async function savePlacesCache(
-  payload: PlacesCachePayload,
-): Promise<void> {
+export async function savePlacesCache(payload: PlacesCachePayload): Promise<void> {
   try {
     const envelope: PlacesCacheEnvelope = {
       ...payload,

@@ -215,8 +215,8 @@ export default function KarteScreen() {
       {isOffline && (
         <View style={styles.offlineBanner}>
           <Text style={styles.offlineBannerText}>
-            Offline-Modus – es werden gespeicherte Daten angezeigt. Fotos und
-            Audioguides sind möglicherweise nicht verfügbar.
+            Offline-Modus – es werden gespeicherte Daten angezeigt. Fotos und Audioguides sind
+            möglicherweise nicht verfügbar.
           </Text>
         </View>
       )}
