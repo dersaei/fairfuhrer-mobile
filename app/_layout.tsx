@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Stack, useRouter, useSegments, useNavigationContainerRef } from "expo-router";
+import { Stack, useNavigationContainerRef } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as SplashScreen from "expo-splash-screen";
 import * as Sentry from "@sentry/react-native";
 import { useFonts, Anton_400Regular } from "@expo-google-fonts/anton";
@@ -50,10 +51,8 @@ SplashScreen.preventAutoHideAsync();
 initializePurchases();
 
 function RootLayoutNav() {
-  const { session, isLoading, isPro } = useAuth();
+  const { isLoading, isPro } = useAuth();
   const { isOpen, closeDrawer } = useDrawer();
-  const segments = useSegments();
-  const router = useRouter();
   const { status, fetchAll } = usePlacesStore();
   const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
 
@@ -64,14 +63,6 @@ function RootLayoutNav() {
     if (isLoading) return;
     fetchAll(isPro);
   }, [isLoading, isPro, fetchAll]);
-
-  useEffect(() => {
-    if (isLoading) return;
-    const inAuthGroup = segments[0] === "(auth)";
-    if (session && inAuthGroup) {
-      router.replace("/(tabs)");
-    }
-  }, [session, isLoading, segments, router]);
 
   const dataReady = status === "success" || status === "error";
 
@@ -85,7 +76,6 @@ function RootLayoutNav() {
     <>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="(auth)" />
         <Stack.Screen
           name="place/[id]"
           options={{
@@ -97,6 +87,15 @@ function RootLayoutNav() {
         />
         <Stack.Screen
           name="custom-paywall"
+          options={{
+            presentation: "modal",
+            animation: "slide_from_bottom",
+            gestureEnabled: true,
+            gestureDirection: "vertical",
+          }}
+        />
+        <Stack.Screen
+          name="auth-modal"
           options={{
             presentation: "modal",
             animation: "slide_from_bottom",
@@ -141,13 +140,18 @@ function RootLayout() {
     return <View style={{ flex: 1, backgroundColor: "#fff" }} />;
   }
 
+  // GestureHandlerRootView ist Pflicht für react-native-gesture-handler
+  // (z. B. ScrollView aus dieser Lib in SearchSection). expo-router fügt
+  // ihn in SDK 55 NICHT mehr automatisch hinzu — daher hier explizit.
   return (
-    <AuthProvider>
-      <DrawerProvider>
-        <StatusBar style="auto" />
-        <RootLayoutNav />
-      </DrawerProvider>
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <DrawerProvider>
+          <StatusBar style="auto" />
+          <RootLayoutNav />
+        </DrawerProvider>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
 

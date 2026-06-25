@@ -8,7 +8,6 @@ import {
   StyleSheet,
 } from "react-native";
 import { User } from "@supabase/supabase-js";
-import { Profile } from "@/context/AuthContext";
 import { useSubmitPlaceProposal } from "@/hooks/useSubmitPlaceProposal";
 import { getOrtVorschlagenContent, type OrtVorschlagenContent } from "@/lib/directus";
 
@@ -31,11 +30,10 @@ const DEFAULTS = {
 
 interface Props {
   user: User | null;
-  profile: Profile | null;
   isPremium: boolean;
 }
 
-export default function OrtVorschlagenSection({ user, profile, isPremium }: Props) {
+export default function OrtVorschlagenSection({ user, isPremium }: Props) {
   const {
     name,
     setName,
@@ -47,7 +45,7 @@ export default function OrtVorschlagenSection({ user, profile, isPremium }: Prop
     error,
     success,
     handleSubmit,
-  } = useSubmitPlaceProposal(user, profile);
+  } = useSubmitPlaceProposal(user);
 
   const [content, setContent] = useState<OrtVorschlagenContent | null>(null);
 
@@ -120,12 +118,7 @@ export default function OrtVorschlagenSection({ user, profile, isPremium }: Prop
               editable={isPremium}
             />
           </View>
-          {isPremium && (
-            <Text style={s.hint}>
-              {t.hint_intro}{" "}
-              {profile?.first_name || profile?.last_name ? t.hint_with_name : t.hint_without_name}
-            </Text>
-          )}
+          {isPremium && <Text style={s.hint}>{t.hint_intro}</Text>}
           <TouchableOpacity
             style={[s.button, (!isPremium || isLoading) && s.buttonDisabled]}
             onPress={handleSubmit}

@@ -4,16 +4,20 @@ import { useRouter } from "expo-router";
 import Svg, { Path, Circle } from "react-native-svg";
 import { getLoginPromptContent, type LoginPromptContent } from "@/lib/directus";
 
-// Fallback-Texte, falls Directus nichts liefert
+// Fallback-Texte, falls Directus nichts liefert. Spiegeln den aktuellen
+// Use-Case wider: das Modal erscheint NACH der Plan-Auswahl auf dem Paywall,
+// wenn der Nutzer noch kein Konto hat. body_highlight/body_suffix bleiben
+// leer, weil der Text als ein Satz besser klingt — das Komponent rendert
+// die optionalen Teile nur, wenn nicht leer.
 const DEFAULTS = {
   title: "FAIRFÜHRER+",
   body_prefix:
-    "Dieser Audiopin ist Teil unserer Premium-Kollektion. Um ihn freizuschalten, erstelle ein kostenloses Konto und upgrade auf",
-  body_highlight: "FAIRFÜHRER+",
-  body_suffix: "in der App.",
-  hint: "Du hast bereits ein Konto? Melde dich an und kaufe FAIRFÜHRER+ im Bereich Mein Konto.",
-  btn_primary: "Zum Profil & Anmelden",
-  close_link: "Vielleicht später",
+    "Dein Plan ist ausgewählt — du brauchst nur noch ein Konto, damit dein Abo auf allen Geräten funktioniert und du es jederzeit wiederherstellen kannst.",
+  body_highlight: "",
+  body_suffix: "",
+  hint: "Es dauert weniger als eine Minute — mit Apple, Google oder E-Mail.",
+  btn_primary: "Konto erstellen oder anmelden",
+  close_link: "Abbrechen",
 };
 
 function LockIcon() {
@@ -69,7 +73,11 @@ export function LoginPromptModal({ visible, onClose }: LoginPromptModalProps) {
 
   const handleLogin = () => {
     onClose();
-    router.push("/(tabs)/profil");
+    // /auth-modal ist eine Modal-Route: liegt VOR dem aktuellen Screen
+    // (z. B. Paywall) im Stack. Nach erfolgreicher Anmeldung schließt sich
+    // der AuthScreen automatisch und der Paywall darunter kann den Kauf
+    // direkt fortsetzen — ohne den State (gewähltes Paket) zu verlieren.
+    router.push("/auth-modal");
   };
 
   return (
@@ -87,7 +95,14 @@ export function LoginPromptModal({ visible, onClose }: LoginPromptModalProps) {
           <Text style={styles.title}>{t.title}</Text>
 
           <Text style={styles.body}>
-            {t.body_prefix} <Text style={styles.highlight}>{t.body_highlight}</Text> {t.body_suffix}
+            {t.body_prefix}
+            {t.body_highlight ? (
+              <>
+                {" "}
+                <Text style={styles.highlight}>{t.body_highlight}</Text>
+              </>
+            ) : null}
+            {t.body_suffix ? <> {t.body_suffix}</> : null}
           </Text>
 
           <Text style={styles.hint}>{t.hint}</Text>

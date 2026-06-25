@@ -28,7 +28,7 @@ const DEFAULTS = {
 };
 
 export default function KontaktForm() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
@@ -58,7 +58,6 @@ export default function KontaktForm() {
   };
 
   const displayEmail = user?.email ?? "";
-  const displayName = profile?.username ?? "";
 
   const handleSubmit = async () => {
     if (!subject.trim() || !message.trim()) {
@@ -77,8 +76,8 @@ export default function KontaktForm() {
           message: message.trim(),
           user_id: user?.id ?? null,
           email: displayEmail,
-          name: displayName || null,
-          username: displayName || null,
+          name: null,
+          username: null,
           account_type: "reisender",
         }),
       });
@@ -118,7 +117,7 @@ export default function KontaktForm() {
       <View style={s.infoRow}>
         <Text style={s.infoLabel}>{t.label_absender}</Text>
         <Text style={s.infoValue} numberOfLines={1}>
-          {displayName ? `${displayName} (${displayEmail})` : displayEmail}
+          {displayEmail}
         </Text>
       </View>
 

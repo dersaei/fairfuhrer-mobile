@@ -59,11 +59,19 @@ const DEFAULTS = {
   back_btn: "← Zurück",
 };
 
-export default function AuthScreen() {
+interface AuthScreenProps {
+  /**
+   * Wenn true, startet der Screen direkt im Login-View statt im Welcome-View
+   * mit den PlanCompareCards. Wird vom auth-modal genutzt — dort kommt der
+   * Nutzer vom Paywall und braucht keinen zweiten Verkaufstext.
+   */
+  skipWelcome?: boolean;
+}
+
+export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}) {
   const router = useRouter();
-  const [view, setView] = useState<AuthView>("welcome");
+  const [view, setView] = useState<AuthView>(skipWelcome ? "login" : "welcome");
   const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -114,7 +122,6 @@ export default function AuthScreen() {
 
   const reset = () => {
     setEmail("");
-    setUsername("");
     setPassword("");
     setConfirmPassword("");
     setError(null);
@@ -164,16 +171,12 @@ export default function AuthScreen() {
 
   const handleRegister = async () => {
     setError(null);
-    if (!email || !username || !password || !confirmPassword) {
+    if (!email || !password || !confirmPassword) {
       setError("Bitte alle Felder ausfüllen.");
       return;
     }
     if (!consentAccepted) {
       setError("Bitte stimme den Nutzungsbedingungen und der Datenschutzerklärung zu.");
-      return;
-    }
-    if (username.length < 3) {
-      setError("Benutzername muss mindestens 3 Zeichen lang sein.");
       return;
     }
     if (password.length < 8) {
@@ -189,7 +192,7 @@ export default function AuthScreen() {
       email,
       password,
       options: {
-        data: { role: "consumer", username },
+        data: { role: "consumer" },
         // Bestätigungslink öffnet sich im Browser auf der Website.
         emailRedirectTo: process.env.EXPO_PUBLIC_SITE_URL,
       },
@@ -427,21 +430,6 @@ export default function AuthScreen() {
               autoComplete="email"
             />
           </View>
-
-          {isReg && (
-            <View style={s.fieldGroup}>
-              <Text style={s.fieldLabel}>Benutzername</Text>
-              <TextInput
-                style={s.input}
-                placeholder="min. 3 Zeichen"
-                placeholderTextColor="rgba(24, 23, 22, 0.5)"
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-                autoComplete="username-new"
-              />
-            </View>
-          )}
 
           <View style={s.fieldGroup}>
             <Text style={s.fieldLabel}>Passwort</Text>

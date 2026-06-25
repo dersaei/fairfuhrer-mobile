@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -24,21 +23,12 @@ function AccountScreen() {
   const { user, profile, isPro, signOut, deleteAccount, refreshProfile, refreshPro } = useAuth();
   const [activeSection, setActiveSection] = useState<AccountSection>("profil");
 
-  const displayName = profile?.username ?? user?.email ?? "";
-
   return (
     <SafeAreaView style={s.container} edges={["top"]}>
-      {/* Header */}
+      {/* Header — minimalna identyfikacja konta: email + plan. Avatar/username
+          świadomie pominięte, dopóki nie ma realnych community-features. */}
       <View style={s.accountHeader}>
-        {profile?.avatar_url ? (
-          <Image source={{ uri: profile.avatar_url }} style={s.avatarImage} />
-        ) : (
-          <View style={s.avatarPlaceholder}>
-            <Text style={s.avatarInitial}>{displayName.charAt(0).toUpperCase()}</Text>
-          </View>
-        )}
         <View style={s.accountHeaderInfo}>
-          <Text style={s.accountName}>{profile?.username ?? "—"}</Text>
           <Text style={s.accountEmail}>{user?.email}</Text>
           <View style={[s.planBadge, isPro && s.planBadgePro]}>
             <Text style={[s.planBadgeText, isPro && s.planBadgeTextPro]}>
@@ -92,7 +82,7 @@ function AccountScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {activeSection === "profil" && (
-          <ProfilSection user={user} profile={profile} signOut={signOut} />
+          <ProfilSection user={user} signOut={signOut} />
         )}
         {activeSection === "einstellungen" && (
           <EinstellungenSection
@@ -108,7 +98,7 @@ function AccountScreen() {
           <PremiumSection isPro={isPro} refreshPro={refreshPro} profile={profile} />
         )}
         {activeSection === "ort-vorschlagen" && (
-          <OrtVorschlagenSection user={user} profile={profile} isPremium={isPro} />
+          <OrtVorschlagenSection user={user} isPremium={isPro} />
         )}
       </ScrollView>
     </SafeAreaView>
@@ -147,37 +137,11 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#f0e8e0",
   },
-  avatarImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#eee",
-  },
-  avatarPlaceholder: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#fc6c14",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarInitial: {
-    fontSize: 28,
-    color: "#fff",
-    fontFamily: "Anton_400Regular",
-    lineHeight: 28,
-  },
-  accountHeaderInfo: { flex: 1, gap: 2 },
-  accountName: {
-    fontSize: 18,
-    fontFamily: "Anton_400Regular",
-    color: "#111",
-    letterSpacing: 1,
-  },
+  accountHeaderInfo: { flex: 1, gap: 6 },
   accountEmail: {
-    fontSize: 13,
-    color: "#999",
-    fontFamily: "FiraSansCondensed_400Regular",
+    fontSize: 15,
+    color: "#111",
+    fontFamily: "FiraSansCondensed_600SemiBold",
   },
   planBadge: {
     alignSelf: "flex-start",

@@ -6,17 +6,10 @@ import { Profile } from "@/context/AuthContext";
 
 export function useProfileSettings(
   user: User | null,
-  profile: Profile | null,
-  refreshProfile: () => Promise<void>,
+  _profile: Profile | null,
+  _refreshProfile: () => Promise<void>,
   deleteAccount: () => Promise<void>,
 ) {
-  const [username, setUsername] = useState(profile?.username ?? "");
-  const [firstName, setFirstName] = useState(profile?.first_name ?? "");
-  const [lastName, setLastName] = useState(profile?.last_name ?? "");
-  const [nameLoading, setNameLoading] = useState(false);
-  const [nameSuccess, setNameSuccess] = useState(false);
-  const [nameError, setNameError] = useState<string | null>(null);
-
   const [newEmail, setNewEmail] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailSuccess, setEmailSuccess] = useState(false);
@@ -28,28 +21,6 @@ export function useProfileSettings(
   const [pwSuccess, setPwSuccess] = useState(false);
   const [pwError, setPwError] = useState<string | null>(null);
 
-  const handleNameUpdate = async () => {
-    if (!user) return;
-    setNameError(null);
-    setNameSuccess(false);
-    setNameLoading(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        username: username.trim() || null,
-        first_name: firstName.trim() || null,
-        last_name: lastName.trim() || null,
-      })
-      .eq("id", user.id);
-    setNameLoading(false);
-    if (error) {
-      setNameError("Fehler beim Speichern. Bitte erneut versuchen.");
-    } else {
-      setNameSuccess(true);
-      refreshProfile();
-    }
-  };
-
   const handleEmailChange = async () => {
     setEmailError(null);
     setEmailSuccess(false);
@@ -57,6 +28,7 @@ export function useProfileSettings(
       setEmailError("Bitte neue E-Mail-Adresse eingeben.");
       return;
     }
+    if (!user) return;
     setEmailLoading(true);
     const { error } = await supabase.auth.updateUser(
       { email: newEmail.trim() },
@@ -117,18 +89,6 @@ export function useProfileSettings(
   };
 
   return {
-    nameForm: {
-      username,
-      setUsername,
-      firstName,
-      setFirstName,
-      lastName,
-      setLastName,
-      nameLoading,
-      nameSuccess,
-      nameError,
-      handleNameUpdate,
-    },
     emailForm: {
       newEmail,
       setNewEmail,

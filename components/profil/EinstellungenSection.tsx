@@ -15,7 +15,7 @@ export default function EinstellungenSection({
   deleteAccount,
   refreshProfile,
 }: any) {
-  const { nameForm, emailForm, passwordForm, handleDeleteAccount } = useProfileSettings(
+  const { emailForm, passwordForm, handleDeleteAccount } = useProfileSettings(
     user,
     profile,
     refreshProfile,
@@ -56,50 +56,6 @@ export default function EinstellungenSection({
           <ActivityIndicator color="#fc6c14" />
         ) : (
           <Text style={s.buttonText}>Ändern</Text>
-        )}
-      </TouchableOpacity>
-      <View style={s.divider} />
-
-      <Text style={s.sectionTitle}>Persönliche Daten</Text>
-      {nameForm.nameError && <Text style={s.errorText}>{nameForm.nameError}</Text>}
-      {nameForm.nameSuccess && <Text style={s.successMsg}>Daten erfolgreich aktualisiert.</Text>}
-      <View style={s.fieldGroup}>
-        <Text style={s.fieldLabel}>Benutzername</Text>
-        <TextInput
-          style={s.input}
-          value={nameForm.username}
-          onChangeText={nameForm.setUsername}
-          autoCapitalize="none"
-          autoComplete="username"
-        />
-      </View>
-      <View style={s.fieldGroup}>
-        <Text style={s.fieldLabel}>Vorname</Text>
-        <TextInput
-          style={s.input}
-          value={nameForm.firstName}
-          onChangeText={nameForm.setFirstName}
-          autoComplete="given-name"
-        />
-      </View>
-      <View style={s.fieldGroup}>
-        <Text style={s.fieldLabel}>Nachname</Text>
-        <TextInput
-          style={s.input}
-          value={nameForm.lastName}
-          onChangeText={nameForm.setLastName}
-          autoComplete="family-name"
-        />
-      </View>
-      <TouchableOpacity
-        style={[s.button, nameForm.nameLoading && s.buttonDisabled]}
-        onPress={nameForm.handleNameUpdate}
-        disabled={nameForm.nameLoading}
-      >
-        {nameForm.nameLoading ? (
-          <ActivityIndicator color="#fc6c14" />
-        ) : (
-          <Text style={s.buttonText}>Aktualisieren</Text>
         )}
       </TouchableOpacity>
       <View style={s.divider} />

@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useState } from "react";
+import React, { memo, useCallback } from "react";
 import { View, Text, TouchableOpacity, ImageBackground, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Path, Circle } from "react-native-svg";
@@ -7,7 +7,6 @@ import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
 import { CategoryIcon } from "./CategoryIcon";
 import { getImageUrl, getCategoriesFromPlace } from "@/utils/placeHelpers";
-import { LoginPromptModal } from "./LoginPromptModal";
 
 function LockIcon() {
   return (
@@ -33,28 +32,24 @@ function LockIcon() {
 
 export const PinCard = memo(function PinCard({ placeId }: { placeId: number }) {
   const router = useRouter();
-  const { session, isPro } = useAuth();
+  const { isPro } = useAuth();
   const place = usePlacesStore((s) => s.getPlaceById(placeId));
   const isLocked = usePlacesStore((s) => s.isLockedPlace(placeId, isPro));
   const imageUrl = place ? getImageUrl(place) : null;
   const categories = place ? getCategoriesFromPlace(place) : [];
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   const handlePress = useCallback(async () => {
     if (isLocked) {
-      if (!session) {
-        setShowLoginPrompt(true);
-        return;
-      }
+      // Direkt zum Paywall — auch ohne Konto. Login wird erst nach
+      // Plan-Auswahl im Paywall verlangt.
       router.push("/custom-paywall");
       return;
     }
     router.push(`/place/${placeId}`);
-  }, [isLocked, session, placeId, router]);
+  }, [isLocked, placeId, router]);
 
   return (
     <>
-      <LoginPromptModal visible={showLoginPrompt} onClose={() => setShowLoginPrompt(false)} />
       <TouchableOpacity style={styles.card} activeOpacity={0.95} onPress={handlePress}>
         <ImageBackground
           source={imageUrl ? { uri: imageUrl } : undefined}

@@ -9,12 +9,13 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter, usePathname } from "expo-router";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
 import HomeHeader from "@/components/HomeHeader";
 import { PinCard } from "@/components/PinCard";
 import { KategorieBar } from "@/components/KategorieBar";
-import { SearchSection } from "@/components/SearchSection";
+import { SearchSection, type SearchSectionHandle } from "@/components/SearchSection";
 import { CityChips, placesInRegion, type Region } from "@/components/CityChips";
 import { supabase } from "@/lib/supabase";
 import { useGpsSort } from "@/hooks/useGpsSort";
@@ -38,6 +39,16 @@ export default function ListeScreen() {
     getAllPlacesWithLocked,
   } = usePlacesStore();
   const { isPro } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchRef = useRef<SearchSectionHandle>(null);
+  // Bei Rückkehr aus einem modal-Screen (Pin-Detail, Paywall) die Such-
+  // Vorschläge ausblenden, damit sie nicht über der Liste hängen bleiben.
+  useEffect(() => {
+    if (pathname === "/" || pathname === "/(tabs)") {
+      searchRef.current?.clear();
+    }
+  }, [pathname]);
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
   // Wymiary kart — capped dla tabletów, wycentrowane gdy ekran szerszy niż karta + peek.
@@ -288,14 +299,30 @@ export default function ListeScreen() {
         onLayout={(e) => setBottomSectionHeight(e.nativeEvent.layout.height)}
       >
         <SearchSection
-          onSelectGeo={(item) =>
+          ref={searchRef}
+          selectedCategoryId={selectedCategoryId}
+          onSelectGeo={(item) => {
+            // Pin-Treffer → Detail-Screen (Paywall bei locked, direkt — auch
+            // ohne Konto). Geo-Treffer (Stadt) → bisheriges Verhalten:
+            // Liste auf nearby sortieren.
+            if (item.placeId) {
+              const isLocked = usePlacesStore
+                .getState()
+                .isLockedPlace(item.placeId, isPro);
+              if (isLocked) {
+                router.push("/custom-paywall");
+                return;
+              }
+              router.push(`/place/${item.placeId}`);
+              return;
+            }
             handleLocationSelect({
               name: item.name,
               lat: item.lat,
               lon: item.lon,
               fromSearch: true,
-            })
-          }
+            });
+          }}
           onClear={clearSearch}
           bottomSectionHeight={bottomSectionHeight}
         />

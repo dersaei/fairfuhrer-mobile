@@ -10,16 +10,15 @@ import Mapbox, {
   SymbolLayer,
 } from "@rnmapbox/maps";
 import type { ComponentRef } from "react";
-import { useRouter } from "expo-router";
+import { useRouter, usePathname } from "expo-router";
 import { useTabGpsCenter } from "@/hooks/useTabGpsCenter";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
-import { LoginPromptModal } from "@/components/LoginPromptModal";
 import type { DirectusOrte } from "@/types";
 import MenuButton from "@/components/MenuButton";
 import { CATEGORY_COLORS } from "@/components/CategoryIcon";
 import { KategorieBar } from "@/components/KategorieBar";
-import { SearchSection } from "@/components/SearchSection";
+import { SearchSection, type SearchSectionHandle } from "@/components/SearchSection";
 
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
 const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
@@ -62,6 +61,16 @@ function placesToGeoJSON(
 
 export default function KarteScreen() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchRef = useRef<SearchSectionHandle>(null);
+  // Wenn der Nutzer von einem modal-Screen (Pin-Detail oder Paywall) zurück
+  // zur Karte kommt, sollen die Such-Vorschläge nicht weiter über der Karte
+  // hängen. usePathname triggert bei jeder Routen-Änderung.
+  useEffect(() => {
+    if (pathname === "/karte" || pathname === "/(tabs)/karte") {
+      searchRef.current?.clear();
+    }
+  }, [pathname]);
   const {
     categories: allCategories,
     einstellungen,
@@ -70,8 +79,7 @@ export default function KarteScreen() {
     fetchAll,
     getAllPlacesWithLocked,
   } = usePlacesStore();
-  const { session, isPro } = useAuth();
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const { isPro } = useAuth();
   // All Sehenswertes pins shown on map; locked ones open paywall on tap.
   const { places: allPlaces, lockedIds } = useMemo(
     () => getAllPlacesWithLocked(isPro),
@@ -121,9 +129,36 @@ export default function KarteScreen() {
   }, [allPlaces, lockedIds, selectedCategoryId]);
 
   const handleSelectGeo = useCallback(
-    (item: { name: string; lat: number; lon: number; isLocalPlace: boolean }) => {
-      // Lokaler Ort (Offline-Suche) → nah heranzoomen, da es eine genaue
-      // Pin-Position ist. Geografischer Treffer (Stadt/Region) → Stadt-Zoom.
+    (item: {
+      name: string;
+      lat: number;
+      lon: number;
+      isLocalPlace: boolean;
+      placeId?: number;
+    }) => {
+      // Pin-Treffer → Detail-Screen öffnen (oder Paywall, falls gesperrt).
+      // Geografischer Treffer (Stadt/Region) → nur Kamera zoomen.
+      // Hinweis: bei gesperrten Pins geht es direkt zum Paywall — auch ohne
+      // Konto. Die Konto-Anforderung wird erst nach der Plan-Auswahl im
+      // Paywall geprüft (saubere Konversion: Nutzer sieht zuerst den Wert,
+      // dann den Anmelde-Schritt).
+      if (item.placeId) {
+        // Karte zuerst auf den Pin zoomen, damit nach dem Schließen des
+        // Detail-Modals der Pin sichtbar zentriert ist.
+        cameraRef.current?.setCamera({
+          centerCoordinate: [item.lon, item.lat],
+          zoomLevel: 16,
+          animationMode: "flyTo",
+          animationDuration: 600,
+        });
+        const isLocked = lockedIds.has(item.placeId);
+        if (isLocked) {
+          router.push("/custom-paywall");
+          return;
+        }
+        router.push(`/place/${item.placeId}`);
+        return;
+      }
       cameraRef.current?.setCamera({
         centerCoordinate: [item.lon, item.lat],
         zoomLevel: item.isLocalPlace ? 16 : 13,
@@ -131,7 +166,7 @@ export default function KarteScreen() {
         animationDuration: 800,
       });
     },
-    [],
+    [lockedIds, router],
   );
 
   const handleMapPress = useCallback(
@@ -172,17 +207,15 @@ export default function KarteScreen() {
       if (!placeId) return;
 
       if (isLocked) {
-        if (!session) {
-          setShowLoginPrompt(true);
-          return;
-        }
+        // Direkt zum Paywall — auch ohne Konto. Login wird erst nach
+        // Plan-Auswahl im Paywall verlangt.
         router.push("/custom-paywall");
         return;
       }
 
       router.push(`/place/${placeId}`);
     },
-    [router, session, cameraZoom],
+    [router, cameraZoom],
   );
 
   return (
@@ -339,9 +372,11 @@ export default function KarteScreen() {
         onLayout={(e) => setBottomSectionHeight(e.nativeEvent.layout.height)}
       >
         <SearchSection
+          ref={searchRef}
           onSelectGeo={handleSelectGeo}
           onClear={() => {}}
           bottomSectionHeight={bottomSectionHeight}
+          selectedCategoryId={selectedCategoryId}
         />
         {/* Pasek kategorii — pod wyszukiwarką */}
         <KategorieBar
@@ -353,7 +388,6 @@ export default function KarteScreen() {
       </View>
 
       {/* Sugestie — absolute nad bottomSection, poza jego drzewem */}
-      <LoginPromptModal visible={showLoginPrompt} onClose={() => setShowLoginPrompt(false)} />
     </SafeAreaView>
   );
 }
