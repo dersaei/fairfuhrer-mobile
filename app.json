@@ -18,7 +18,8 @@
       "bundleIdentifier": "com.fairfuehrer.app",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "CFBundleDisplayName": "Fairführer+"
+        "CFBundleDisplayName": "Fairführer+",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -27,7 +28,15 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.fairfuehrer.app",
-      "softwareKeyboardLayoutMode": "pan"
+      "softwareKeyboardLayoutMode": "pan",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
     },
     "web": {
       "favicon": "./assets/app-icon.png"
