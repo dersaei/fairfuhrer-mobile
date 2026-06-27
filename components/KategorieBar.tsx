@@ -15,6 +15,9 @@ import { isSightsCategory } from "@/stores/placesStore";
 import type { DirectusKategorie } from "@/types";
 
 const DEFAULT_COLOR = "#fc6c14";
+// Brand-Blau (von Tanja vorgeschlagen, 2026-06-25). Ersetzt schwarz für
+// neutrale Leisten/Borders/Backgrounds — schwarz wirkt im UI zu hart.
+const BRAND_BLUE = "#336BA2";
 
 export function KategorieBar({
   categories,
@@ -32,7 +35,7 @@ export function KategorieBar({
   const insets = useSafeAreaInsets();
 
   const selectedCat = selectedId ? categories.find((c) => c.id === selectedId) : null;
-  const barColor = selectedCat ? (selectedCat.Farbe ?? DEFAULT_COLOR) : "#000";
+  const barColor = selectedCat ? (selectedCat.Farbe ?? DEFAULT_COLOR) : BRAND_BLUE;
 
   const openMenu = useCallback(() => {
     slideAnim.setValue(0);
@@ -226,7 +229,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
-  kategorieMenuItemActive: { backgroundColor: "#000" },
+  kategorieMenuItemActive: { backgroundColor: BRAND_BLUE },
   kategorieMenuIcon: {
     marginRight: 14,
     width: 36,
@@ -254,7 +257,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderTopWidth: 1,
-    borderColor: "#000",
+    borderColor: BRAND_BLUE,
     paddingHorizontal: 14,
     paddingVertical: Platform.OS === "ios" ? 12 : 10,
   },

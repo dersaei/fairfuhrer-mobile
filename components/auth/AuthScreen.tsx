@@ -19,8 +19,12 @@ import { supabase } from "@/lib/supabase";
 import { AuthWeakPasswordError } from "@supabase/supabase-js";
 import MenuButton from "@/components/MenuButton";
 import PlanCompareCard from "@/components/PlanCompareCard";
-import GoogleSignInButton from "@/components/GoogleSignInButton";
-import AppleSignInButton from "@/components/AppleSignInButton";
+// Social loginy (Apple/Google) sind in Release 1.0.3 vorübergehend
+// deaktiviert: Mapbox-Konflikte auf iOS, fehlender Browser-Redirect bei
+// Apple-OAuth auf Android. Die Komponenten und Pakete bleiben im Repo,
+// damit eine Wiederaktivierung in einem späteren Release einfach ist.
+// import GoogleSignInButton from "@/components/GoogleSignInButton";
+// import AppleSignInButton from "@/components/AppleSignInButton";
 import { getAuthScreenContent, type AuthScreenContent } from "@/lib/directus";
 
 type AuthView = "welcome" | "login" | "register" | "forgot";
@@ -406,15 +410,6 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
             </TouchableOpacity>
           </View>
 
-          <AppleSignInButton onError={setError} />
-          <GoogleSignInButton onError={setError} />
-
-          <View style={s.dividerRow}>
-            <View style={s.dividerLine} />
-            <Text style={s.dividerText}>{t.divider_text}</Text>
-            <View style={s.dividerLine} />
-          </View>
-
           {error && <Text style={s.errorText}>{error}</Text>}
 
           <View style={s.fieldGroup}>
@@ -508,7 +503,6 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
             </TouchableOpacity>
           )}
 
-          {!isReg && <Text style={s.googleHint}>{t.google_hint}</Text>}
 
           <Text style={s.partnerInfo}>
             {t.partner_info}{" "}

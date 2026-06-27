@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     paddingVertical: 4,
     paddingHorizontal: 60,
-    color: "#fc6c14",
+    color: "#336BA2",
     textAlign: "center",
   },
   offlineBanner: {

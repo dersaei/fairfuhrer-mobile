@@ -399,7 +399,14 @@ export default function PlaceScreen() {
 
           {/* Nazwa i adres */}
           <View style={styles.placeNameSection}>
-            <Text style={styles.placeName}>{place.Name}</Text>
+            <Text
+              style={styles.placeName}
+              numberOfLines={3}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
+            >
+              {place.Name}
+            </Text>
             {place.Adresse ? <Text style={styles.placeAddress}>{place.Adresse}</Text> : null}
             {place.Telefon ? (
               <TouchableOpacity onPress={() => Linking.openURL(`tel:${place.Telefon}`)}>
@@ -598,7 +605,7 @@ const styles = StyleSheet.create({
   },
   placeName: {
     fontFamily: "Anton_400Regular",
-    fontSize: 40,
+    fontSize: 32,
     color: "#2c3e50",
     textAlign: "center",
   },
@@ -625,10 +632,10 @@ const styles = StyleSheet.create({
   },
   description: {
     fontFamily: "FiraSansCondensed_400Regular",
-    fontSize: 20,
-    lineHeight: 26,
+    fontSize: 17,
+    lineHeight: 24,
     color: "#343a40",
-    textAlign: "justify",
+    textAlign: "left",
   },
   externalLink: {
     backgroundColor: "rgba(252,108,20,1)",

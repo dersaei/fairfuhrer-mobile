@@ -1,12 +1,6 @@
 import { useEffect, useState } from "react";
 import { Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import {
-  GoogleSignin,
-  statusCodes,
-  isErrorWithCode,
-  isSuccessResponse,
-} from "@react-native-google-signin/google-signin";
 import { supabase } from "@/lib/supabase";
 
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
@@ -18,8 +12,14 @@ const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 // Auf Android läuft der Flow unverändert.
 const GOOGLE_SIGN_IN_SUPPORTED = Platform.OS === "android";
 
+// WICHTIG: keinen statischen Import von @react-native-google-signin/google-signin
+// — auf iOS wäre das Modul über expo.autolinking.ios.exclude vom Native-Link
+// ausgeschlossen, der JS-Import würde aber trotzdem zum Crash beim Rendern
+// führen (statusCodes etc. greifen auf fehlende Native-Bindings zu).
+// Stattdessen dynamischer require() innerhalb der Android-only Code-Pfade.
+
 /**
- * Nativer Google-Login (Android/iOS) via Credential Manager / GoogleSignIn-iOS.
+ * Nativer Google-Login (Android only) via Credential Manager.
  * Holt einen ID-Token von Google und tauscht ihn bei Supabase gegen eine Session
  * (signInWithIdToken). Anders als im Web gibt es hier KEINEN Redirect.
  *
@@ -45,6 +45,8 @@ export default function GoogleSignInButton({
       return;
     }
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { GoogleSignin } = require("@react-native-google-signin/google-signin");
       GoogleSignin.configure({ webClientId: WEB_CLIENT_ID });
     } catch (e) {
       console.warn("GoogleSignInButton: configure() fehlgeschlagen.", e);
@@ -62,6 +64,10 @@ export default function GoogleSignInButton({
     }
     setIsLoading(true);
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const gsi = require("@react-native-google-signin/google-signin");
+      const { GoogleSignin, statusCodes, isErrorWithCode, isSuccessResponse } = gsi;
+
       await GoogleSignin.hasPlayServices();
       const response = await GoogleSignin.signIn();
 
@@ -88,11 +94,15 @@ export default function GoogleSignInButton({
         onSuccess?.();
       }
     } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const gsi = require("@react-native-google-signin/google-signin");
+      const { statusCodes, isErrorWithCode } = gsi;
+      const e = error as { code?: string };
       if (isErrorWithCode(error)) {
-        if (error.code === statusCodes.IN_PROGRESS) {
+        if (e.code === statusCodes.IN_PROGRESS) {
           return; // Anmeldung läuft bereits.
         }
-        if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        if (e.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
           onError?.("Google Play-Dienste sind nicht verfügbar oder veraltet.");
           return;
         }
@@ -155,7 +165,6 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
     borderRadius: 12,
     paddingVertical: 14,
-    backgroundColor: "#fff",
   },
   buttonDisabled: {
     opacity: 0.5,
