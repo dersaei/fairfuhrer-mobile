@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { useProfileSettings } from "@/hooks/useProfileSettings";
+import PasswordInput from "@/components/PasswordInput";
 
 export default function EinstellungenSection({
   user,
@@ -75,21 +76,19 @@ export default function EinstellungenSection({
       )}
       <View style={s.fieldGroup}>
         <Text style={s.fieldLabel}>Neues Passwort</Text>
-        <TextInput
+        <PasswordInput
           style={s.input}
           value={passwordForm.newPassword}
           onChangeText={passwordForm.setNewPassword}
-          secureTextEntry
           autoComplete="new-password"
         />
       </View>
       <View style={s.fieldGroup}>
         <Text style={s.fieldLabel}>Passwort bestätigen</Text>
-        <TextInput
+        <PasswordInput
           style={s.input}
           value={passwordForm.confirmPassword}
           onChangeText={passwordForm.setConfirmPassword}
-          secureTextEntry
           autoComplete="new-password"
         />
       </View>

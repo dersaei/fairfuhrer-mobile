@@ -26,6 +26,7 @@ import PlanCompareCard from "@/components/PlanCompareCard";
 // import GoogleSignInButton from "@/components/GoogleSignInButton";
 // import AppleSignInButton from "@/components/AppleSignInButton";
 import { getAuthScreenContent, type AuthScreenContent } from "@/lib/directus";
+import PasswordInput from "@/components/PasswordInput";
 
 type AuthView = "welcome" | "login" | "register" | "forgot";
 
@@ -428,13 +429,12 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
 
           <View style={s.fieldGroup}>
             <Text style={s.fieldLabel}>Passwort</Text>
-            <TextInput
+            <PasswordInput
               style={s.input}
               placeholder="min. 8 Zeichen"
               placeholderTextColor="rgba(24, 23, 22, 0.5)"
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
               autoComplete={isReg ? "new-password" : "password"}
             />
             {isReg && (
@@ -450,13 +450,12 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
           {isReg && (
             <View style={s.fieldGroup}>
               <Text style={s.fieldLabel}>Passwort wiederholen</Text>
-              <TextInput
+              <PasswordInput
                 style={s.input}
                 placeholder="Passwort bestätigen"
                 placeholderTextColor="rgba(24, 23, 22, 0.5)"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
-                secureTextEntry
                 autoComplete="new-password"
               />
             </View>
