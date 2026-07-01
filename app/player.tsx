@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -8,18 +8,21 @@ import {
   StyleSheet,
   Dimensions,
   StatusBar,
+  GestureResponderEvent,
+  LayoutChangeEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import Svg, { Polygon, Rect, Circle } from "react-native-svg";
-import { useAudioPlayerStatus, useAudioPlayer } from "expo-audio";
+import { useAudioPlayerStatus } from "expo-audio";
 
 import {
   usePlaylistStore,
   selectCurrentPlace,
   selectIsPlaylistActive,
 } from "@/stores/playlistStore";
-import { getAudioUrl, getMainImageUrl } from "@/lib/mediaUrls";
+import { useSharedPlayer } from "@/context/PlayerContext";
+import { getMainImageUrl } from "@/lib/mediaUrls";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const COVER_SIZE = Math.min(SCREEN_W - 60, 320);
@@ -97,14 +100,29 @@ export default function PlayerScreen() {
   const jumpTo = usePlaylistStore((s) => s.jumpTo);
   const stop = usePlaylistStore((s) => s.stop);
 
-  // Odczyt statusu z tego samego URL co GlobalAudioPlayer — expo-audio
-  // dokleja instancje per URL, więc czasy się zgadzają.
-  const audioUrl = currentPlace ? getAudioUrl(currentPlace) : null;
-  const player = useAudioPlayer(audioUrl);
+  // KLUCZOWE: używamy SHARED player'a z GlobalAudioPlayer przez PlayerContext.
+  // Wcześniej tworzyłem tu drugi useAudioPlayer(audioUrl) → to była osobna
+  // martwa instancja natywnego playera, jej currentTime nigdy nie rósł,
+  // seekTo działało "obok" faktycznego audio. Teraz mamy jeden player.
+  const player = useSharedPlayer();
   const status = useAudioPlayerStatus(player);
   const currentTime = status?.currentTime ?? 0;
   const duration = status?.duration ?? 0;
   const progress = duration > 0 ? currentTime / duration : 0;
+
+  // ── Seekbar: touchable bar oblicza pozycję kliknięcia i wywołuje seekTo ──
+  const [trackWidth, setTrackWidth] = useState(0);
+  const handleTrackLayout = useCallback((e: LayoutChangeEvent) => {
+    setTrackWidth(e.nativeEvent.layout.width);
+  }, []);
+  const handleSeek = useCallback(
+    (e: GestureResponderEvent) => {
+      if (!trackWidth || !duration) return;
+      const ratio = Math.min(1, Math.max(0, e.nativeEvent.locationX / trackWidth));
+      player.seekTo(ratio * duration);
+    },
+    [trackWidth, duration, player],
+  );
 
   const contextLabel = useMemo(() => {
     if (!context) return "";
@@ -182,11 +200,19 @@ export default function PlayerScreen() {
           </Text>
         </View>
 
-        {/* ── Progress ── */}
+        {/* ── Progress (touchable, seekable) ── */}
         <View style={s.progressWrap}>
-          <View style={s.progressBar}>
-            <View style={[s.progressFill, { width: `${progress * 100}%` }]} />
-          </View>
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={handleSeek}
+            onLayout={handleTrackLayout}
+            style={s.progressTouchable}
+          >
+            <View style={s.progressBar}>
+              <View style={[s.progressFill, { width: `${progress * 100}%` }]} />
+              <View style={[s.progressThumb, { left: `${progress * 100}%` }]} />
+            </View>
+          </TouchableOpacity>
           <View style={s.progressTimes}>
             <Text style={s.timeText}>{formatTime(currentTime)}</Text>
             <Text style={s.timeText}>{formatTime(duration)}</Text>
@@ -353,25 +379,44 @@ const s = StyleSheet.create({
     paddingHorizontal: 24,
     marginBottom: 20,
   },
+  progressTouchable: {
+    // Wysokość touch-target 32px (bar ma 4px, reszta to padding wokół
+    // niego dla łatwiejszego tapnięcia). Rzeczywisty pasek wyśrodkowany.
+    height: 32,
+    justifyContent: "center",
+  },
   progressBar: {
     height: 4,
     backgroundColor: "rgba(255,255,255,0.2)",
     borderRadius: 2,
-    overflow: "hidden",
+    // pozwól thumb'owi wystawać poza pasek
+    overflow: "visible",
   },
   progressFill: {
     height: 4,
     backgroundColor: "#fc6c14",
+    borderRadius: 2,
+  },
+  progressThumb: {
+    position: "absolute",
+    top: -6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#fc6c14",
+    marginLeft: -8,
+    borderWidth: 2,
+    borderColor: "#fff",
   },
   progressTimes: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 6,
+    marginTop: 4,
   },
   timeText: {
-    color: "#bbb",
-    fontSize: 12,
-    fontFamily: "FiraSansCondensed_400Regular",
+    color: "#fff",
+    fontSize: 13,
+    fontFamily: "FiraSansCondensed_600SemiBold",
   },
 
   controls: {

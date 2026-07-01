@@ -75,7 +75,7 @@ function RootLayoutNav() {
   }, [dataReady, isLoading]);
 
   return (
-    <>
+    <GlobalAudioPlayer>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
@@ -120,11 +120,9 @@ function RootLayoutNav() {
         />
       </Stack>
 
-      {/* Globalny odtwarzacz audio dla playlisty — bez UI, tylko logika.
-          Musi żyć na root-owym poziomie, żeby audio grało przy nawigacji między ekranami. */}
-      <GlobalAudioPlayer />
-
-      {/* Persistent mini-player nad wszystkim — widoczny gdy playlista aktywna. */}
+      {/* Persistent mini-player nad wszystkim — widoczny gdy playlista aktywna.
+          Wewnątrz GlobalAudioPlayer żeby miał dostęp do shared'ego playera
+          przez PlayerContext (dla przyszłych ficzerów; obecnie używa tylko store). */}
       <MiniPlayer />
 
       <AppDrawer visible={isOpen} onClose={closeDrawer} />
@@ -132,7 +130,7 @@ function RootLayoutNav() {
       {showAnimatedSplash && dataReady && !isLoading && (
         <AnimatedSplash onFinished={() => setShowAnimatedSplash(false)} />
       )}
-    </>
+    </GlobalAudioPlayer>
   );
 }
 

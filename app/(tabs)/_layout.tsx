@@ -62,8 +62,18 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   return (
     <Tabs
+      // App startuje na Karte (główna wartość app'a — mapa z pinami).
+      // Bez tego expo-router używa `index.tsx` (Liste) jako defaultu,
+      // niezależnie od kolejności wizualnej w tab-barze.
+      initialRouteName="karte"
       screenOptions={{
         headerShown: false,
+        // Renderuj wszystkie taby od razu (lazy=false) żeby Tour nie miał
+        // opóźnienia przy pierwszym tapnięciu — filtrowanie ~500 pinów
+        // (withAudioOnly + cityStats + categoryStats) trwa ~100ms na Androidzie,
+        // widoczne jako lag. Z lazy=false Tour renderuje się w tle podczas
+        // ekranu splash, więc pierwszy tap jest natychmiastowy.
+        lazy: false,
         tabBarActiveTintColor: "#fc6c14",
         tabBarInactiveTintColor: "#999",
         tabBarStyle: {

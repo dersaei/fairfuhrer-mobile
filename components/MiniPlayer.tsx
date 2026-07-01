@@ -1,5 +1,6 @@
-import { View, Text, TouchableOpacity, Image, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, Image, StyleSheet, Platform } from "react-native";
 import { useRouter, usePathname } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Polygon, Rect } from "react-native-svg";
 import {
   usePlaylistStore,
@@ -7,6 +8,13 @@ import {
   selectIsPlaylistActive,
 } from "@/stores/playlistStore";
 import { getMainImageUrl } from "@/lib/mediaUrls";
+
+// ─── Layout constants ───────────────────────────────────────────────────────
+// Musi być zsynchronizowane z app/(tabs)/_layout.tsx:
+//   height: 60 + Math.max(insets.bottom, 16)
+// MiniPlayer siedzi NAD tab-barem, więc jego bottom = wysokość tab-bara.
+const TAB_BAR_BASE_HEIGHT = 60;
+const TAB_BAR_MIN_BOTTOM_PADDING = 16;
 
 // ─── Ikony (spójne z AudioPlayer.tsx) ───────────────────────────────────────
 
@@ -41,9 +49,26 @@ function NextIcon() {
 // Persistent bar renderowany w root layoucie NAD tab-barem. Widoczny tylko gdy
 // playlista aktywna (queue.length > 0). Tap otwiera pełnoekranowy player.
 
+// MiniPlayer jest pokazywany TYLKO na ekranach tabów. Modalne ekrany
+// (place/[id], player, custom-paywall, auth-modal) same się prezentują
+// full-screen, MiniPlayer za ich modalem byłby niewidoczny i i tak nie
+// można by go tapnąć.
+const TAB_ROUTES = new Set([
+  "/",
+  "/karte",
+  "/liste",
+  "/tour",
+  "/profil",
+  "/(tabs)",
+  "/(tabs)/karte",
+  "/(tabs)/tour",
+  "/(tabs)/profil",
+]);
+
 export default function MiniPlayer() {
   const router = useRouter();
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
   const isActive = usePlaylistStore(selectIsPlaylistActive);
   const currentPlace = usePlaylistStore(selectCurrentPlace);
   const isPlaying = usePlaylistStore((s) => s.isPlaying);
@@ -52,15 +77,29 @@ export default function MiniPlayer() {
   const queueLength = usePlaylistStore((s) => s.queue.length);
   const currentIndex = usePlaylistStore((s) => s.currentIndex);
 
-  // Nie pokazuj MiniPlayera na ekranie pelnego playera — tam widac wszystko.
-  if (!isActive || !currentPlace || pathname === "/player") return null;
+  // Widoczny tylko na tabach — modalne ekrany zasłaniają MiniPlayera całkowicie.
+  const showOnThisRoute = TAB_ROUTES.has(pathname);
+  if (!isActive || !currentPlace || !showOnThisRoute) return null;
+
+  // Wysokość tab-bara — musi zgadzać się z (tabs)/_layout.tsx:
+  //   height: 60 + Math.max(insets.bottom, 16)
+  // MiniPlayer siedzi tuż nad tab-barem.
+  const tabBarHeight =
+    TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, TAB_BAR_MIN_BOTTOM_PADDING);
 
   const imageUrl = getMainImageUrl(currentPlace);
 
   return (
     <TouchableOpacity
       activeOpacity={0.9}
-      style={styles.container}
+      style={[
+        styles.container,
+        {
+          bottom: tabBarHeight,
+          // Na Androidzie dodać cień żeby MiniPlayer nie zlał się z tab-barem
+          ...(Platform.OS === "android" ? { elevation: 8 } : {}),
+        },
+      ]}
       onPress={() => router.push("/player")}
     >
       {imageUrl ? (
@@ -106,12 +145,23 @@ export default function MiniPlayer() {
 
 const styles = StyleSheet.create({
   container: {
+    // Position absolute — nad tab-barem, nie wypycha go
+    position: "absolute",
+    left: 0,
+    right: 0,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#18222F",
     paddingHorizontal: 12,
     paddingVertical: 8,
     gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.06)",
+    // iOS cień
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   thumb: {
     width: 44,

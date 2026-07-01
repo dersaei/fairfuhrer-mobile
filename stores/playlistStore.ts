@@ -23,6 +23,10 @@ interface PlaylistState {
   currentIndex: number;
   context: PlaylistContext | null;
   isPlaying: boolean; // sterowanie UI: true = ma grać, false = pauza/nic
+  // Licznik "resetów" — inkrementowany gdy user chce zagrać ten sam track od
+  // zera (replay po końcu, jumpTo(currentIndex)). GlobalAudioPlayer i player.tsx
+  // subskrybują ten counter i wywołują player.seekTo(0) gdy się zmieni.
+  resetCounter: number;
 }
 
 interface PlaylistActions {
@@ -39,10 +43,17 @@ export const usePlaylistStore = create<PlaylistState & PlaylistActions>((set, ge
   currentIndex: 0,
   context: null,
   isPlaying: false,
+  resetCounter: 0,
 
   startPlaylist: (queue, context) => {
     if (queue.length === 0) return;
-    set({ queue, currentIndex: 0, context, isPlaying: true });
+    set((state) => ({
+      queue,
+      currentIndex: 0,
+      context,
+      isPlaying: true,
+      resetCounter: state.resetCounter + 1, // wymuś reset audio (nowy pin od 0)
+    }));
   },
 
   stop: () => {
@@ -50,15 +61,26 @@ export const usePlaylistStore = create<PlaylistState & PlaylistActions>((set, ge
   },
 
   togglePlay: () => {
-    const { queue } = get();
+    const { queue, isPlaying, currentIndex } = get();
     if (queue.length === 0) return;
-    set((state) => ({ isPlaying: !state.isPlaying }));
+    // Gdy user klika play po zakończeniu playlisty (ostatni pin, isPlaying=false)
+    // — chcemy zagrać ten sam track od nowa, więc zwiększamy resetCounter.
+    // GlobalAudioPlayer wywoła seekTo(0) → play().
+    if (!isPlaying && currentIndex === queue.length - 1) {
+      set((state) => ({ isPlaying: true, resetCounter: state.resetCounter + 1 }));
+      return;
+    }
+    set({ isPlaying: !isPlaying });
   },
 
   next: () => {
     const { queue, currentIndex } = get();
     if (currentIndex + 1 < queue.length) {
-      set({ currentIndex: currentIndex + 1, isPlaying: true });
+      set((state) => ({
+        currentIndex: currentIndex + 1,
+        isPlaying: true,
+        resetCounter: state.resetCounter + 1,
+      }));
     } else {
       // Koniec playlisty — zatrzymaj (nie kasuj queue, żeby user widział co grało)
       set({ isPlaying: false });
@@ -68,14 +90,24 @@ export const usePlaylistStore = create<PlaylistState & PlaylistActions>((set, ge
   previous: () => {
     const { currentIndex } = get();
     if (currentIndex > 0) {
-      set({ currentIndex: currentIndex - 1, isPlaying: true });
+      set((state) => ({
+        currentIndex: currentIndex - 1,
+        isPlaying: true,
+        resetCounter: state.resetCounter + 1,
+      }));
     }
   },
 
   jumpTo: (index) => {
     const { queue } = get();
     if (index < 0 || index >= queue.length) return;
-    set({ currentIndex: index, isPlaying: true });
+    // Zawsze inkrementuj resetCounter — nawet gdy klikamy ten sam pin
+    // (user chce go zagrać od nowa). To rozwiązuje "trzeba dwukrotnie tapnąć".
+    set((state) => ({
+      currentIndex: index,
+      isPlaying: true,
+      resetCounter: state.resetCounter + 1,
+    }));
   },
 }));
 

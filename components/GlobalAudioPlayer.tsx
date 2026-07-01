@@ -1,36 +1,65 @@
-import { useEffect, useRef } from "react";
-import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
+import { ReactNode, useEffect } from "react";
+import { useAudioPlayer, setAudioModeAsync } from "expo-audio";
 import { usePlaylistStore, selectCurrentPlace } from "@/stores/playlistStore";
-import { getAudioUrl } from "@/lib/mediaUrls";
+import { getAudioUrl, getMainImageUrl } from "@/lib/mediaUrls";
+import { PlayerProvider } from "@/context/PlayerContext";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GlobalAudioPlayer — headless component renderowany raz w root layoucie.
+// GlobalAudioPlayer — komponent-host w root layoucie.
 //
-// Subskrybuje playlistStore, tworzy `useAudioPlayer(currentUrl)`, wywołuje
-// play/pause zgodnie z `isPlaying`, auto-advance przy `didJustFinish`.
+// Tworzy JEDNĄ instancję AudioPlayer'a (bo useAudioPlayer nie deduplikuje po
+// URL — każde wywołanie tworzy nowy natywny player). Ten singleton jest
+// udostępniany dzieciom przez PlayerContext, żeby player.tsx i MiniPlayer
+// mogły odczytywać jego status i sterować seekiem.
 //
-// Nie renderuje nic wizualnie — UI robi MiniPlayer / player.tsx / tour.tsx,
-// które czytają ten sam store.
+// Bez tego context'u były 2 różne playery: ten w GlobalAudioPlayer faktycznie
+// grał audio, a te w UI-komponentach były martwe (currentTime=0, seekTo
+// bez efektu w tle bo GlobalAudioPlayer o tym nie wiedział).
+//
+// Ustawia: audio mode, auto-advance (didJustFinish → next), reset counter
+// (seekTo 0 przy replay/jumpTo), lock-screen metadata.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function GlobalAudioPlayer() {
+export default function GlobalAudioPlayer({ children }: { children: ReactNode }) {
   const currentPlace = usePlaylistStore(selectCurrentPlace);
   const isPlaying = usePlaylistStore((s) => s.isPlaying);
+  const resetCounter = usePlaylistStore((s) => s.resetCounter);
   const next = usePlaylistStore((s) => s.next);
 
   const audioUrl = currentPlace ? getAudioUrl(currentPlace) : null;
-
-  // useAudioPlayer akceptuje null — player wtedy jest "pusty".
-  // Gdy audioUrl się zmienia (kolejny pin), player automatycznie ładuje nowe źródło.
   const player = useAudioPlayer(audioUrl);
-  const status = useAudioPlayerStatus(player);
 
-  // ── Audio mode: gra w cichym trybie (iOS) — wymagane dla audioguide'ów ──
+  // ── Audio mode: gra w cichym trybie (iOS) + background + doNotMix ──
+  // interruptionMode: 'doNotMix' JEST WYMAGANE przez expo-audio żeby
+  // setActiveForLockScreen faktycznie zadziałało (bez tego OS nie kojarzy
+  // kontrolek lock-screen z naszym playerem).
   useEffect(() => {
-    setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true }).catch(() => {
-      // Ignoruj — na starszych wersjach expo-audio pole może nie istnieć
+    setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      interruptionMode: "doNotMix",
+    }).catch(() => {
+      // Ignoruj — na starszych patchach expo-audio pole może nie istnieć
     });
   }, []);
+
+  // ── Auto-advance przez event listener (deterministyczny, nie hook) ──
+  useEffect(() => {
+    if (!player) return;
+
+    const subscription = player.addListener("playbackStatusUpdate", (status) => {
+      if (status.didJustFinish) {
+        // Ostatni pin gra do końca → status.didJustFinish=true → next() ustawi
+        // isPlaying=false (bo playlistStore.next widzi że nie ma następnego).
+        // Kolejne piny w środku playlisty → next() przesuwa currentIndex.
+        next();
+      }
+    });
+
+    return () => {
+      subscription?.remove();
+    };
+  }, [player, next]);
 
   // ── Sync play/pause: store → player ──
   useEffect(() => {
@@ -42,22 +71,43 @@ export default function GlobalAudioPlayer() {
     }
   }, [isPlaying, player, audioUrl]);
 
-  // ── Auto-advance przy końcu ścieżki ──
-  // `didJustFinish` jest true przez jeden tick po zakończeniu; guard `advancedRef`
-  // zabezpiecza przed podwójnym wywołaniem (status może przyjść kilka razy).
-  const advancedRef = useRef<string | null>(null);
+  // ── Reset counter: gdy user wywoła jumpTo / replay / next / previous,
+  // przewiń audio na początek. Ten sam player, więc seekTo(0) faktycznie
+  // przewija (a nie na "martwej" kopii jak było wcześniej).
   useEffect(() => {
-    if (!status?.didJustFinish) return;
-    const marker = `${currentPlace?.id ?? "none"}-${status.currentTime ?? 0}`;
-    if (advancedRef.current === marker) return;
-    advancedRef.current = marker;
-    next();
-  }, [status?.didJustFinish, status?.currentTime, currentPlace?.id, next]);
+    if (!player || resetCounter === 0) return;
+    try {
+      player.seekTo(0);
+    } catch {
+      // player może być jeszcze bez source — ignoruj
+    }
+  }, [resetCounter, player]);
 
-  // Reset guard przy zmianie pina — kolejny track dostaje świeży marker
+  // ── Lock-screen controls: aktywuj/aktualizuj metadata gdy pin się zmienia ──
   useEffect(() => {
-    advancedRef.current = null;
-  }, [currentPlace?.id]);
+    if (!player || !currentPlace) return;
 
-  return null;
+    const artworkUrl = getMainImageUrl(currentPlace) ?? undefined;
+
+    try {
+      player.setActiveForLockScreen(true, {
+        title: currentPlace.Name,
+        artist: currentPlace.Stadt || "Fairführer",
+        albumTitle: "Fairführer Audioguide",
+        artworkUrl,
+      });
+    } catch {
+      // Jeżeli metoda nie istnieje (starsza wersja) — po prostu pomiń.
+    }
+
+    return () => {
+      try {
+        player.clearLockScreenControls();
+      } catch {
+        // ignoruj
+      }
+    };
+  }, [player, currentPlace]);
+
+  return <PlayerProvider player={player}>{children}</PlayerProvider>;
 }
