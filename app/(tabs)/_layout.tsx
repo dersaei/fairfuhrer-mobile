@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Path, Circle } from "react-native-svg";
+import Svg, { Path, Circle, Polygon } from "react-native-svg";
 
 function ListeIcon({ focused }: { focused: boolean }) {
   const color = focused ? "#fc6c14" : "#999";
@@ -29,6 +29,16 @@ function KarteIcon({ focused }: { focused: boolean }) {
         strokeLinejoin="round"
       />
       <Circle cx={12} cy={10} r={3} stroke={color} strokeWidth={2} />
+    </Svg>
+  );
+}
+
+function TourIcon({ focused }: { focused: boolean }) {
+  const color = focused ? "#fc6c14" : "#999";
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={10} stroke={color} strokeWidth={2} />
+      <Polygon points="10,8 16,12 10,16" fill={color} />
     </Svg>
   );
 }
@@ -69,6 +79,14 @@ export default function TabsLayout() {
         },
       }}
     >
+      {/* Kolejność: Karte | Liste | Tour | Profil (Karte na pierwszym miejscu — główna wartość app'a) */}
+      <Tabs.Screen
+        name="karte"
+        options={{
+          tabBarLabel: "Karte",
+          tabBarIcon: ({ focused }) => <KarteIcon focused={focused} />,
+        }}
+      />
       <Tabs.Screen
         name="index"
         options={{
@@ -77,10 +95,10 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="karte"
+        name="tour"
         options={{
-          tabBarLabel: "Karte",
-          tabBarIcon: ({ focused }) => <KarteIcon focused={focused} />,
+          tabBarLabel: "Tour",
+          tabBarIcon: ({ focused }) => <TourIcon focused={focused} />,
         }}
       />
       <Tabs.Screen

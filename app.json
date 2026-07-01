@@ -19,7 +19,8 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "CFBundleDisplayName": "Fairführer+",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": ["audio"]
       }
     },
     "android": {

@@ -17,6 +17,8 @@ import { DrawerProvider, useDrawer } from "@/context/DrawerContext";
 import { usePlacesStore } from "@/stores/placesStore";
 import AnimatedSplash from "@/components/AnimatedSplash";
 import AppDrawer from "@/components/AppDrawer";
+import GlobalAudioPlayer from "@/components/GlobalAudioPlayer";
+import MiniPlayer from "@/components/MiniPlayer";
 import { initializePurchases } from "@/lib/revenuecat";
 
 // Tracing für die Navigation (expo-router nutzt React Navigation darunter).
@@ -107,7 +109,23 @@ function RootLayoutNav() {
           name="(drawer)"
           options={{ presentation: "card", animation: "slide_from_right" }}
         />
+        <Stack.Screen
+          name="player"
+          options={{
+            presentation: "modal",
+            animation: "slide_from_bottom",
+            gestureEnabled: true,
+            gestureDirection: "vertical",
+          }}
+        />
       </Stack>
+
+      {/* Globalny odtwarzacz audio dla playlisty — bez UI, tylko logika.
+          Musi żyć na root-owym poziomie, żeby audio grało przy nawigacji między ekranami. */}
+      <GlobalAudioPlayer />
+
+      {/* Persistent mini-player nad wszystkim — widoczny gdy playlista aktywna. */}
+      <MiniPlayer />
 
       <AppDrawer visible={isOpen} onClose={closeDrawer} />
 
