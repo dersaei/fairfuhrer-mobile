@@ -44,13 +44,38 @@ function withAudioOnly(places: DirectusOrte[]): DirectusOrte[] {
 export default function TourScreen() {
   const router = useRouter();
   const { isPro } = useAuth();
-  const { categories, status, getVisiblePlaces } = usePlacesStore();
+  // BUG-FIX (2026-07-02, v1.1.1): wcześniej robiłem
+  //   const { getVisiblePlaces } = usePlacesStore()
+  //   const visible = useMemo(() => getVisiblePlaces(isPro), [getVisiblePlaces, isPro])
+  // `getVisiblePlaces` to zwykły getter w store — referencja stała.
+  // useMemo cache'ował wynik z PIERWSZEGO wywołania. Gdy `places` ładowały się
+  // async po pierwszym renderze Tour (lazy=false → Tour montuje się przed
+  // dataReady), useMemo NIE odświeżał się → cityStats/categoryStats puste →
+  // biała ściana w prod (na dev/reload dane były już w cache przy pierwszym
+  // renderze, więc bug był niewidoczny).
+  //
+  // Fix: subskrybuj `places` i `categories` bezpośrednio, wywołuj
+  // getVisiblePlaces w renderze (nie w useMemo dependencies) — teraz każda
+  // zmiana `places` powoduje re-render i getter zwraca aktualne dane.
+  const places = usePlacesStore((s) => s.places);
+  const categories = usePlacesStore((s) => s.categories);
+  const status = usePlacesStore((s) => s.status);
+  const getVisiblePlaces = usePlacesStore((s) => s.getVisiblePlaces);
   const startPlaylist = usePlaylistStore((s) => s.startPlaylist);
 
   const [umgebungLoading, setUmgebungLoading] = useState(false);
 
-  // Piny widoczne dla usera (respektuje Sehenswertes gating dla free).
-  const visiblePlaces = useMemo(() => getVisiblePlaces(isPro), [getVisiblePlaces, isPro]);
+  // useMemo teraz zależy od `places` i `categories` — real dane. getVisiblePlaces
+  // dostajemy przez subskrypcję (choć jego referencja jest stała, jego wynik
+  // się zmienia razem z `places`).
+  const visiblePlaces = useMemo(
+    () => getVisiblePlaces(isPro),
+    // Świadomie zależymy od `places` i `categories` — getVisiblePlaces jest
+    // czystym gettterem tych wartości. Bez tych zależności useMemo zostałby
+    // przy staje wartości = biała ściana bug.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [places, categories, isPro, getVisiblePlaces],
+  );
   const playablePlaces = useMemo(() => withAudioOnly(visiblePlaces), [visiblePlaces]);
 
   // ── Sekcja "Nach Stadt": zliczanie pinów per Stadt, sort desc ──
