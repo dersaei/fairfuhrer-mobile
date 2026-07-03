@@ -344,10 +344,7 @@ export default function PaywallScreen() {
           </View>
         </View>
       </ScrollView>
-      <LoginPromptModal
-        visible={showLoginPrompt}
-        onClose={() => setShowLoginPrompt(false)}
-      />
+      <LoginPromptModal visible={showLoginPrompt} onClose={() => setShowLoginPrompt(false)} />
     </SafeAreaView>
   );
 }

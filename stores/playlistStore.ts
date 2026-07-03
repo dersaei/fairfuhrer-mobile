@@ -16,7 +16,8 @@ import type { DirectusOrte } from "@/types";
 export type PlaylistContext =
   | { kind: "umgebung" } // Alle abspielen w promieniu GPS
   | { kind: "stadt"; stadt: string }
-  | { kind: "kategorie"; kategorieId: number; kategorieName: string };
+  | { kind: "kategorie"; kategorieId: number; kategorieName: string }
+  | { kind: "aktuelle_liste"; label: string }; // Alle abspielen z aktualnych wynikow Liste (Miriam's original vision)
 
 interface PlaylistState {
   queue: DirectusOrte[];

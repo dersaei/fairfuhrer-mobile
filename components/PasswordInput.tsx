@@ -30,11 +30,7 @@ export default function PasswordInput({ containerStyle, style, ...textInputProps
 
   return (
     <View style={[styles.container, containerStyle]}>
-      <TextInput
-        {...textInputProps}
-        style={[styles.input, style]}
-        secureTextEntry={!visible}
-      />
+      <TextInput {...textInputProps} style={[styles.input, style]} secureTextEntry={!visible} />
       <TouchableOpacity
         onPress={() => setVisible((v) => !v)}
         style={styles.iconBtn}

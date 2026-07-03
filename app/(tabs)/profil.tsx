@@ -81,9 +81,7 @@ function AccountScreen() {
         contentContainerStyle={s.sectionContent}
         keyboardShouldPersistTaps="handled"
       >
-        {activeSection === "profil" && (
-          <ProfilSection user={user} signOut={signOut} />
-        )}
+        {activeSection === "profil" && <ProfilSection user={user} signOut={signOut} />}
         {activeSection === "einstellungen" && (
           <EinstellungenSection
             user={user}

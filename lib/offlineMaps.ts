@@ -96,8 +96,7 @@ type DownloadStateConsts = {
 
 function getDownloadStateConsts(): DownloadStateConsts | null {
   const mod = NativeModules.RNMBXModule as
-    | { OfflinePackDownloadState?: DownloadStateConsts }
-    | undefined;
+    { OfflinePackDownloadState?: DownloadStateConsts } | undefined;
   return mod?.OfflinePackDownloadState ?? null;
 }
 

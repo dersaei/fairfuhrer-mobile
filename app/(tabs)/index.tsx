@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   View,
   Text,
+  TouchableOpacity,
   FlatList,
   StyleSheet,
   ActivityIndicator,
@@ -10,8 +11,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, usePathname } from "expo-router";
+import Svg, { Polygon, Circle } from "react-native-svg";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
+import { usePlaylistStore } from "@/stores/playlistStore";
+import { getAudioUrl } from "@/lib/mediaUrls";
 import HomeHeader from "@/components/HomeHeader";
 import { PinCard } from "@/components/PinCard";
 import { KategorieBar } from "@/components/KategorieBar";
@@ -42,11 +46,13 @@ export default function ListeScreen() {
   const router = useRouter();
   const pathname = usePathname();
   const searchRef = useRef<SearchSectionHandle>(null);
-  // Bei Rückkehr aus einem modal-Screen (Pin-Detail, Paywall) die Such-
-  // Vorschläge ausblenden, damit sie nicht über der Liste hängen bleiben.
+  // Bei Rückkehr aus einem modal-Screen (Pin-Detail, Paywall) oder anderem
+  // Tab die Such-Vorschläge ausblenden — ZACHOWUJEMY jednak wpisany tekst
+  // (np. "Lindau"), zeby user widzial ze filtr jest nadal aktywny. Reset
+  // nastepuje tylko przy jawnym klikanciu X w wyszukiwarce.
   useEffect(() => {
     if (pathname === "/" || pathname === "/(tabs)") {
-      searchRef.current?.clear();
+      searchRef.current?.hideSuggestions();
     }
   }, [pathname]);
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
@@ -120,7 +126,9 @@ export default function ListeScreen() {
     );
   }, [allPlaces, selectedCategoryId]);
 
-  const displayedIds = useMemo(() => {
+  // Realne miejsca (nie tylko IDs) po wszystkich filtrach — potrzebne dla
+  // Alle abspielen (musi mieć obiekty z audio, nie tylko id).
+  const displayedPlaces = useMemo(() => {
     let result = [...allPlaces];
 
     // Filtruj do wybranego regionu (chip)
@@ -139,8 +147,46 @@ export default function ListeScreen() {
       result.sort((a, b) => (indexMap.get(a.id) ?? 9999) - (indexMap.get(b.id) ?? 9999));
     }
 
-    return result.map((p) => p.id);
+    return result;
   }, [allPlaces, regionFilterIds, selectedCategoryId, orderedIds]);
+
+  const displayedIds = useMemo(() => displayedPlaces.map((p) => p.id), [displayedPlaces]);
+
+  // ── Alle abspielen (Miriam's original vision): playlist z aktualnie
+  // filtrowanych wynikow. Filter na piny z audio (playlisty bez audio nie ma sensu).
+  const playablePlaces = useMemo(
+    () => displayedPlaces.filter((p) => getAudioUrl(p) !== null),
+    [displayedPlaces],
+  );
+
+  const selectedCategoryName = useMemo(() => {
+    if (selectedCategoryId === null) return null;
+    return allCategories.find((c) => c.id === selectedCategoryId)?.Name ?? null;
+  }, [allCategories, selectedCategoryId]);
+
+  // Label playlistow ktory pokaze sie w playerze (np. "Lindau · Sehenswertes").
+  // Priorytet: region + kategoria > region > kategoria > "Aktuelle Auswahl".
+  const alleAbspielenLabel = useMemo(() => {
+    const parts: string[] = [];
+    if (activeRegionName) parts.push(activeRegionName);
+    if (selectedCategoryName) parts.push(selectedCategoryName);
+    return parts.length > 0 ? parts.join(" · ") : "Aktuelle Auswahl";
+  }, [activeRegionName, selectedCategoryName]);
+
+  const startPlaylist = usePlaylistStore((s) => s.startPlaylist);
+  const handleAlleAbspielen = useCallback(() => {
+    if (playablePlaces.length === 0) return;
+    // Zero capa — Miriam prosila o "all matching pins". User zatrzyma
+    // playlist gdy zechce. Sehenswertes gating dla free (20% cap) i tak
+    // ogranicza liczbe pinow po stronie storu.
+    startPlaylist(playablePlaces, { kind: "aktuelle_liste", label: alleAbspielenLabel });
+    router.push("/player");
+  }, [playablePlaces, alleAbspielenLabel, startPlaylist, router]);
+
+  // Widoczny gdy: sa piny do zagrania + user cos przefiltrowal (nie pokazujemy
+  // przy 700 pinach w domysle bo to bez sensu jako "tour").
+  const showAlleAbspielenBtn =
+    playablePlaces.length > 0 && (activeRegionName !== null || selectedCategoryId !== null);
 
   const handleLocationSelect = useCallback(
     (
@@ -244,12 +290,25 @@ export default function ListeScreen() {
         </View>
       )}
 
-      {/* Przestrzeń nad kartą — GPS label wyśrodkowany pionowo */}
+      {/* Przestrzeń nad kartą — GPS label po lewej, Alle abspielen button po prawej */}
       <View style={styles.aboveCards}>
         {orderedIds && (
           <View style={[styles.gpsLabel, { marginLeft: LIST_HORIZONTAL_PADDING }]}>
             <Text style={styles.gpsLabelText}>Nach Entfernung sortiert</Text>
           </View>
+        )}
+        {showAlleAbspielenBtn && (
+          <TouchableOpacity
+            style={styles.alleAbspielenBtn}
+            onPress={handleAlleAbspielen}
+            activeOpacity={0.85}
+          >
+            <Svg width={16} height={16} viewBox="0 0 24 24">
+              <Circle cx="12" cy="12" r="12" fill="#fff" />
+              <Polygon points="10,7.5 16.5,12 10,16.5" fill="#fc6c14" />
+            </Svg>
+            <Text style={styles.alleAbspielenText}>Alle abspielen</Text>
+          </TouchableOpacity>
         )}
       </View>
 
@@ -306,9 +365,7 @@ export default function ListeScreen() {
             // ohne Konto). Geo-Treffer (Stadt) → bisheriges Verhalten:
             // Liste auf nearby sortieren.
             if (item.placeId) {
-              const isLocked = usePlacesStore
-                .getState()
-                .isLockedPlace(item.placeId, isPro);
+              const isLocked = usePlacesStore.getState().isLockedPlace(item.placeId, isPro);
               if (isLocked) {
                 router.push("/custom-paywall");
                 return;
@@ -355,12 +412,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  // Przestrzeń nad kartami — GPS label wyśrodkowany pionowo
+  // Przestrzeń nad kartami — GPS label po lewej, Alle abspielen button po prawej
   aboveCards: {
     flex: 1,
     minHeight: 36,
-    justifyContent: "center",
-    alignItems: "flex-start",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingRight: 12,
   },
   // Karty — stała wysokość, nie rozciąga się
   cardsArea: {
@@ -412,6 +471,24 @@ const styles = StyleSheet.create({
     color: "#fc6c14",
     letterSpacing: 0.8,
     textTransform: "uppercase",
+  },
+  // Alle abspielen — button orange po prawej stronie nad kartami. Widoczny gdy
+  // user cos przefiltrowal (miasto lub kategoria) i sa piny z audio.
+  alleAbspielenBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#fc6c14",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 18,
+    marginLeft: "auto",
+  },
+  alleAbspielenText: {
+    color: "#fff",
+    fontSize: 12,
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    letterSpacing: 0.5,
   },
   errorText: {
     fontSize: 15,

@@ -143,13 +143,13 @@ export default function TourScreen() {
         const p = byId.get(id);
         if (p) queue.push(p);
       }
-      // Weź maks. 30 najbliższych — 30 audio-guide'ów = ~50 min touru
-      const trimmed = queue.slice(0, 30);
-      if (trimmed.length === 0) {
+      // Bez capa — user zatrzyma playlist gdy zechce. Sehenswertes gating
+      // (20% dla free) i tak ogranicza liczbe pinow po stronie storu.
+      if (queue.length === 0) {
         Alert.alert("Keine Pins", "In deiner Umgebung wurden keine Pins gefunden.");
         return;
       }
-      startPlaylist(trimmed, { kind: "umgebung" });
+      startPlaylist(queue, { kind: "umgebung" });
       router.push("/player");
     } catch {
       Alert.alert("Fehler", "Standort konnte nicht ermittelt werden.");
@@ -209,15 +209,9 @@ export default function TourScreen() {
           >
             <View style={s.umgebungText}>
               <Text style={s.umgebungTitle}>Meine Umgebung</Text>
-              <Text style={s.umgebungHint}>
-                Die 30 nächsten Pins ab deinem Standort
-              </Text>
+              <Text style={s.umgebungHint}>Alle Pins ab deinem Standort</Text>
             </View>
-            {umgebungLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <PlayIcon size={40} />
-            )}
+            {umgebungLoading ? <ActivityIndicator color="#fff" /> : <PlayIcon size={40} />}
           </TouchableOpacity>
         </View>
 

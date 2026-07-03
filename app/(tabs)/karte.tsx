@@ -65,10 +65,10 @@ export default function KarteScreen() {
   const searchRef = useRef<SearchSectionHandle>(null);
   // Wenn der Nutzer von einem modal-Screen (Pin-Detail oder Paywall) zurück
   // zur Karte kommt, sollen die Such-Vorschläge nicht weiter über der Karte
-  // hängen. usePathname triggert bei jeder Routen-Änderung.
+  // hängen. Zachowujemy jednak wpisany tekst, zeby wybor pozostawal widoczny.
   useEffect(() => {
     if (pathname === "/karte" || pathname === "/(tabs)/karte") {
-      searchRef.current?.clear();
+      searchRef.current?.hideSuggestions();
     }
   }, [pathname]);
   const {
@@ -129,13 +129,7 @@ export default function KarteScreen() {
   }, [allPlaces, lockedIds, selectedCategoryId]);
 
   const handleSelectGeo = useCallback(
-    (item: {
-      name: string;
-      lat: number;
-      lon: number;
-      isLocalPlace: boolean;
-      placeId?: number;
-    }) => {
+    (item: { name: string; lat: number; lon: number; isLocalPlace: boolean; placeId?: number }) => {
       // Pin-Treffer → Detail-Screen öffnen (oder Paywall, falls gesperrt).
       // Geografischer Treffer (Stadt/Region) → nur Kamera zoomen.
       // Hinweis: bei gesperrten Pins geht es direkt zum Paywall — auch ohne

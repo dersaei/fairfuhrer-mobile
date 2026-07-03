@@ -84,8 +84,7 @@ export default function MiniPlayer() {
   // Wysokość tab-bara — musi zgadzać się z (tabs)/_layout.tsx:
   //   height: 60 + Math.max(insets.bottom, 16)
   // MiniPlayer siedzi tuż nad tab-barem.
-  const tabBarHeight =
-    TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, TAB_BAR_MIN_BOTTOM_PADDING);
+  const tabBarHeight = TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, TAB_BAR_MIN_BOTTOM_PADDING);
 
   const imageUrl = getMainImageUrl(currentPlace);
 

@@ -502,7 +502,6 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
             </TouchableOpacity>
           )}
 
-
           <Text style={s.partnerInfo}>
             {t.partner_info}{" "}
             <Text

@@ -16,13 +16,7 @@ import type { AudioPlayer } from "expo-audio";
 
 export const PlayerContext = createContext<AudioPlayer | null>(null);
 
-export function PlayerProvider({
-  player,
-  children,
-}: {
-  player: AudioPlayer;
-  children: ReactNode;
-}) {
+export function PlayerProvider({ player, children }: { player: AudioPlayer; children: ReactNode }) {
   return <PlayerContext.Provider value={player}>{children}</PlayerContext.Provider>;
 }
 

@@ -129,6 +129,7 @@ export default function PlayerScreen() {
     if (context.kind === "umgebung") return "Meine Umgebung";
     if (context.kind === "stadt") return context.stadt;
     if (context.kind === "kategorie") return context.kategorieName;
+    if (context.kind === "aktuelle_liste") return context.label;
     return "";
   }, [context]);
 
@@ -255,16 +256,9 @@ export default function PlayerScreen() {
                 style={[s.queueRow, isCurrent && s.queueRowActive]}
                 onPress={() => jumpTo(i)}
               >
-                <Text
-                  style={[s.queueIdx, isCurrent && s.queueIdxActive]}
-                >
-                  {i + 1}
-                </Text>
+                <Text style={[s.queueIdx, isCurrent && s.queueIdxActive]}>{i + 1}</Text>
                 <View style={s.queueInfo}>
-                  <Text
-                    style={[s.queueName, isCurrent && s.queueNameActive]}
-                    numberOfLines={1}
-                  >
+                  <Text style={[s.queueName, isCurrent && s.queueNameActive]} numberOfLines={1}>
                     {place.Name}
                   </Text>
                   {place.Stadt && (

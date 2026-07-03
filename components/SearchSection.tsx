@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useRef,
-  useEffect,
-  useImperativeHandle,
-  forwardRef,
-} from "react";
+import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from "react";
 import {
   View,
   Text,
@@ -39,6 +33,10 @@ export interface Suggestion {
 
 export interface SearchSectionHandle {
   clear: () => void;
+  // Zamyka tylko dropdown z sugestiami, ale ZACHOWUJE tekst wpisany w polu.
+  // Uzywane przy powrocie na tab z innego ekranu — user widzi ze wybor
+  // (np. "Lindau") jest nadal aktywny, ale nie widzi wiszacego dropdownu.
+  hideSuggestions: () => void;
 }
 
 function normalizeSearch(input: string): string {
@@ -62,9 +60,7 @@ function searchLocalPlaces(
     .filter((p) => {
       if (!p.location?.coordinates) return false;
       if (selectedCategoryId !== null) {
-        const matchesCategory = p.Kategorie?.some(
-          (k) => k.Kategorie_id?.id === selectedCategoryId,
-        );
+        const matchesCategory = p.Kategorie?.some((k) => k.Kategorie_id?.id === selectedCategoryId);
         if (!matchesCategory) return false;
       }
       const haystack = normalizeSearch(`${p.Name ?? ""} ${p.Stadt ?? ""} ${p.Adresse ?? ""}`);
@@ -95,12 +91,7 @@ interface SearchSectionProps {
 
 export const SearchSection = forwardRef<SearchSectionHandle, SearchSectionProps>(
   function SearchSection(
-    {
-      onSelectGeo,
-      onClear,
-      bottomSectionHeight,
-      selectedCategoryId = null,
-    }: SearchSectionProps,
+    { onSelectGeo, onClear, bottomSectionHeight, selectedCategoryId = null }: SearchSectionProps,
     ref,
   ) {
     const [query, setQuery] = useState("");
@@ -126,6 +117,14 @@ export const SearchSection = forwardRef<SearchSectionHandle, SearchSectionProps>
         setShowSuggestions(false);
         setIsFetchingSuggestions(false);
         Keyboard.dismiss();
+      },
+      hideSuggestions: () => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        setGeoSuggestions([]);
+        setShowSuggestions(false);
+        setIsFetchingSuggestions(false);
+        Keyboard.dismiss();
+        // Zachowujemy `query` — user widzi ze wybor jest aktywny.
       },
     }));
 
