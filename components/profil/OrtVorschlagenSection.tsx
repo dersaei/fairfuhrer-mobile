@@ -8,32 +8,31 @@ import {
   StyleSheet,
 } from "react-native";
 import { User } from "@supabase/supabase-js";
-import { useSubmitPlaceProposal } from "@/hooks/useSubmitPlaceProposal";
+import { useSubmitPlaceProposal, KATEGORIEN_KOMMERZIELL } from "@/hooks/useSubmitPlaceProposal";
 import { getOrtVorschlagenContent, type OrtVorschlagenContent } from "@/lib/directus";
 
-// Fallback-Texte, falls Directus nichts liefert
+// Fallback-Texte, falls Directus nichts liefert.
+// UWAGA v1.1.3: `premium_info` juz sie nie pokazuje (usuniete premium-gate).
+// `hint_with_name/without_name` tez usuniete — email/imie/nazwisko idzie z sesji Supabase.
 const DEFAULTS = {
   intro: "Kennen Sie einen fairen Ort, der auf unsere Karte gehört? Füllen Sie das Formular aus!",
-  premium_info:
-    "Das Einreichen von Ortsvorschlägen ist ausschließlich für Premium-Mitglieder verfügbar.",
   label_name: "Name des Ortes",
   label_adresse: "Adresse",
   label_beschreibung: "Warum sollte dieser Ort auf der Karte stehen?",
+  label_kategorie: "Kategorie",
   button_text: "Vorschlag einreichen",
-  hint_intro: "Ihr Vorschlag wird zusammen mit Ihrer E-Mail-Adresse übermittelt.",
-  hint_with_name:
-    "Vor- und Nachname werden ebenfalls gesendet, da sie in Ihrem Profil hinterlegt sind.",
-  hint_without_name:
-    "Vor- und Nachname werden nicht gesendet, da sie in Ihrem Profil nicht hinterlegt sind.",
+  hint_intro:
+    "Ihr Vorschlag wird mit Ihren Kontodaten (E-Mail, Name) übermittelt und redaktionell geprüft.",
   success_message: "Vielen Dank für Ihren Vorschlag! Wir prüfen ihn und melden uns.",
 };
 
 interface Props {
   user: User | null;
-  isPremium: boolean;
+  // isPremium zostaje w propsach dla kompat, ale ignorowane (v1.1.3: no premium-gate).
+  isPremium?: boolean;
 }
 
-export default function OrtVorschlagenSection({ user, isPremium }: Props) {
+export default function OrtVorschlagenSection({ user }: Props) {
   const {
     name,
     setName,
@@ -41,6 +40,8 @@ export default function OrtVorschlagenSection({ user, isPremium }: Props) {
     setAddress,
     description,
     setDescription,
+    kategorieId,
+    setKategorieId,
     isLoading,
     error,
     success,
@@ -61,26 +62,18 @@ export default function OrtVorschlagenSection({ user, isPremium }: Props) {
 
   const t = {
     intro: content?.intro || DEFAULTS.intro,
-    premium_info: content?.premium_info || DEFAULTS.premium_info,
     label_name: content?.label_name || DEFAULTS.label_name,
     label_adresse: content?.label_adresse || DEFAULTS.label_adresse,
     label_beschreibung: content?.label_beschreibung || DEFAULTS.label_beschreibung,
+    label_kategorie: DEFAULTS.label_kategorie,
     button_text: content?.button_text || DEFAULTS.button_text,
     hint_intro: content?.hint_intro || DEFAULTS.hint_intro,
-    hint_with_name: content?.hint_with_name || DEFAULTS.hint_with_name,
-    hint_without_name: content?.hint_without_name || DEFAULTS.hint_without_name,
     success_message: content?.success_message || DEFAULTS.success_message,
   };
 
   return (
     <View style={s.section}>
       <Text style={s.sectionHint}>{t.intro}</Text>
-
-      {!isPremium && (
-        <View style={s.premiumInfo}>
-          <Text style={s.premiumInfoText}>{t.premium_info}</Text>
-        </View>
-      )}
 
       {success ? (
         <View style={s.successBox}>
@@ -89,40 +82,52 @@ export default function OrtVorschlagenSection({ user, isPremium }: Props) {
       ) : (
         <>
           {error && <Text style={s.errorText}>{error}</Text>}
+
+          {/* Kategorie selector — 4 komercyjne (Sehenswertes idzie przez Redaktion) */}
+          <View style={s.fieldGroup}>
+            <Text style={s.fieldLabel}>{t.label_kategorie}</Text>
+            <View style={s.chipsRow}>
+              {KATEGORIEN_KOMMERZIELL.map((k) => {
+                const active = kategorieId === k.id;
+                return (
+                  <TouchableOpacity
+                    key={k.id}
+                    style={[s.chip, active && s.chipActive]}
+                    onPress={() => setKategorieId(k.id)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[s.chipText, active && s.chipTextActive]}>{k.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
           <View style={s.fieldGroup}>
             <Text style={s.fieldLabel}>{t.label_name}</Text>
-            <TextInput
-              style={[s.input, !isPremium && s.inputDisabled]}
-              value={name}
-              onChangeText={setName}
-              editable={isPremium}
-            />
+            <TextInput style={s.input} value={name} onChangeText={setName} />
           </View>
           <View style={s.fieldGroup}>
             <Text style={s.fieldLabel}>{t.label_adresse}</Text>
-            <TextInput
-              style={[s.input, !isPremium && s.inputDisabled]}
-              value={address}
-              onChangeText={setAddress}
-              editable={isPremium}
-            />
+            <TextInput style={s.input} value={address} onChangeText={setAddress} />
           </View>
           <View style={s.fieldGroup}>
             <Text style={s.fieldLabel}>{t.label_beschreibung}</Text>
             <TextInput
-              style={[s.input, s.textarea, !isPremium && s.inputDisabled]}
+              style={[s.input, s.textarea]}
               value={description}
               onChangeText={setDescription}
               multiline
               numberOfLines={4}
-              editable={isPremium}
             />
           </View>
-          {isPremium && <Text style={s.hint}>{t.hint_intro}</Text>}
+
+          <Text style={s.hint}>{t.hint_intro}</Text>
+
           <TouchableOpacity
-            style={[s.button, (!isPremium || isLoading) && s.buttonDisabled]}
+            style={[s.button, isLoading && s.buttonDisabled]}
             onPress={handleSubmit}
-            disabled={!isPremium || isLoading}
+            disabled={isLoading}
           >
             {isLoading ? (
               <ActivityIndicator color="#fc6c14" />
@@ -149,13 +154,6 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontFamily: "FiraSansCondensed_400Regular",
     color: "#555",
-    lineHeight: 18,
-  },
-  premiumInfo: { backgroundColor: "#fff5ef", borderRadius: 12, padding: 14 },
-  premiumInfoText: {
-    fontSize: 13,
-    fontFamily: "FiraSansCondensed_400Regular",
-    color: "#fc6c14",
     lineHeight: 18,
   },
   successBox: { backgroundColor: "#f0faf5", borderRadius: 12, padding: 16 },
@@ -196,12 +194,33 @@ const s = StyleSheet.create({
     backgroundColor: "#fafafa",
     fontFamily: "FiraSansCondensed_400Regular",
   },
-  inputDisabled: {
-    borderColor: "#ddd",
-    color: "#bbb",
+  textarea: { height: 110, textAlignVertical: "top" },
+  // Kategorie chips — poziomy wrap
+  chipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  chip: {
+    borderWidth: 1.5,
+    borderColor: "#000",
+    borderRadius: 9999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     backgroundColor: "#fafafa",
   },
-  textarea: { height: 110, textAlignVertical: "top" },
+  chipActive: {
+    backgroundColor: "#111",
+    borderColor: "#111",
+  },
+  chipText: {
+    fontSize: 13,
+    color: "#111",
+    fontFamily: "FiraSansCondensed_600SemiBold",
+  },
+  chipTextActive: {
+    color: "#fc6c14",
+  },
   button: {
     width: "100%",
     backgroundColor: "#111",

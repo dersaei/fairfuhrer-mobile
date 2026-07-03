@@ -103,6 +103,39 @@ export async function getOrtVorschlagenContent(): Promise<OrtVorschlagenContent 
 }
 
 // ========================================
+// Redaktion (Reisender-Seite "Redaktion" — Sehenswertes-Pins einreichen)
+// ========================================
+
+export interface RedaktionPageContent {
+  title?: string;
+  subtitle?: string;
+  label_name?: string;
+  label_adresse?: string;
+  label_stadt?: string;
+  label_land?: string;
+  label_beschreibung?: string;
+  label_titelbild?: string;
+  label_audio?: string;
+  label_galerie?: string;
+  hint_moderation?: string;
+  button_text?: string;
+  button_sending_text?: string;
+  success_message?: string;
+  error_message?: string;
+}
+
+export async function getRedaktionPageContent(): Promise<RedaktionPageContent | null> {
+  try {
+    const data = await directus.request(
+      readSingleton("redaktion_page_content" as any, { fields: ["*"] }),
+    );
+    return (data as RedaktionPageContent) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ========================================
 // Offline-Karten-Sektion (nur Mobile)
 // ========================================
 

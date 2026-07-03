@@ -15,9 +15,11 @@ import ProfilSection from "@/components/profil/ProfilSection";
 import EinstellungenSection from "@/components/profil/EinstellungenSection";
 import PremiumSection from "@/components/profil/PremiumSection";
 import OrtVorschlagenSection from "@/components/profil/OrtVorschlagenSection";
+import RedaktionSection from "@/components/profil/RedaktionSection";
 import OfflineKartenSection from "@/components/profil/OfflineKartenSection";
 
-type AccountSection = "profil" | "einstellungen" | "offline-karten" | "premium" | "ort-vorschlagen";
+type AccountSection =
+  "profil" | "einstellungen" | "offline-karten" | "premium" | "redaktion" | "ort-vorschlagen";
 
 function AccountScreen() {
   const { user, profile, isPro, signOut, deleteAccount, refreshProfile, refreshPro } = useAuth();
@@ -51,6 +53,7 @@ function AccountScreen() {
             "profil",
             "einstellungen",
             "offline-karten",
+            "redaktion",
             "ort-vorschlagen",
             "premium",
           ] as AccountSection[]
@@ -69,7 +72,9 @@ function AccountScreen() {
                     ? "Offline-Karten"
                     : sec === "premium"
                       ? "Premium"
-                      : "Ort vorschlagen"}
+                      : sec === "redaktion"
+                        ? "Redaktion"
+                        : "Ort vorschlagen"}
             </Text>
           </TouchableOpacity>
         ))}
@@ -95,6 +100,7 @@ function AccountScreen() {
         {activeSection === "premium" && (
           <PremiumSection isPro={isPro} refreshPro={refreshPro} profile={profile} />
         )}
+        {activeSection === "redaktion" && <RedaktionSection user={user} />}
         {activeSection === "ort-vorschlagen" && (
           <OrtVorschlagenSection user={user} isPremium={isPro} />
         )}
