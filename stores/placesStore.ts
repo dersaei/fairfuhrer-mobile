@@ -9,7 +9,7 @@ import type { DirectusOrte, DirectusKategorie, DirectusEinstellungen } from "@/t
 // Free accounts see ALL pins in EVERY category EXCEPT "Sehenswertes"
 // (Directus category, env-overridable id). For Sehenswertes-tagged places
 // we select a deterministic top-N subset by stable hash so the free user
-// always sees exactly ceil(0.2 * N) places — same set across devices.
+// always sees exactly ceil(0.5 * N) places — same set across devices.
 // Premium sees 100 %.
 //
 // Detection priority:
@@ -18,8 +18,8 @@ import type { DirectusOrte, DirectusKategorie, DirectusEinstellungen } from "@/t
 //      (matches "Sehenswertes" and "Sehenswürdigkeiten").
 //
 // A place tagged with Sehenswertes + any other category is still treated as
-// Sehenswertes and is subject to the 20 % cap.
-const FREE_VISIBLE_RATIO = 0.2;
+// Sehenswertes and is subject to the 50 % cap (Frank's decision 2026-07-03).
+const FREE_VISIBLE_RATIO = 0.5;
 
 function normalizeGerman(input: string): string {
   return input
@@ -53,7 +53,7 @@ function placeHasSights(place: DirectusOrte, sightsCategoryIds: Set<number>): bo
 }
 
 // FNV-1a 32-bit — stable, no external deps, well-distributed enough that a
-// 20 % cutoff produces a 20 % visible subset in practice. Keys are derived
+// 50 % cutoff produces a 50 % visible subset in practice. Keys are derived
 // from place.id (primary) plus Name to make the hash robust if id schemas
 // change later.
 function stableHash01(place: DirectusOrte): number {
@@ -70,8 +70,8 @@ function stableHash01(place: DirectusOrte): number {
 // ─── Shared gating computation ───────────────────────────────────────────────
 //
 // Returns two sets for free users:
-//   visibleSightsIds — the top-20% Sehenswertes places (unlocked)
-//   lockedSightsIds  — the remaining 80% (shown on map, paywall on tap)
+//   visibleSightsIds — the top-50% Sehenswertes places (unlocked)
+//   lockedSightsIds  — the remaining 50% (shown on map, paywall on tap)
 //
 // For premium users both sets are empty (not needed — all places are open).
 
@@ -181,7 +181,7 @@ interface PlacesState {
   getPlaceById: (id: number) => DirectusOrte | undefined;
   getVisiblePlaces: (isPro: boolean) => DirectusOrte[];
   // Returns all places (for map display), plus the set of locked IDs.
-  // Locked = Sehenswertes but outside the free 20% — shown as pins,
+  // Locked = Sehenswertes but outside the free 50% — shown as pins,
   // but tapping opens paywall instead of the detail screen.
   getAllPlacesWithLocked: (isPro: boolean) => {
     places: DirectusOrte[];
@@ -213,9 +213,9 @@ export const usePlacesStore = create<PlacesState>((set, get) => ({
 
   // Deterministic visibility filter:
   //   - Premium → all places
-  //   - Free   → all non-Sehenswertes places + exactly ceil(0.2 * N) of
+  //   - Free   → all non-Sehenswertes places + exactly ceil(0.5 * N) of
   //              the Sehenswertes places (N = total Sehenswertes count).
-  //              Selection is stable: sort by hash, take the smallest N20.
+  //              Selection is stable: sort by hash, take the smallest N50.
   getVisiblePlaces: (isPro) => {
     const { places, categories } = get();
     if (isPro) return places;

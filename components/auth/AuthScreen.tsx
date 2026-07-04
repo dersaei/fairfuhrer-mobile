@@ -273,7 +273,7 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
               features={[
                 { text: "Audio-Guides zu allen Orten anhören" },
                 { text: "Alle Kategorien entdecken (Gastronomie, Einkaufen, Engagement …)" },
-                { text: "20 % der Pins in „Sehenswertes“" },
+                { text: "50 % der Pins in „Sehenswertes“" },
                 { text: "Karte & Ortsuche" },
                 { text: "100 % der Pins in „Sehenswertes“", locked: true },
                 { text: "Offline-Karten", locked: true },

@@ -26,7 +26,7 @@ const DEFAULTS = {
   hero_subtitle:
     "Fairführer wird von einem kleinen Team gemacht. Mit deinem Beitrag bleiben wir frei und unabhängig — alle Funktionen gehören dazu.",
   features: [
-    "Alle Sehenswürdigkeiten — nicht nur 20 %",
+    "Alle Sehenswürdigkeiten — nicht nur 50 %",
     "Offline-Karten für unterwegs",
     "Eigene Orte vorschlagen & Pins erstellen",
     "Redaktionelle Prüfung deiner Pins",

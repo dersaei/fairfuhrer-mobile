@@ -19,6 +19,8 @@ export interface Profile {
   last_name: string | null;
   avatar_url: string | null;
   premium_until: string | null;
+  bio: string | null;
+  is_public: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -156,7 +156,7 @@ export function KategorieBar({
                     <Text
                       style={[styles.kategorieMenuHint, isActive && styles.kategorieMenuHintActive]}
                     >
-                      Basis-Nutzer sehen nur 20 % der Sehenswertes-Orte. Mit Fairführer+ sind alle
+                      Basis-Nutzer sehen nur 50 % der Sehenswertes-Orte. Mit Fairführer+ sind alle
                       sichtbar.
                     </Text>
                   )}

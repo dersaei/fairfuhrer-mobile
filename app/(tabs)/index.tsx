@@ -177,7 +177,7 @@ export default function ListeScreen() {
   const handleAlleAbspielen = useCallback(() => {
     if (playablePlaces.length === 0) return;
     // Zero capa — Miriam prosila o "all matching pins". User zatrzyma
-    // playlist gdy zechce. Sehenswertes gating dla free (20% cap) i tak
+    // playlist gdy zechce. Sehenswertes gating dla free (50% cap) i tak
     // ogranicza liczbe pinow po stronie storu.
     startPlaylist(playablePlaces, { kind: "aktuelle_liste", label: alleAbspielenLabel });
     router.push("/player");

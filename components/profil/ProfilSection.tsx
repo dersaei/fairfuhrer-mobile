@@ -1,3 +1,11 @@
+// Hinweis (2026-07-04): Community-Feature auf Eis gelegt (Entscheidung Frank —
+// Aufwand/Kosten Rechtsberatung). Diese Datei wurde auf den Stand vor dem
+// Feature zurückgesetzt. Der fertige Community-Block (Bio + Sichtbarkeit) liegt
+// als Referenz im Web-Projekt: components/auth/CommunityProfilSection.tsx.
+// DB-Felder profiles.bio / profiles.is_public bleiben in Supabase erhalten.
+// Zum Reaktivieren: Block von dort nach React Native portieren + Props
+// profile/refreshProfile aus (tabs)/profil.tsx werden bereits übergeben.
+
 import { useState } from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from "react-native";
 

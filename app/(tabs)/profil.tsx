@@ -26,12 +26,7 @@ import PremiumSection from "@/components/profil/PremiumSection";
 import RedaktionSection from "@/components/profil/RedaktionSection";
 import OfflineKartenSection from "@/components/profil/OfflineKartenSection";
 
-type AccountSection =
-  | "profil"
-  | "einstellungen"
-  | "offline-karten"
-  | "premium"
-  | "redaktion";
+type AccountSection = "profil" | "einstellungen" | "offline-karten" | "premium" | "redaktion";
 
 function AccountScreen() {
   const { user, profile, isPro, signOut, deleteAccount, refreshProfile, refreshPro } = useAuth();
@@ -61,13 +56,7 @@ function AccountScreen() {
         contentContainerStyle={s.navContent}
       >
         {(
-          [
-            "profil",
-            "einstellungen",
-            "offline-karten",
-            "redaktion",
-            "premium",
-          ] as AccountSection[]
+          ["profil", "einstellungen", "offline-karten", "redaktion", "premium"] as AccountSection[]
         ).map((sec) => (
           <TouchableOpacity
             key={sec}

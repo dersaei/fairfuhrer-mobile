@@ -144,7 +144,7 @@ export default function TourScreen() {
         if (p) queue.push(p);
       }
       // Bez capa — user zatrzyma playlist gdy zechce. Sehenswertes gating
-      // (20% dla free) i tak ogranicza liczbe pinow po stronie storu.
+      // (50% dla free) i tak ogranicza liczbe pinow po stronie storu.
       if (queue.length === 0) {
         Alert.alert("Keine Pins", "In deiner Umgebung wurden keine Pins gefunden.");
         return;

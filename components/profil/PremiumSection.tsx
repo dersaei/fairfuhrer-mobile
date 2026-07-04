@@ -15,7 +15,7 @@ import {
 // Fallback-Tabelle, falls Directus nichts liefert
 const FALLBACK_ROWS: { feature: string; free: boolean; pro: boolean }[] = [
   { feature: "Alle Kategorien auf der Karte", free: true, pro: true },
-  { feature: "20 % der Sehenswertes-Pins", free: true, pro: true },
+  { feature: "50 % der Sehenswertes-Pins", free: true, pro: true },
   { feature: "100 % der Sehenswertes-Pins", free: false, pro: true },
   { feature: "Offline-Karten", free: false, pro: true },
   { feature: "Orte vorschlagen", free: false, pro: true },

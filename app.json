@@ -17,6 +17,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.fairfuehrer.app",
       "usesAppleSignIn": true,
+      "associatedDomains": ["applinks:www.fairfuehrer.guide"],
       "infoPlist": {
         "CFBundleDisplayName": "Fairführer+",
         "ITSAppUsesNonExemptEncryption": false,
@@ -37,6 +38,35 @@
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "category": ["BROWSABLE", "DEFAULT"],
+          "data": [
+            {
+              "scheme": "https",
+              "host": "www.fairfuehrer.guide",
+              "pathPrefix": "/karte"
+            },
+            {
+              "scheme": "https",
+              "host": "www.fairfuehrer.guide",
+              "pathPrefix": "/impressum"
+            },
+            {
+              "scheme": "https",
+              "host": "www.fairfuehrer.guide",
+              "pathPrefix": "/agb"
+            },
+            {
+              "scheme": "https",
+              "host": "www.fairfuehrer.guide",
+              "pathPrefix": "/datenschutz"
+            }
+          ]
+        }
       ]
     },
     "web": {
