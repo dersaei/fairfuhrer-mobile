@@ -11,6 +11,8 @@ import Mapbox, {
 } from "@rnmapbox/maps";
 import type { ComponentRef } from "react";
 import { useRouter, usePathname } from "expo-router";
+import * as Location from "expo-location";
+import * as Sentry from "@sentry/react-native";
 import { useTabGpsCenter } from "@/hooks/useTabGpsCenter";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
@@ -92,6 +94,10 @@ export default function KarteScreen() {
   const [bottomSectionHeight, setBottomSectionHeight] = useState(0);
   const { center: cameraCenter, zoom: cameraZoom } = useTabGpsCenter(status === "success");
   const userLocationRef = useRef<[number, number] | null>(null);
+  // Diagnostyka: potwierdza czy natywny silnik lokalizacji Mapboxa w ogóle
+  // dostarcza fixa (puck). Jeśli w Sentry nie ma tego breadcrumba, puck jest
+  // martwy na poziomie natywnym/urządzenia.
+  const puckSeenRef = useRef(false);
   const shapeSourceRef = useRef<ComponentRef<typeof ShapeSource>>(null);
   const cameraRef = useRef<Camera>(null);
 
@@ -274,13 +280,6 @@ export default function KarteScreen() {
               animationMode="flyTo"
               animationDuration={800}
             />
-            <UserLocation
-              visible
-              showsUserHeadingIndicator
-              onUpdate={(loc) => {
-                userLocationRef.current = [loc.coords.longitude, loc.coords.latitude];
-              }}
-            />
 
             {/* Jeden source dla wszystkich miejsc — klastry natywnie w GPU */}
             <ShapeSource
@@ -338,14 +337,37 @@ export default function KarteScreen() {
                 }}
               />
             </ShapeSource>
+
+            {/* UserLocation MUSI byc ostatnim dzieckiem MapView, zeby puck
+                z lokalizacja uzytkownika byl rysowany NA WIERZCHU pinow.
+                W Mapbox React Native kolejnosc JSX = kolejnosc warstw. */}
+            <UserLocation
+              visible
+              showsUserHeadingIndicator
+              onUpdate={(loc) => {
+                userLocationRef.current = [loc.coords.longitude, loc.coords.latitude];
+                if (!puckSeenRef.current) {
+                  puckSeenRef.current = true;
+                  Sentry.addBreadcrumb({
+                    category: "gps",
+                    level: "info",
+                    message: "UserLocation puck first fix",
+                    data: { lon: loc.coords.longitude, lat: loc.coords.latitude },
+                  });
+                }
+              }}
+            />
           </MapView>
         )}
       </View>
 
-      {/* Przycisk powrotu do lokalizacji */}
+      {/* Przycisk powrotu do lokalizacji. Priorytet:
+          1. userLocationRef (aktualizowany przez UserLocation.onUpdate)
+          2. Fallback: getCurrentPositionAsync (gdy Mapbox jeszcze nie
+             odpalił onUpdate — np. tuz po otwarciu Karte) */}
       <TouchableOpacity
         style={styles.gpsBtn}
-        onPress={() => {
+        onPress={async () => {
           if (userLocationRef.current) {
             cameraRef.current?.setCamera({
               centerCoordinate: userLocationRef.current,
@@ -353,6 +375,44 @@ export default function KarteScreen() {
               animationMode: "flyTo",
               animationDuration: 600,
             });
+            return;
+          }
+          // Fallback: puck jeszcze nie dostarczył fixa (onUpdate nie odpalił).
+          // Diagnostyka wysyła do Sentry realną przyczynę zamiast po cichu nic
+          // nie robić.
+          Sentry.addBreadcrumb({
+            category: "gps",
+            level: "info",
+            message: "gps-button fallback (puck ref empty)",
+          });
+          try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== "granted") {
+              Sentry.captureMessage("gps-button: permission not granted", {
+                level: "warning",
+                tags: { feature: "gps-button" },
+                extra: { status },
+              });
+              return;
+            }
+            // getCurrentPositionAsync nie ma wbudowanego timeoutu i potrafi
+            // wisieć w nieskonczonosc bez fixa GPS — obudowujemy w Promise.race.
+            const pos = await Promise.race([
+              Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+              new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error("getCurrentPositionAsync timeout (10s)")), 10000),
+              ),
+            ]);
+            const coords: [number, number] = [pos.coords.longitude, pos.coords.latitude];
+            userLocationRef.current = coords;
+            cameraRef.current?.setCamera({
+              centerCoordinate: coords,
+              zoomLevel: 13,
+              animationMode: "flyTo",
+              animationDuration: 600,
+            });
+          } catch (e) {
+            Sentry.captureException(e, { tags: { feature: "gps-button" } });
           }
         }}
         activeOpacity={0.8}

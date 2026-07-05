@@ -2,6 +2,14 @@ import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path, Circle, Polygon } from "react-native-svg";
 
+// Expo Router: `initialRouteName` jako prop w <Tabs> bywa ignorowany
+// (deep-linki, cold-start, restore state). `unstable_settings` jest
+// autorytatywnym zrodlem dla routera i wygrywa z prop-em. Musi byc
+// zdeklarowane rownolegle z komponentem, nie w srodku.
+export const unstable_settings = {
+  initialRouteName: "karte",
+};
+
 function ListeIcon({ focused }: { focused: boolean }) {
   const color = focused ? "#fc6c14" : "#999";
   return (
