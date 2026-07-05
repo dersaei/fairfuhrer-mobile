@@ -18,19 +18,15 @@ import { useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import { AuthWeakPasswordError } from "@supabase/supabase-js";
 import MenuButton from "@/components/MenuButton";
-import PlanCompareCard from "@/components/PlanCompareCard";
-// Social loginy (Apple/Google) sind in Release 1.0.3 vorübergehend
-// deaktiviert: Mapbox-Konflikte auf iOS, fehlender Browser-Redirect bei
-// Apple-OAuth auf Android. Die Komponenten und Pakete bleiben im Repo,
-// damit eine Wiederaktivierung in einem späteren Release einfach ist.
-// import GoogleSignInButton from "@/components/GoogleSignInButton";
-// import AppleSignInButton from "@/components/AppleSignInButton";
+import PlanCompareCard, { type Feature } from "@/components/PlanCompareCard";
 import { getAuthScreenContent, type AuthScreenContent } from "@/lib/directus";
 import PasswordInput from "@/components/PasswordInput";
 
 type AuthView = "welcome" | "login" | "register" | "forgot";
 
-// Fallback-Texte, falls Directus nichts liefert
+// Fallback-Texte, falls Directus nichts liefert.
+// Content-Fields: Miriam pflegt sie in Directus (Kollektion `auth_screen_content`).
+// Fehler- & Validierungsmeldungen und Eingabefeld-Platzhalter bleiben hardcoded.
 const DEFAULTS = {
   welcome_eyebrow: "DEIN FAIRFÜHRER-KONTO",
   welcome_headline: "ENTDECKE\nMEHR.\nBEWEGE\nMEHR.",
@@ -44,12 +40,9 @@ const DEFAULTS = {
   headline_login: "Reisender",
   tab_login: "Anmelden",
   tab_register: "Registrieren",
-  divider_text: "oder mit E-Mail",
   btn_register: "Konto erstellen",
   btn_login: "Anmelden",
   forgot_link: "Passwort vergessen?",
-  google_hint:
-    "Du hast dich mit Google registriert? Melde dich mit dem Google-Button an statt mit E-Mail und Passwort.",
   partner_info: "Werde unser Partner.",
   partner_link: "Hier erfahren Sie mehr.",
   forgot_headline: "Passwort vergessen",
@@ -62,6 +55,31 @@ const DEFAULTS = {
   reg_success_title: "Fast fertig!",
   reg_success_text: "Bitte prüfe deine E-Mails und bestätige deine Registrierung.",
   back_btn: "← Zurück",
+  plans_free_title: "Kostenlos",
+  plans_free_features: [
+    { text: "Audio-Guides zu allen Orten anhören" },
+    { text: "Alle Kategorien entdecken (Gastronomie, Einkaufen, Engagement …)" },
+    { text: "50 % der Pins in „Sehenswertes“" },
+    { text: "Karte & Ortsuche" },
+    { text: "100 % der Pins in „Sehenswertes“", locked: true },
+    { text: "Offline-Karten", locked: true },
+    { text: "Orte vorschlagen & Pins erstellen", locked: true },
+  ] as Feature[],
+  plans_premium_title: "FAIRFÜHRER+",
+  plans_premium_features: [
+    { text: "Alles aus der kostenlosen Version" },
+    { text: "100 % der Pins in „Sehenswertes“" },
+    { text: "Offline-Karten für unterwegs" },
+    { text: "Neue Orte vorschlagen & eigene Pins erstellen" },
+    { text: "Pins werden von unseren Redakteuren geprüft" },
+  ] as Feature[],
+  password_hint:
+    "Mindestens 8 Zeichen mit Groß- und Kleinbuchstaben, einer Zahl und einem Sonderzeichen (z. B. !, @, #). Wähle ein einzigartiges Passwort – wir empfehlen einen Passwort-Manager (z. B. Dashlane, 1Password) zum Erstellen sicherer Passwörter.",
+  consent_prefix: "Ich habe die",
+  consent_terms_link: "Nutzungsbedingungen",
+  consent_middle: "und die",
+  consent_privacy_link: "Datenschutzerklärung",
+  consent_suffix: "gelesen und stimme ihnen zu.",
 };
 
 interface AuthScreenProps {
@@ -96,6 +114,10 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
     };
   }, []);
 
+  // Repeater-Felder (features) niemals mit || fallbacken — leeres Array ist
+  // truthy, aber semantisch "Miriam hat absichtlich alles gelöscht". Wir
+  // nutzen also nur den Fallback, wenn Directus komplett nichts liefert
+  // (undefined/null) — nicht bei leeren Arrays.
   const t = {
     welcome_eyebrow: content?.welcome_eyebrow || DEFAULTS.welcome_eyebrow,
     welcome_headline: content?.welcome_headline || DEFAULTS.welcome_headline,
@@ -108,11 +130,9 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
     headline_login: content?.headline_login || DEFAULTS.headline_login,
     tab_login: content?.tab_login || DEFAULTS.tab_login,
     tab_register: content?.tab_register || DEFAULTS.tab_register,
-    divider_text: content?.divider_text || DEFAULTS.divider_text,
     btn_register: content?.btn_register || DEFAULTS.btn_register,
     btn_login: content?.btn_login || DEFAULTS.btn_login,
     forgot_link: content?.forgot_link || DEFAULTS.forgot_link,
-    google_hint: content?.google_hint || DEFAULTS.google_hint,
     partner_info: content?.partner_info || DEFAULTS.partner_info,
     partner_link: content?.partner_link || DEFAULTS.partner_link,
     forgot_headline: content?.forgot_headline || DEFAULTS.forgot_headline,
@@ -123,6 +143,16 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
     reg_success_title: content?.reg_success_title || DEFAULTS.reg_success_title,
     reg_success_text: content?.reg_success_text || DEFAULTS.reg_success_text,
     back_btn: content?.back_btn || DEFAULTS.back_btn,
+    plans_free_title: content?.plans_free_title || DEFAULTS.plans_free_title,
+    plans_free_features: content?.plans_free_features ?? DEFAULTS.plans_free_features,
+    plans_premium_title: content?.plans_premium_title || DEFAULTS.plans_premium_title,
+    plans_premium_features: content?.plans_premium_features ?? DEFAULTS.plans_premium_features,
+    password_hint: content?.password_hint || DEFAULTS.password_hint,
+    consent_prefix: content?.consent_prefix || DEFAULTS.consent_prefix,
+    consent_terms_link: content?.consent_terms_link || DEFAULTS.consent_terms_link,
+    consent_middle: content?.consent_middle || DEFAULTS.consent_middle,
+    consent_privacy_link: content?.consent_privacy_link || DEFAULTS.consent_privacy_link,
+    consent_suffix: content?.consent_suffix || DEFAULTS.consent_suffix,
   };
 
   const reset = () => {
@@ -268,29 +298,12 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
           </ImageBackground>
 
           <View style={s.welcomeValueSection}>
-            <PlanCompareCard
-              title="Kostenlos"
-              features={[
-                { text: "Audio-Guides zu allen Orten anhören" },
-                { text: "Alle Kategorien entdecken (Gastronomie, Einkaufen, Engagement …)" },
-                { text: "50 % der Pins in „Sehenswertes“" },
-                { text: "Karte & Ortsuche" },
-                { text: "100 % der Pins in „Sehenswertes“", locked: true },
-                { text: "Offline-Karten", locked: true },
-                { text: "Orte vorschlagen & Pins erstellen", locked: true },
-              ]}
-            />
+            <PlanCompareCard title={t.plans_free_title} features={t.plans_free_features} />
 
             <PlanCompareCard
-              title="FAIRFÜHRER+"
+              title={t.plans_premium_title}
               isPremium
-              features={[
-                { text: "Alles aus der kostenlosen Version" },
-                { text: "100 % der Pins in „Sehenswertes“" },
-                { text: "Offline-Karten für unterwegs" },
-                { text: "Neue Orte vorschlagen & eigene Pins erstellen" },
-                { text: "Pins werden von unseren Redakteuren geprüft" },
-              ]}
+              features={t.plans_premium_features}
               button={
                 <TouchableOpacity
                   style={s.welcomeBtnPremium}
@@ -339,7 +352,7 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
               </>
             ) : (
               <>
-                <Text style={s.googleHint}>{t.forgot_hint}</Text>
+                <Text style={s.hintText}>{t.forgot_hint}</Text>
 
                 {error && <Text style={s.errorText}>{error}</Text>}
 
@@ -437,14 +450,7 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
               onChangeText={setPassword}
               autoComplete={isReg ? "new-password" : "password"}
             />
-            {isReg && (
-              <Text style={s.fieldHint}>
-                Mindestens 8 Zeichen mit Groß- und Kleinbuchstaben, einer Zahl und einem
-                Sonderzeichen (z. B. !, @, #). Wähle ein einzigartiges Passwort – wir empfehlen
-                einen Passwort-Manager (z. B. Dashlane, 1Password) zum Erstellen sicherer
-                Passwörter.
-              </Text>
-            )}
+            {isReg && <Text style={s.fieldHint}>{t.password_hint}</Text>}
           </View>
 
           {isReg && (
@@ -471,15 +477,15 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
                 {consentAccepted && <Text style={s.checkmark}>✓</Text>}
               </View>
               <Text style={s.consentText}>
-                Ich habe die{" "}
+                {t.consent_prefix}{" "}
                 <Text style={s.consentLink} onPress={() => router.push("/(drawer)/agb")}>
-                  Nutzungsbedingungen
+                  {t.consent_terms_link}
                 </Text>{" "}
-                und die{" "}
+                {t.consent_middle}{" "}
                 <Text style={s.consentLink} onPress={() => router.push("/(drawer)/datenschutz")}>
-                  Datenschutzerklärung
+                  {t.consent_privacy_link}
                 </Text>{" "}
-                gelesen und stimme ihnen zu.
+                {t.consent_suffix}
               </Text>
             </TouchableOpacity>
           )}
@@ -798,23 +804,7 @@ const s = StyleSheet.create({
     letterSpacing: 1,
     alignSelf: "center",
   },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    width: "100%",
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#f0e8e0",
-  },
-  dividerText: {
-    color: "#999",
-    fontSize: 13,
-    fontFamily: "FiraSansCondensed_400Regular",
-  },
-  googleHint: {
+  hintText: {
     fontSize: 13,
     color: "#666",
     fontFamily: "FiraSansCondensed_400Regular",

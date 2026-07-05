@@ -78,30 +78,6 @@ export async function getAccountContactFormContent(): Promise<AccountContactForm
   }
 }
 
-export interface OrtVorschlagenContent {
-  intro?: string;
-  premium_info?: string;
-  label_name?: string;
-  label_adresse?: string;
-  label_beschreibung?: string;
-  button_text?: string;
-  hint_intro?: string;
-  hint_with_name?: string;
-  hint_without_name?: string;
-  success_message?: string;
-}
-
-export async function getOrtVorschlagenContent(): Promise<OrtVorschlagenContent | null> {
-  try {
-    const data = await directus.request(
-      readSingleton("ort_vorschlagen_content" as any, { fields: ["*"] }),
-    );
-    return (data as OrtVorschlagenContent) ?? null;
-  } catch {
-    return null;
-  }
-}
-
 // ========================================
 // Redaktion (Reisender-Seite "Redaktion" — Sehenswertes-Pins einreichen)
 // ========================================
@@ -207,6 +183,11 @@ export async function getPaywallContent(): Promise<PaywallContent | null> {
 // Auth-Bildschirm (Login/Registrierung, nur Mobile)
 // ========================================
 
+export interface PlanFeature {
+  text: string;
+  locked?: boolean;
+}
+
 export interface AuthScreenContent {
   welcome_eyebrow?: string;
   welcome_headline?: string;
@@ -219,11 +200,9 @@ export interface AuthScreenContent {
   headline_login?: string;
   tab_login?: string;
   tab_register?: string;
-  divider_text?: string;
   btn_register?: string;
   btn_login?: string;
   forgot_link?: string;
-  google_hint?: string;
   partner_info?: string;
   partner_link?: string;
   forgot_headline?: string;
@@ -234,6 +213,18 @@ export interface AuthScreenContent {
   reg_success_title?: string;
   reg_success_text?: string;
   back_btn?: string;
+  // Plan-Vergleichskarten (Welcome-Screen)
+  plans_free_title?: string;
+  plans_free_features?: PlanFeature[];
+  plans_premium_title?: string;
+  plans_premium_features?: PlanFeature[];
+  // Formular-Zusatztexte
+  password_hint?: string;
+  consent_prefix?: string;
+  consent_terms_link?: string;
+  consent_middle?: string;
+  consent_privacy_link?: string;
+  consent_suffix?: string;
 }
 
 export async function getAuthScreenContent(): Promise<AuthScreenContent | null> {

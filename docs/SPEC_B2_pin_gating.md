@@ -1,5 +1,29 @@
 # Release B.2 — Pin Gating & Vorschlags-Flow
 
+> ⚠️ **STATUS 2026-07-05: NIEAKTUALNY (do przerobki v5)**
+>
+> Ort-vorschlagen (prosty formularz sugestii dla kategorii komercyjnych)
+> zostało **usunięte z produktu** (repo + Directus) po wiadomości Miriam
+> z 2026-07-03 potwierdzającej wizję Franka: *"One thing Frank definitely
+> does not want is a feature where users can only suggest a place."*
+>
+> W tym dokumencie **Flow A (prosty formularz sugestii → `/api/ort-vorschlagen`)
+> NIE OBOWIĄZUJE**. Cały opis "OrtVorschlagenSection", `useSubmitPlaceProposal`,
+> `ort_vorschlaege` collection, `/api/ort-vorschlagen` route — pliki i endpointy
+> już nie istnieją.
+>
+> **Co zostaje aktualne:** ogólna filozofia gatingu Sehenswertes (teraz 50 %
+> nie 20 %), rozróżnienie Sehenswertes vs kategorie komercyjne, koncept
+> Redaktion.
+>
+> **Nowy model (do doprecyzowania po odpowiedzi Miriam na pytania z 2026-07-03):**
+> Redaktion widzi Sehenswertes-Pin form (istnieje, live) oraz — być może —
+> Partner-Pin form w imieniu biznesu. Reisender bez konta lub z kontem?
+> Sehenswertes 50 % free / 100 % Fairführer+. Grace period po expired
+> subscription — czekamy na Franka.
+>
+> Patrz: `project_miriam_pending_answer_2026_07_03` w memory index.
+
 **Status:** SPEC v4 (po ustaleniach z Konradem — dwa Reisender flowy + moderacja wszystkich)
 **Data aktualizacji:** 2026-07-02
 **Docelowa wersja:** 1.2.0 (mobile) + drobny sync w web

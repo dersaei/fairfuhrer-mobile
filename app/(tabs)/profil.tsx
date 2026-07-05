@@ -14,15 +14,6 @@ import AuthScreen from "@/components/auth/AuthScreen";
 import ProfilSection from "@/components/profil/ProfilSection";
 import EinstellungenSection from "@/components/profil/EinstellungenSection";
 import PremiumSection from "@/components/profil/PremiumSection";
-// UWAGA: OrtVorschlagenSection tymczasowo usunieta z nav (2026-07-03).
-// Powod: dublowanie z Redaktion + niejasna wartosc biznesowa. Plik komponentu
-// (components/profil/OrtVorschlagenSection.tsx) ZOSTAJE w repo jako opcja na
-// pozniej. Zeby przywrocic:
-//   1. Uncomment import ponizej
-//   2. Dodaj "ort-vorschlagen" do AccountSection type
-//   3. Dodaj "ort-vorschlagen" do listy nav
-//   4. Uncomment render section w JSX
-// import OrtVorschlagenSection from "@/components/profil/OrtVorschlagenSection";
 import RedaktionSection from "@/components/profil/RedaktionSection";
 import OfflineKartenSection from "@/components/profil/OfflineKartenSection";
 
@@ -99,12 +90,6 @@ function AccountScreen() {
           <PremiumSection isPro={isPro} refreshPro={refreshPro} profile={profile} />
         )}
         {activeSection === "redaktion" && <RedaktionSection user={user} />}
-        {/* Ort-vorschlagen sekcja tymczasowo ukryta z nav (patrz komentarz na gorze pliku).
-            Zeby przywrocic: dodaj "ort-vorschlagen" do AccountSection + do listy nav,
-            i uncomment ponizej.
-            {activeSection === "ort-vorschlagen" && (
-              <OrtVorschlagenSection user={user} isPremium={isPro} />
-            )} */}
       </ScrollView>
     </SafeAreaView>
   );

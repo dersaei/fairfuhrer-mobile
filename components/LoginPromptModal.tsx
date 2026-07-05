@@ -15,7 +15,7 @@ const DEFAULTS = {
     "Dein Plan ist ausgewählt — du brauchst nur noch ein Konto, damit dein Abo auf allen Geräten funktioniert und du es jederzeit wiederherstellen kannst.",
   body_highlight: "",
   body_suffix: "",
-  hint: "Es dauert weniger als eine Minute — mit Apple, Google oder E-Mail.",
+  hint: "Es dauert weniger als eine Minute.",
   btn_primary: "Konto erstellen oder anmelden",
   close_link: "Abbrechen",
 };

@@ -1,5 +1,14 @@
 # Analiza i drogowskaz — review dokumentu `SPEC_B2_pin_gating.md`
 
+> ⚠️ **STATUS 2026-07-05: częściowo nieaktualny**
+>
+> Ort-vorschlagen usunięty z produktu (2026-07-05). Wszystkie odwołania
+> do `/api/ort-vorschlagen`, `useSubmitPlaceProposal`, `ort_vorschlaege`
+> i `OrtVorschlagenSection` odnoszą się do **nieistniejącego już kodu**.
+> Uwagi bezpieczeństwa (Flow A anti-spoofing) są historyczne — endpoint
+> nie istnieje. Uwagi dotyczące Sehenswertes gating (Flow B, moderacja,
+> RevenueCat sync) pozostają aktualne dla ewentualnego SPEC v5.
+
 **Status:** REVIEW (nie zastępuje speca — dokument towarzyszący)
 **Data:** 2026-07-02
 **Dotyczy:** [`SPEC_B2_pin_gating.md`](./SPEC_B2_pin_gating.md)
