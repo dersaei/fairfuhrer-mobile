@@ -5,6 +5,7 @@ import Mapbox, {
   Camera,
   MapView,
   UserLocation,
+  LocationPuck,
   ShapeSource,
   CircleLayer,
   SymbolLayer,
@@ -338,12 +339,21 @@ export default function KarteScreen() {
               />
             </ShapeSource>
 
-            {/* UserLocation MUSI byc ostatnim dzieckiem MapView, zeby puck
-                z lokalizacja uzytkownika byl rysowany NA WIERZCHU pinow.
-                W Mapbox React Native kolejnosc JSX = kolejnosc warstw. */}
-            <UserLocation
+            {/* Puck (natywny GPU renderer) MUSI byc ostatnim dzieckiem MapView,
+                zeby byl rysowany NA WIERZCHU pinow. W Mapbox React Native
+                kolejnosc JSX = kolejnosc warstw.
+                W 10.3.x <UserLocation> jest deprecated i w praktyce w 10.3.2
+                przestal renderowac puck na Androidzie. LocationPuck to nastepca
+                (natywny), a osobny <UserLocation visible={false} onUpdate>
+                zostaje tylko po to, zeby dostac coords do userLocationRef
+                (uzywane przez globus) — puck sie nie duplikuje, bo visible=false. */}
+            <LocationPuck
+              puckBearingEnabled
+              puckBearing="heading"
               visible
-              showsUserHeadingIndicator
+            />
+            <UserLocation
+              visible={false}
               onUpdate={(loc) => {
                 userLocationRef.current = [loc.coords.longitude, loc.coords.latitude];
                 if (!puckSeenRef.current) {
