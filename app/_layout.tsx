@@ -30,23 +30,17 @@ const navigationIntegration = Sentry.reactNavigationIntegration({
 Sentry.init({
   dsn: "https://56408b4e34df2ce6230499434808286c@o4511537387339776.ingest.de.sentry.io/4511537588338768",
 
-  // Adds more context data to events (IP address, cookies, user, etc.)
-  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
-  sendDefaultPii: true,
+  // Keine PII an Sentry senden (keine IP, kein user.id/email, keine Cookies).
+  // Erforderlich für die Datenschutz-Deklarationen im App Store und Google Play.
+  sendDefaultPii: false,
 
-  // Enable Logs
-  enableLogs: true,
+  // Keine Konsolen-Logs an Sentry (können versehentlich PII enthalten).
+  enableLogs: false,
 
   // Performance Monitoring: 20 % der Transaktionen sampeln (in Produktion sinnvoll).
   tracesSampleRate: 0.2,
 
-  // Configure Session Replay
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1,
-  integrations: [Sentry.mobileReplayIntegration(), navigationIntegration],
-
-  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
-  // spotlight: __DEV__,
+  integrations: [navigationIntegration],
 });
 
 SplashScreen.preventAutoHideAsync();
