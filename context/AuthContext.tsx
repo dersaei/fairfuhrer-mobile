@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
+import * as Sentry from "@sentry/react-native";
 import { supabase } from "@/lib/supabase";
 import {
   identifyUser,
@@ -85,21 +86,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) {
-        // Czyści dane offline, jeśli to inne konto niż poprzednio na tym
-        // urządzeniu — zapobiega dziedziczeniu danych premium między kontami.
-        await reconcileOfflineDataOwner(session.user.id);
-        const [p] = await Promise.all([
-          fetchProfile(session.user.id),
-          identifyAndAttachEmail(session.user),
-        ]);
-        setProfile(p);
-        await checkPro();
-      }
-      setIsLoading(false);
-    });
+    // Safety-net: bez tego apka mogla wisiec na splashu na zawsze, gdy
+    // getSession / fetchProfile / RevenueCat init wisi (network hang).
+    // isLoading zostawal true → _layout.tsx nie wywolal fetchAll →
+    // dataReady zostawal false → native splash sie nie chowa.
+    // Po 8s wymuszamy przejscie dalej — nawet jesli auth nie odpowiedzial.
+    const forceReadyTimer = setTimeout(() => {
+      setIsLoading((current) => {
+        if (current) {
+          Sentry.captureMessage("Auth init timeout (8s) — forcing isLoading=false", {
+            level: "warning",
+            tags: { feature: "auth-init" },
+          });
+        }
+        return false;
+      });
+    }, 8000);
+
+    supabase.auth
+      .getSession()
+      .then(async ({ data: { session } }) => {
+        setSession(session);
+        if (session?.user) {
+          // Czyści dane offline, jeśli to inne konto niż poprzednio na tym
+          // urządzeniu — zapobiega dziedziczeniu danych premium między kontami.
+          await reconcileOfflineDataOwner(session.user.id);
+          const [p] = await Promise.all([
+            fetchProfile(session.user.id),
+            identifyAndAttachEmail(session.user),
+          ]);
+          setProfile(p);
+          await checkPro();
+        }
+      })
+      .catch((err) => {
+        Sentry.captureException(err, { tags: { feature: "auth-init" } });
+      })
+      .finally(() => {
+        clearTimeout(forceReadyTimer);
+        setIsLoading(false);
+      });
 
     const {
       data: { subscription },
