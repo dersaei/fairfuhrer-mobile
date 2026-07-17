@@ -7,7 +7,7 @@ import Svg, { Path, Circle, Polygon } from "react-native-svg";
 // autorytatywnym zrodlem dla routera i wygrywa z prop-em. Musi byc
 // zdeklarowane rownolegle z komponentem, nie w srodku.
 export const unstable_settings = {
-  initialRouteName: "karte",
+  initialRouteName: "index",
 };
 
 function ListeIcon({ focused }: { focused: boolean }) {
@@ -70,10 +70,10 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   return (
     <Tabs
-      // App startuje na Karte (główna wartość app'a — mapa z pinami).
-      // Bez tego expo-router używa `index.tsx` (Liste) jako defaultu,
-      // niezależnie od kolejności wizualnej w tab-barze.
-      initialRouteName="karte"
+      // App startuje na Liste. `unstable_settings.initialRouteName` jest
+      // autorytatywnym źródłem dla routera (deep-linki, cold-start, restore
+      // state) i musi być zgodne z tą wartością.
+      initialRouteName="index"
       screenOptions={{
         headerShown: false,
         // Renderuj wszystkie taby od razu (lazy=false) żeby Tour nie miał
@@ -97,19 +97,19 @@ export default function TabsLayout() {
         },
       }}
     >
-      {/* Kolejność: Karte | Liste | Tour | Profil (Karte na pierwszym miejscu — główna wartość app'a) */}
-      <Tabs.Screen
-        name="karte"
-        options={{
-          tabBarLabel: "Karte",
-          tabBarIcon: ({ focused }) => <KarteIcon focused={focused} />,
-        }}
-      />
+      {/* Kolejność: Liste | Karte | Tour | Profil (Liste na pierwszym miejscu) */}
       <Tabs.Screen
         name="index"
         options={{
           tabBarLabel: "Liste",
           tabBarIcon: ({ focused }) => <ListeIcon focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="karte"
+        options={{
+          tabBarLabel: "Karte",
+          tabBarIcon: ({ focused }) => <KarteIcon focused={focused} />,
         }}
       />
       <Tabs.Screen

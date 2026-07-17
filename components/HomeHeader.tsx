@@ -27,11 +27,6 @@ export default function HomeHeader({ einstellungen }: HomeHeaderProps) {
           <MenuButton />
         </View>
       </View>
-      {einstellungen?.Slogan ? (
-        <Text style={styles.tagline}>{einstellungen.Slogan}</Text>
-      ) : (
-        <Text style={styles.tagline}>Der Audioguide für nachhaltiges Leben und Reisen</Text>
-      )}
     </View>
   );
 }
@@ -55,7 +50,7 @@ const styles = StyleSheet.create({
   },
   logoImage: {
     flex: 1,
-    height: 68,
+    height: 76,
   },
   logo: {
     fontFamily: "Anton_400Regular",
@@ -63,13 +58,5 @@ const styles = StyleSheet.create({
     color: "#fc6c14",
     textAlign: "center",
     letterSpacing: 3,
-  },
-  tagline: {
-    fontFamily: "FiraSansCondensed_600SemiBold",
-    fontSize: 18,
-    paddingVertical: 4,
-    paddingHorizontal: 60,
-    color: "#336BA2",
-    textAlign: "center",
   },
 });

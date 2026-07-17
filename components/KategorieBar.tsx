@@ -18,6 +18,9 @@ const DEFAULT_COLOR = "#fc6c14";
 // Brand-Blau (von Tanja vorgeschlagen, 2026-06-25). Ersetzt schwarz für
 // neutrale Leisten/Borders/Backgrounds — schwarz wirkt im UI zu hart.
 const BRAND_BLUE = "#336BA2";
+// Warmer Cremeton für die Kategorie-Leiste im Ausgangszustand (kein Filter
+// aktiv). Dunkler Text darauf für Lesbarkeit.
+const BAR_BG = "rgba(255, 242, 232, 0.9)";
 
 export function KategorieBar({
   categories,
@@ -35,7 +38,7 @@ export function KategorieBar({
   const insets = useSafeAreaInsets();
 
   const selectedCat = selectedId ? categories.find((c) => c.id === selectedId) : null;
-  const barColor = selectedCat ? (selectedCat.Farbe ?? DEFAULT_COLOR) : BRAND_BLUE;
+  const barColor = selectedCat ? (selectedCat.Farbe ?? DEFAULT_COLOR) : BAR_BG;
 
   const openMenu = useCallback(() => {
     slideAnim.setValue(0);
@@ -195,7 +198,7 @@ export function KategorieBar({
             </TouchableOpacity>
           </>
         ) : (
-          <Text style={[styles.kategorieBarText, { color: "#fff" }]}>Kategorie wählen ›</Text>
+          <Text style={[styles.kategorieBarText, { color: BRAND_BLUE }]}>Kategorie wählen ›</Text>
         )}
       </TouchableOpacity>
     </View>
