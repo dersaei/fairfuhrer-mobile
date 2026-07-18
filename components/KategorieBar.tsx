@@ -15,11 +15,8 @@ import { isSightsCategory } from "@/stores/placesStore";
 import type { DirectusKategorie } from "@/types";
 
 const DEFAULT_COLOR = "#fc6c14";
-// Brand-Blau (von Tanja vorgeschlagen, 2026-06-25). Ersetzt schwarz für
-// neutrale Leisten/Borders/Backgrounds — schwarz wirkt im UI zu hart.
-const BRAND_BLUE = "#336BA2";
 // Warmer Cremeton für die Kategorie-Leiste im Ausgangszustand (kein Filter
-// aktiv). Dunkler Text darauf für Lesbarkeit.
+// aktiv). Border der Leiste nutzt denselben Wert (randlos wirkende Kante).
 const BAR_BG = "rgba(255, 242, 232, 0.9)";
 
 export function KategorieBar({
@@ -198,7 +195,7 @@ export function KategorieBar({
             </TouchableOpacity>
           </>
         ) : (
-          <Text style={[styles.kategorieBarText, { color: BRAND_BLUE }]}>Kategorie wählen ›</Text>
+          <Text style={[styles.kategorieBarText, { color: "#000" }]}>Kategorie wählen ›</Text>
         )}
       </TouchableOpacity>
     </View>
@@ -232,7 +229,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
-  kategorieMenuItemActive: { backgroundColor: BRAND_BLUE },
+  kategorieMenuItemActive: { backgroundColor: "#000" },
   kategorieMenuIcon: {
     marginRight: 14,
     width: 36,
@@ -260,7 +257,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderTopWidth: 1,
-    borderColor: BRAND_BLUE,
+    borderColor: BAR_BG,
     paddingHorizontal: 14,
     paddingVertical: Platform.OS === "ios" ? 12 : 10,
   },

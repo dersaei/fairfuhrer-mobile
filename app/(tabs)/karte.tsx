@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { View, Text, TouchableOpacity, Image, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Mapbox, {
   Camera,
@@ -18,13 +18,12 @@ import { useTabGpsCenter } from "@/hooks/useTabGpsCenter";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
 import type { DirectusOrte } from "@/types";
-import MenuButton from "@/components/MenuButton";
+import HomeHeader from "@/components/HomeHeader";
 import { CATEGORY_COLORS } from "@/components/CategoryIcon";
 import { KategorieBar } from "@/components/KategorieBar";
 import { SearchSection, type SearchSectionHandle } from "@/components/SearchSection";
 
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
-const DIRECTUS_URL = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? "";
 
 Mapbox.setAccessToken(MAPBOX_TOKEN);
 Mapbox.setTelemetryEnabled(false);
@@ -221,29 +220,7 @@ export default function KarteScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerSpacer} />
-          {einstellungen?.Logo ? (
-            <Image
-              source={{ uri: `${DIRECTUS_URL}/assets/${einstellungen.Logo}` }}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-          ) : (
-            <Text style={styles.logo}>FAIRFÜHRER</Text>
-          )}
-          <View style={styles.headerMenuSlot}>
-            <MenuButton />
-          </View>
-        </View>
-        {einstellungen?.Slogan ? (
-          <Text style={styles.tagline}>{einstellungen.Slogan}</Text>
-        ) : (
-          <Text style={styles.tagline}>Der Audioguide für nachhaltiges Leben und Reisen</Text>
-        )}
-      </View>
+      <HomeHeader einstellungen={einstellungen} />
 
       {/* Offline-Hinweis — sichtbar, wenn gespeicherte Daten verwendet werden */}
       {isOffline && (
@@ -461,30 +438,6 @@ export default function KarteScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
   centered: { flex: 1, alignItems: "center", justifyContent: "center" },
-  header: { paddingTop: 8, paddingBottom: 4 },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-  },
-  headerSpacer: { width: 36 },
-  headerMenuSlot: { width: 36, alignItems: "flex-end" },
-  logoImage: { flex: 1, height: 68 },
-  logo: {
-    fontFamily: "Anton_400Regular",
-    fontSize: 30,
-    color: "#fc6c14",
-    textAlign: "center",
-    letterSpacing: 3,
-  },
-  tagline: {
-    fontFamily: "FiraSansCondensed_600SemiBold",
-    fontSize: 18,
-    paddingVertical: 4,
-    paddingHorizontal: 60,
-    color: "#336BA2",
-    textAlign: "center",
-  },
   offlineBanner: {
     backgroundColor: "#fff5ef",
     borderTopWidth: 1,
