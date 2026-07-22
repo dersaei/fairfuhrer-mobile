@@ -16,7 +16,6 @@ import { useRouter } from "expo-router";
 import Purchases, { PurchasesPackage } from "react-native-purchases";
 import { ENTITLEMENT_ID } from "@/lib/revenuecat";
 import { useAuth } from "@/context/AuthContext";
-import { LoginPromptModal } from "@/components/LoginPromptModal";
 import { getPaywallContent, type PaywallContent } from "@/lib/directus";
 
 // Fallback-Texte, falls Directus nichts liefert
@@ -94,19 +93,13 @@ function formatPerMonth(pkg: PurchasesPackage): string {
 
 export default function PaywallScreen() {
   const router = useRouter();
-  const { session, refreshPro } = useAuth();
+  const { refreshPro } = useAuth();
 
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [selected, setSelected] = useState<PurchasesPackage | null>(null);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
   const [content, setContent] = useState<PaywallContent | null>(null);
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-  // Markiert, dass der Nutzer auf "Aktivieren" geklickt hat, aber noch kein
-  // Konto hatte. Sobald die Session erscheint (Nutzer kehrt vom auth-modal
-  // zurück), setzen wir den Kauf automatisch fort — ohne dass er erneut
-  // klicken muss.
-  const [pendingPurchase, setPendingPurchase] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -171,32 +164,12 @@ export default function PaywallScreen() {
 
   const handlePurchase = async () => {
     if (!selected) return;
-    // Konto-Gate: vor dem Kauf muss eine Session existieren, weil das Abo
-    // serverseitig (Supabase) an die User-ID gebunden wird und nur so
-    // geräteübergreifend funktioniert / wiederherstellbar bleibt.
-    // Ohne Konto öffnen wir das LoginPromptModal (welches dann zum
-    // auth-modal führt). Wir merken uns pendingPurchase=true, damit nach
-    // erfolgreicher Anmeldung der Kauf automatisch fortgesetzt wird.
-    if (!session) {
-      setPendingPurchase(true);
-      setShowLoginPrompt(true);
-      return;
-    }
+    // Kauf ohne Konto möglich (Apple-Richtlinie 5.1.1(v)): RevenueCat verwaltet
+    // das Abo über eine anonyme App-User-ID. Ein Konto ist optional und dient
+    // nur der geräteübergreifenden Synchronisation. Nach erfolgreichem Kauf
+    // können wir dem Nutzer optional ein Konto anbieten.
     await executePurchase(selected);
   };
-
-  // Auto-Continuation: wenn der Nutzer auf "Aktivieren" geklickt hat,
-  // angemeldet wurde und zurück zum Paywall kommt, lösen wir den Kauf
-  // automatisch aus — er sieht nur kurz den Sandbox-Dialog.
-  useEffect(() => {
-    if (pendingPurchase && session && selected && !purchasing) {
-      setPendingPurchase(false);
-      executePurchase(selected);
-    }
-    // executePurchase ist stabil (closure über aktuellen state); deshalb
-    // hier bewusst weglassen.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, pendingPurchase, selected, purchasing]);
 
   const handleRestore = async () => {
     try {
@@ -344,7 +317,6 @@ export default function PaywallScreen() {
           </View>
         </View>
       </ScrollView>
-      <LoginPromptModal visible={showLoginPrompt} onClose={() => setShowLoginPrompt(false)} />
     </SafeAreaView>
   );
 }

@@ -307,7 +307,7 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
               button={
                 <TouchableOpacity
                   style={s.welcomeBtnPremium}
-                  onPress={() => switchView("register")}
+                  onPress={() => router.push("/custom-paywall")}
                 >
                   <Text style={s.welcomeBtnPremiumText}>{t.welcome_btn_premium}</Text>
                 </TouchableOpacity>

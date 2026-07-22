@@ -21,7 +21,8 @@
       "infoPlist": {
         "CFBundleDisplayName": "Fairführer+",
         "ITSAppUsesNonExemptEncryption": false,
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": ["audio"],
+        "NSLocationWhenInUseUsageDescription": "Fairführer verwendet deinen Standort, um Orte in deiner Nähe auf der Karte anzuzeigen und die Liste nachhaltiger Orte nach Entfernung zu sortieren (z. B. „in der Nähe von Lindau\"). Ohne Standortfreigabe funktioniert die App weiterhin – lediglich die Nähe-Sortierung ist deaktiviert."
       }
     },
     "android": {
@@ -80,7 +81,12 @@
       "@rnmapbox/maps",
       "expo-router",
       "expo-font",
-      "expo-location",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Fairführer verwendet deinen Standort, um Orte in deiner Nähe auf der Karte anzuzeigen und die Liste nachhaltiger Orte nach Entfernung zu sortieren (z. B. „in der Nähe von Lindau\"). Ohne Standortfreigabe funktioniert die App weiterhin – lediglich die Nähe-Sortierung ist deaktiviert."
+        }
+      ],
       "expo-audio",
       "expo-asset",
       "expo-secure-store",

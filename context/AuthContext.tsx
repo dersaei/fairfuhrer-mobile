@@ -103,6 +103,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     }, 8000);
 
+    // Premium-Status wird immer geprüft — auch für anonyme Nutzer ohne Konto,
+    // da RevenueCat einen $RCAnonymousID vergibt und Käufe über Apple/Google
+    // Store an das Gerät gebunden werden (Apple-Richtlinie 5.1.1(v): der Kauf
+    // darf keine Registrierung erfordern).
+    checkPro();
+
     supabase.auth
       .getSession()
       .then(async ({ data: { session } }) => {
