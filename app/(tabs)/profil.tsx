@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import MenuButton from "@/components/MenuButton";
 import AuthScreen from "@/components/auth/AuthScreen";
+import PremiumWithoutAccountScreen from "@/components/auth/PremiumWithoutAccountScreen";
 import ProfilSection from "@/components/profil/ProfilSection";
 import EinstellungenSection from "@/components/profil/EinstellungenSection";
 import PremiumSection from "@/components/profil/PremiumSection";
@@ -96,7 +97,7 @@ function AccountScreen() {
 }
 
 export default function ProfilScreen() {
-  const { user, isLoading } = useAuth();
+  const { user, isPro, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -108,7 +109,13 @@ export default function ProfilScreen() {
     );
   }
 
-  return user ? <AccountScreen /> : <AuthScreen />;
+  // Zalogowany → pełny AccountScreen (z premium sekcjami)
+  if (user) return <AccountScreen />;
+  // Bez konta ale z premium (kupił anonimowo) → dedykowany ekran z zachętą
+  // do założenia konta dla Offline-Karten i Ort-Vorschläge
+  if (isPro) return <PremiumWithoutAccountScreen />;
+  // Bez konta i bez premium → standardowy welcome/login
+  return <AuthScreen />;
 }
 
 const s = StyleSheet.create({

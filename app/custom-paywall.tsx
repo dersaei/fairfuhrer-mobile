@@ -93,7 +93,7 @@ function formatPerMonth(pkg: PurchasesPackage): string {
 
 export default function PaywallScreen() {
   const router = useRouter();
-  const { refreshPro } = useAuth();
+  const { session, refreshPro } = useAuth();
 
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [selected, setSelected] = useState<PurchasesPackage | null>(null);
@@ -151,7 +151,13 @@ export default function PaywallScreen() {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       if (customerInfo.entitlements.active[ENTITLEMENT_ID]) {
         await refreshPro();
-        router.back();
+        // Bez Kontos: zeige Erfolgs-Screen mit Konto-Anmeldeoption
+        // (für Offline-Karten und Ort-Vorschläge). Mit Konto: direkt zurück.
+        if (!session) {
+          router.replace("/purchase-success");
+        } else {
+          router.back();
+        }
       }
     } catch (e: any) {
       if (!e.userCancelled) {
@@ -220,6 +226,10 @@ export default function PaywallScreen() {
               <Text style={s.featureText}>{f}</Text>
             </View>
           ))}
+          <Text style={s.featureNote}>
+            * Offline-Karten und Ort-Vorschläge erfordern ein kostenloses Konto,
+            das du jederzeit nach dem Kauf anlegen kannst.
+          </Text>
         </View>
 
         {/* ── Packages (Reich layout) ── */}
@@ -389,6 +399,14 @@ const s = StyleSheet.create({
     color: "#333",
     flex: 1,
     lineHeight: 22,
+  },
+  featureNote: {
+    fontSize: 12,
+    fontFamily: "FiraSansCondensed_400Regular",
+    color: "#666",
+    lineHeight: 17,
+    marginTop: 8,
+    fontStyle: "italic",
   },
 
   // Packages — Reich layout

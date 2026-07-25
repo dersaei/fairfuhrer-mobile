@@ -91,6 +91,14 @@ function RootLayoutNav() {
           }}
         />
         <Stack.Screen
+          name="purchase-success"
+          options={{
+            presentation: "modal",
+            animation: "slide_from_bottom",
+            gestureEnabled: false,
+          }}
+        />
+        <Stack.Screen
           name="auth-modal"
           options={{
             presentation: "modal",
