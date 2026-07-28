@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -8,10 +8,14 @@ import {
   Pressable,
   Dimensions,
   Linking,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import Svg, { Path, Circle } from "react-native-svg";
+import { usePlacesStore } from "@/stores/placesStore";
+import { useAuth } from "@/context/AuthContext";
 
 const FF_ORANGE = "#fc6c14";
 const FF_BLACK = "#181716";
@@ -57,6 +61,27 @@ function DrawerItem({ label, icon, onPress }: DrawerItemProps) {
       <Text style={s.itemLabel}>{label}</Text>
       <ChevronIcon />
     </TouchableOpacity>
+  );
+}
+
+function RefreshIcon() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 4v6h6M20 20v-6h-6"
+        stroke={FF_ORANGE}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M20 10a8 8 0 0 0-14.93-2M4 14a8 8 0 0 0 14.93 2"
+        stroke={FF_ORANGE}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
   );
 }
 
@@ -138,6 +163,35 @@ export default function AppDrawer({ visible, onClose }: Props) {
   const router = useRouter();
   const translateX = useRef(new Animated.Value(DRAWER_WIDTH)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  const { fetchAll, status } = usePlacesStore();
+  const { isPro } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    if (refreshing || status === "loading") return;
+    setRefreshing(true);
+    // Trigger fetch — der Store aktualisiert Places/Kategorien und ggf.
+    // (bei Premium) auch den Offline-Cache. Wir warten kurz, damit der
+    // Nutzer optische Rückmeldung sieht, auch wenn der Request sehr
+    // schnell durchläuft.
+    await fetchAll(isPro);
+    const finalStatus = usePlacesStore.getState().status;
+    const isOffline = usePlacesStore.getState().isOffline;
+    setRefreshing(false);
+    if (finalStatus === "success") {
+      Alert.alert(
+        isOffline ? "Offline-Daten geladen" : "Daten aktualisiert",
+        isOffline
+          ? "Keine Verbindung — wir zeigen deine zuletzt gespeicherten Fairführer-Daten."
+          : "Deine Fairführer-Daten wurden erfolgreich aktualisiert.",
+      );
+    } else if (finalStatus === "error") {
+      Alert.alert(
+        "Keine Verbindung",
+        "Aktualisierung fehlgeschlagen. Bitte prüfe deine Internetverbindung und versuche es erneut.",
+      );
+    }
+  };
 
   useEffect(() => {
     if (visible) {
@@ -202,6 +256,30 @@ export default function AppDrawer({ visible, onClose }: Props) {
         </View>
 
         {/* Main items */}
+        <View style={s.section}>
+          <Text style={s.sectionLabel}>DATEN</Text>
+          <TouchableOpacity
+            style={s.item}
+            onPress={handleRefresh}
+            activeOpacity={0.7}
+            disabled={refreshing || status === "loading"}
+          >
+            <View style={s.itemIcon}>
+              {refreshing ? (
+                <ActivityIndicator size="small" color={FF_ORANGE} />
+              ) : (
+                <RefreshIcon />
+              )}
+            </View>
+            <Text style={s.itemLabel}>
+              {refreshing ? "Wird aktualisiert…" : "Daten aktualisieren"}
+            </Text>
+            {!refreshing && <ChevronIcon />}
+          </TouchableOpacity>
+        </View>
+
+        <View style={s.divider} />
+
         <View style={s.section}>
           <Text style={s.sectionLabel}>SUPPORT</Text>
           <DrawerItem

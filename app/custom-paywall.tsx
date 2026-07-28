@@ -17,6 +17,7 @@ import Purchases, { PurchasesPackage } from "react-native-purchases";
 import { ENTITLEMENT_ID } from "@/lib/revenuecat";
 import { useAuth } from "@/context/AuthContext";
 import { getPaywallContent, type PaywallContent } from "@/lib/directus";
+import AccountBenefitsCard from "@/components/AccountBenefitsCard";
 
 // Fallback-Texte, falls Directus nichts liefert
 const DEFAULTS = {
@@ -226,10 +227,17 @@ export default function PaywallScreen() {
               <Text style={s.featureText}>{f}</Text>
             </View>
           ))}
-          <Text style={s.featureNote}>
-            * Offline-Karten und Ort-Vorschläge erfordern ein kostenloses Konto,
-            das du jederzeit nach dem Kauf anlegen kannst.
-          </Text>
+        </View>
+
+        {/* ── Konto-Vorteile: prominente Karte statt kleiner Grau-Kursiv-Note ── */}
+        <View style={s.benefitsSection}>
+          <AccountBenefitsCard
+            onCtaPress={() => {
+              router.dismissTo?.("/(tabs)/profil");
+              // Fallback für ältere expo-router Versionen ohne dismissTo:
+              router.replace("/(tabs)/profil");
+            }}
+          />
         </View>
 
         {/* ── Packages (Reich layout) ── */}
@@ -400,13 +408,9 @@ const s = StyleSheet.create({
     flex: 1,
     lineHeight: 22,
   },
-  featureNote: {
-    fontSize: 12,
-    fontFamily: "FiraSansCondensed_400Regular",
-    color: "#666",
-    lineHeight: 17,
-    marginTop: 8,
-    fontStyle: "italic",
+  benefitsSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
 
   // Packages — Reich layout

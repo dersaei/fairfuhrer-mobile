@@ -247,7 +247,11 @@ export const usePlacesStore = create<PlacesState>((set, get) => ({
   },
 
   fetchAll: async (isPro: boolean) => {
-    if (get().status === "loading" || get().status === "success") return;
+    // Guard: nie startuj równoległych fetchów. Success blokuje NIE (żeby
+    // ekran błędu / pull-to-refresh / retry na powrocie sieci mogły
+    // wymusić świeże pobranie). Guards na "success" zamrażały stan
+    // "error" na zawsze — patrz Issue Sept 2026.
+    if (get().status === "loading") return;
 
     set({ status: "loading", error: null });
 

@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import AccountBenefitsCard from "@/components/AccountBenefitsCard";
 
 export default function PurchaseSuccessScreen() {
   const router = useRouter();
@@ -37,29 +38,9 @@ export default function PurchaseSuccessScreen() {
           </View>
         </View>
 
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Mit kostenlosem Konto zusätzlich</Text>
-          <View style={s.featureRow}>
-            <Text style={s.iconAdd}>+</Text>
-            <Text style={s.featureText}>Offline-Karten für unterwegs</Text>
-          </View>
-          <View style={s.featureRow}>
-            <Text style={s.iconAdd}>+</Text>
-            <Text style={s.featureText}>Eigene Orte vorschlagen & Pins erstellen</Text>
-          </View>
-          <View style={s.featureRow}>
-            <Text style={s.iconAdd}>+</Text>
-            <Text style={s.featureText}>Zugriff auf allen deinen Geräten</Text>
-          </View>
-          <Text style={s.hint}>
-            Dein Kauf bleibt erhalten. Er wird automatisch mit deinem neuen Konto verknüpft.
-          </Text>
-        </View>
+        <AccountBenefitsCard onCtaPress={handleCreateAccount} />
 
         <View style={s.ctaSection}>
-          <TouchableOpacity style={s.primaryBtn} onPress={handleCreateAccount} activeOpacity={0.85}>
-            <Text style={s.primaryBtnText}>Konto jetzt anlegen</Text>
-          </TouchableOpacity>
           <TouchableOpacity style={s.secondaryBtn} onPress={handleLater} activeOpacity={0.7}>
             <Text style={s.secondaryBtnText}>Später anlegen</Text>
           </TouchableOpacity>

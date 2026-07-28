@@ -12,6 +12,7 @@ import {
   FiraSansCondensed_600SemiBold,
   FiraSansCondensed_700Bold,
 } from "@expo-google-fonts/fira-sans-condensed";
+import NetInfo from "@react-native-community/netinfo";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { DrawerProvider, useDrawer } from "@/context/DrawerContext";
 import { usePlacesStore } from "@/stores/placesStore";
@@ -19,6 +20,7 @@ import AnimatedSplash from "@/components/AnimatedSplash";
 import AppDrawer from "@/components/AppDrawer";
 import GlobalAudioPlayer from "@/components/GlobalAudioPlayer";
 import MiniPlayer from "@/components/MiniPlayer";
+import DataErrorScreen from "@/components/DataErrorScreen";
 import { initializePurchases } from "@/lib/revenuecat";
 
 // Tracing für die Navigation (expo-router nutzt React Navigation darunter).
@@ -49,7 +51,7 @@ initializePurchases();
 function RootLayoutNav() {
   const { isLoading, isPro } = useAuth();
   const { isOpen, closeDrawer } = useDrawer();
-  const { status, fetchAll } = usePlacesStore();
+  const { status, fetchAll, places } = usePlacesStore();
   const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
 
   // Daten erst laden, wenn der Auth-Status (inkl. isPro) feststeht — sonst
@@ -60,6 +62,23 @@ function RootLayoutNav() {
     fetchAll(isPro);
   }, [isLoading, isPro, fetchAll]);
 
+  // Auto-Retry: wenn der Nutzer im "error"-Zustand hängt (initialer Fetch
+  // ohne Netz fehlgeschlagen) und die Verbindung zurückkommt, laden wir
+  // die Daten automatisch nach — ohne dass er die App neu starten muss.
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      if (isLoading) return;
+      // Nur bei Übergang offline → online mit nutzbarer Verbindung.
+      if (state.isConnected && state.isInternetReachable !== false) {
+        const currentStatus = usePlacesStore.getState().status;
+        if (currentStatus === "error" || currentStatus === "idle") {
+          fetchAll(isPro);
+        }
+      }
+    });
+    return unsubscribe;
+  }, [isLoading, isPro, fetchAll]);
+
   const dataReady = status === "success" || status === "error";
 
   useEffect(() => {
@@ -67,6 +86,15 @@ function RootLayoutNav() {
       SplashScreen.hideAsync();
     }
   }, [dataReady, isLoading]);
+
+  // Vollflächiger Fehler-Screen: wenn der initiale Fetch fehlgeschlagen
+  // ist UND wir keine Daten haben (weder online noch aus dem Offline-Cache),
+  // zeigen wir statt einer leeren Karte einen erklärenden Bildschirm mit
+  // Retry-Button. Sobald ein Retry Erfolg hat, wechselt der Store auf
+  // "success" und places.length > 0 → Tabs erscheinen wieder.
+  if (status === "error" && places.length === 0) {
+    return <DataErrorScreen />;
+  }
 
   return (
     <GlobalAudioPlayer>

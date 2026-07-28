@@ -180,6 +180,36 @@ export async function getPaywallContent(): Promise<PaywallContent | null> {
 }
 
 // ========================================
+// Konto-anlegen Vorteilskarte
+// ========================================
+//
+// Wird an mehreren Stellen der App angezeigt (Paywall, Purchase-Success,
+// Premium-Sektion, AuthScreen), um klar zu machen dass Offline-Karten
+// und Pin-Vorschläge ein kostenloses Konto erfordern.
+
+export interface AccountBenefitsContent {
+  eyebrow: string;
+  headline: string;
+  intro?: string;
+  benefit_1: string;
+  benefit_2: string;
+  benefit_3: string;
+  footnote?: string;
+  cta_label: string;
+}
+
+export async function getAccountBenefitsContent(): Promise<AccountBenefitsContent | null> {
+  try {
+    const data = await directus.request(
+      readSingleton("account_benefits_content" as any, { fields: ["*"] }),
+    );
+    return (data as AccountBenefitsContent) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ========================================
 // Auth-Bildschirm (Login/Registrierung, nur Mobile)
 // ========================================
 

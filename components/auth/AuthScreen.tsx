@@ -19,6 +19,7 @@ import { supabase } from "@/lib/supabase";
 import { AuthWeakPasswordError } from "@supabase/supabase-js";
 import MenuButton from "@/components/MenuButton";
 import PlanCompareCard, { type Feature } from "@/components/PlanCompareCard";
+import AccountBenefitsCard from "@/components/AccountBenefitsCard";
 import { getAuthScreenContent, type AuthScreenContent } from "@/lib/directus";
 import PasswordInput from "@/components/PasswordInput";
 
@@ -313,6 +314,12 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
                 </TouchableOpacity>
               }
             />
+
+            {/* Prominenter Hinweis: Konto ist optional, aber schaltet
+                Offline-Karten und Pin-Vorschläge frei. Ohne CTA-Button,
+                weil die primären Register/Login-Buttons oben schon sichtbar
+                sind — sonst wäre das doppelt gemoppelt. */}
+            <AccountBenefitsCard />
           </View>
         </ScrollView>
       </SafeAreaView>
