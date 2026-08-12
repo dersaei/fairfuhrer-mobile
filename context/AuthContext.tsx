@@ -9,6 +9,7 @@ import {
   hasPro,
   setUserEmail,
   addCustomerInfoListener,
+  syncPremiumToWeb,
 } from "@/lib/revenuecat";
 import { reconcileOfflineDataOwner } from "@/lib/offlineOwnership";
 
@@ -68,9 +69,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Identify the user in RC and propagate the email as a subscriber attribute.
+  // Nach dem Merge (Purchases.logIn) triggern wir zusätzlich einen Web-Sync,
+  // damit ein Kauf, der zuvor anonym gemacht wurde, sich in Supabase
+  // (profiles.premium_until) und damit auf der Website widerspiegelt.
+  // Fire-and-forget: syncPremiumToWeb loggt Fehler selbst nach Sentry.
   const identifyAndAttachEmail = async (user: User) => {
     await identifyUser(user.id);
     await setUserEmail(user.email);
+    void syncPremiumToWeb();
   };
 
   // Reactive RC customer info — premium toggles take effect without polling.

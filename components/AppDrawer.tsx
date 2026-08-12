@@ -16,6 +16,7 @@ import { useRouter } from "expo-router";
 import Svg, { Path, Circle } from "react-native-svg";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
+import { syncPremiumToWeb } from "@/lib/revenuecat";
 
 const FF_ORANGE = "#fc6c14";
 const FF_BLACK = "#181716";
@@ -164,7 +165,7 @@ export default function AppDrawer({ visible, onClose }: Props) {
   const translateX = useRef(new Animated.Value(DRAWER_WIDTH)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const { fetchAll, status } = usePlacesStore();
-  const { isPro } = useAuth();
+  const { isPro, session } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -174,7 +175,14 @@ export default function AppDrawer({ visible, onClose }: Props) {
     // (bei Premium) auch den Offline-Cache. Wir warten kurz, damit der
     // Nutzer optische Rückmeldung sieht, auch wenn der Request sehr
     // schnell durchläuft.
-    await fetchAll(isPro);
+    //
+    // Für eingeloggte Nutzer stoßen wir parallel den Web-Sync an: falls
+    // der Nutzer Premium anonym gekauft und sich später registriert hat,
+    // ist das der Weg, es auf Supabase (und damit die Website) zu
+    // übertragen. Der Sync-Call ist fire-and-forget — Fehler landen in
+    // Sentry, ohne das Refresh-Ergebnis zu blockieren.
+    const syncPromise = session ? syncPremiumToWeb() : Promise.resolve();
+    await Promise.all([fetchAll(isPro), syncPromise]);
     const finalStatus = usePlacesStore.getState().status;
     const isOffline = usePlacesStore.getState().isOffline;
     setRefreshing(false);

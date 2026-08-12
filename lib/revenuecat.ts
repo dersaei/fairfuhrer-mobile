@@ -107,3 +107,38 @@ export function addCustomerInfoListener(listener: CustomerInfoListener): () => v
     }
   };
 }
+
+// ─── Web-Sync ───────────────────────────────────────────────────────────────
+//
+// Fordert die Supabase Edge Function `sync-my-premium` auf, den Premium-Status
+// des eingeloggten Users mit RevenueCat abzugleichen und in
+// `profiles.premium_until` zu schreiben. Notwendig, weil das rc-webhook
+// KEIN Event für anonyme → identifizierte Merges bekommt: wenn ein Nutzer
+// zuerst kauft und sich später registriert, würde die Web-App sonst nie
+// erfahren, dass er Premium hat.
+//
+// Fire-and-forget: Fehler werden geloggt (Sentry), aber nicht dem Nutzer
+// gezeigt — mobile funktioniert weiterhin dank lokalem RC-SDK.
+import * as Sentry from "@sentry/react-native";
+import { supabase } from "@/lib/supabase";
+
+export async function syncPremiumToWeb(): Promise<void> {
+  try {
+    const { data, error } = await supabase.functions.invoke("sync-my-premium", {
+      method: "POST",
+    });
+    if (error) {
+      Sentry.captureMessage("sync-my-premium invocation failed", {
+        level: "warning",
+        tags: { feature: "premium-sync" },
+        extra: { message: error.message, context: (error as any).context },
+      });
+      return;
+    }
+    if (__DEV__) {
+      console.log("[sync-my-premium] result:", data);
+    }
+  } catch (e) {
+    Sentry.captureException(e, { tags: { feature: "premium-sync" } });
+  }
+}
