@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
-import { Session, User } from "@supabase/supabase-js";
+import { Session, User, FunctionsHttpError } from "@supabase/supabase-js";
 import * as Sentry from "@sentry/react-native";
 import { supabase } from "@/lib/supabase";
 import {
@@ -50,6 +50,41 @@ const AuthContext = createContext<AuthContextType>({
   refreshProfile: async () => {},
   refreshPro: async () => {},
 });
+
+// Natywne mosty (RevenueCat) i fetch potrafia zawisnac bez odrzucenia promise.
+// Wtedy caly delete konczy sie cisza — zaden catch nie odpala, user widzi tylko
+// znikajacy modal i konto zostaje. Kazdy krok dostaje wiec twardy limit czasu.
+function withTimeout<T>(promise: Promise<T>, ms: number, step: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Timeout ${ms} ms w kroku: ${step}`)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
+// functions.invoke zwraca blad jako obiekt, nie rzuca — a prawdziwy powod
+// (status + body odpowiedzi Edge Function) siedzi dopiero w error.context.
+async function describeFunctionsError(error: unknown): Promise<string> {
+  if (error instanceof FunctionsHttpError) {
+    const status = error.context?.status;
+    try {
+      const body = await error.context.text();
+      return `HTTP ${status}: ${body || "(puste body)"}`;
+    } catch {
+      return `HTTP ${status}`;
+    }
+  }
+  if (error instanceof Error) return `${error.name}: ${error.message}`;
+  return String(error);
+}
 
 async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single();
@@ -168,10 +203,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteAccount = async () => {
-    await resetUser();
-    const { error } = await supabase.functions.invoke("delete-account");
-    if (error) throw new Error("Nie udało się usunąć konta");
+    // Znaczniki przebiegu — w dev buildzie widoczne w konsoli Metro, na
+    // produkcji jako breadcrumby przy zdarzeniu Sentry. Bez nich nie da sie
+    // ustalic, na ktorym kroku usuwanie konta sie urywa.
+    const mark = (step: string) => {
+      console.log(`[delete-account] ${step}`);
+      Sentry.addBreadcrumb({ category: "delete-account", message: step, level: "info" });
+    };
+
+    const fail = (reason: string): never => {
+      mark(`FAIL: ${reason}`);
+      Sentry.captureMessage(`delete-account: ${reason}`, {
+        level: "error",
+        tags: { feature: "delete-account" },
+      });
+      throw new Error(reason);
+    };
+
+    mark("start");
+
+    let result: Awaited<ReturnType<typeof supabase.functions.invoke>>;
+    try {
+      result = await withTimeout(
+        supabase.functions.invoke("delete-account"),
+        20000,
+        "functions.invoke",
+      );
+    } catch (e) {
+      return fail(await describeFunctionsError(e));
+    }
+    mark("invoke done");
+
+    if (result.error) return fail(await describeFunctionsError(result.error));
+
+    // Dopiero po potwierdzonym usunieciu konta odpinamy RevenueCat. Wczesniej
+    // bylo odwrotnie i nieudane usuniecie zostawialo usera odpietego od jego
+    // uprawnien premium. Blad ani timeout na tym kroku nie moga juz zablokowac
+    // wylogowania — konto w bazie i tak jest juz usuniete.
+    try {
+      await withTimeout(resetUser(), 10000, "revenuecat resetUser");
+      mark("rc reset ok");
+    } catch (e) {
+      mark(`rc reset pominiety: ${e instanceof Error ? e.message : String(e)}`);
+      Sentry.captureException(e, { tags: { feature: "delete-account" } });
+    }
+
     await supabase.auth.signOut();
+    mark("signed out");
   };
 
   const refreshProfile = async () => {

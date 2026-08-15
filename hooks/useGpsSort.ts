@@ -11,43 +11,53 @@ export function useGpsSort(dataReady: boolean): {
   const [orderedIds, setOrderedIds] = useState<number[] | null>(null);
   const orderedIdsRef = useRef<number[] | null>(null);
   const isFocused = useIsFocused();
-  const donRef = useRef(false);
+  // Zapala sie dopiero po udanym posortowaniu. Wczesniej byl ustawiany od razu
+  // na wejsciu do efektu, wiec pojedyncza odmowa uprawnien albo nieudany odczyt
+  // GPS wylaczaly sortowanie po odleglosci az do restartu aplikacji — mapa
+  // (wlasny flow uprawnien) dzialala, lista juz nie.
+  const doneRef = useRef(false);
+  // Chroni przed rownoleglymi przebiegami przy szybkim przelaczaniu zakladek.
+  const inFlightRef = useRef(false);
 
   useEffect(() => {
-    if (!dataReady || !isFocused || donRef.current) return;
-    donRef.current = true;
+    if (!dataReady || !isFocused || doneRef.current || inFlightRef.current) return;
+    inFlightRef.current = true;
 
     let mounted = true;
 
-    const fetchSorted = (lat: number, lng: number) => {
-      supabase.rpc("nearby_orte", { user_lat: lat, user_lng: lng }).then(({ data, error }) => {
-        if (error || !data || !mounted) return;
-        const ids = (data as { id: number }[]).map((p) => p.id);
-        orderedIdsRef.current = ids;
-        setOrderedIds(ids);
-      });
+    const fetchSorted = async (lat: number, lng: number) => {
+      const { data, error } = await supabase.rpc("nearby_orte", { user_lat: lat, user_lng: lng });
+      if (error || !data || !mounted) return;
+      const ids = (data as { id: number }[]).map((p) => p.id);
+      orderedIdsRef.current = ids;
+      setOrderedIds(ids);
+      doneRef.current = true;
     };
 
-    Location.requestForegroundPermissionsAsync()
-      .then(({ status }) => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        // Brak zgody nie jest bledem trwalym — przy kolejnym wejsciu na zakladke
+        // sprobujemy ponownie, bo user mogl ja w miedzyczasie przyznac.
         if (status !== "granted" || !mounted) return;
 
-        Location.getLastKnownPositionAsync()
-          .then((lastPos) => {
-            if (lastPos && mounted) {
-              const { latitude, longitude } = lastPos.coords;
-              fetchSorted(latitude, longitude);
-            }
-            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
-              .then((pos) => {
-                if (!mounted) return;
-                fetchSorted(pos.coords.latitude, pos.coords.longitude);
-              })
-              .catch(() => {});
-          })
-          .catch(() => {});
-      })
-      .catch(() => {});
+        const lastPos = await Location.getLastKnownPositionAsync().catch(() => null);
+        if (lastPos && mounted) {
+          await fetchSorted(lastPos.coords.latitude, lastPos.coords.longitude);
+        }
+
+        const pos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        }).catch(() => null);
+        if (pos && mounted) {
+          await fetchSorted(pos.coords.latitude, pos.coords.longitude);
+        }
+      } catch (e) {
+        console.warn("[useGpsSort] sortowanie po odleglosci nieudane:", e);
+      } finally {
+        inFlightRef.current = false;
+      }
+    })();
 
     return () => {
       mounted = false;
