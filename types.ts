@@ -115,6 +115,5 @@ export interface AppUser {
   email: string;
   role: UserRole;
   displayName?: string;
-  avatarUrl?: string;
   createdAt: string;
 }

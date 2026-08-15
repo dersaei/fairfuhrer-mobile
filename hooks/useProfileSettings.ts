@@ -79,8 +79,16 @@ export function useProfileSettings(
           onPress: async () => {
             try {
               await deleteAccount();
-            } catch {
-              Alert.alert("Fehler", "Konto konnte nicht gelöscht werden.");
+            } catch (e) {
+              // deleteAccount liefert den echten Grund (HTTP-Status + Body der
+              // Edge Function oder Timeout samt Schritt). Ohne ihn sah der Nutzer
+              // nur einen verschwindenden Dialog und wir hatten keinen Anhaltspunkt.
+              const reason = e instanceof Error ? e.message : String(e);
+              // Android schluckt einen Alert, der noch während des Schließens des
+              // vorherigen geöffnet wird. Erst nach der Dismiss-Animation zeigen.
+              setTimeout(() => {
+                Alert.alert("Fehler", `Konto konnte nicht gelöscht werden.\n\nDetails: ${reason}`);
+              }, 400);
             }
           },
         },
