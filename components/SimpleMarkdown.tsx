@@ -1,5 +1,6 @@
 import React from "react";
-import { Text, View, StyleSheet, Linking } from "react-native";
+import { Text, View, StyleSheet } from "react-native";
+import { openExternalUrl } from "@/lib/openExternalUrl";
 
 const FF_ORANGE = "#fc6c14";
 const FF_BLACK = "#181716";
@@ -161,7 +162,11 @@ function renderInline(text: string): React.ReactNode[] {
     } else if (match[4] && match[5]) {
       const url = match[5];
       parts.push(
-        <Text key={k++} style={s.link} onPress={() => Linking.openURL(url)}>
+        <Text
+          key={k++}
+          style={s.link}
+          onPress={() => openExternalUrl(url, "Der Link ist derzeit nicht erreichbar.")}
+        >
           {match[4]}
         </Text>,
       );

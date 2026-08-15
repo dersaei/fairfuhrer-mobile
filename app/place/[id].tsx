@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Linking,
   PanResponder,
   Animated,
   Dimensions,
@@ -21,6 +20,7 @@ import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
 import { getMainImageUrl, getAudioUrl, getGalleryUrls } from "@/lib/mediaUrls";
 import { resolveMediaUri } from "@/lib/mediaCache";
+import { openExternalUrl } from "@/lib/openExternalUrl";
 
 import type { DirectusKategorie, DirectusOrte } from "@/types";
 
@@ -409,7 +409,14 @@ export default function PlaceScreen() {
             </Text>
             {place.Adresse ? <Text style={styles.placeAddress}>{place.Adresse}</Text> : null}
             {place.Telefon ? (
-              <TouchableOpacity onPress={() => Linking.openURL(`tel:${place.Telefon}`)}>
+              <TouchableOpacity
+                onPress={() =>
+                  openExternalUrl(
+                    `tel:${place.Telefon}`,
+                    "Auf diesem Gerät können keine Anrufe getätigt werden.",
+                  )
+                }
+              >
                 <Text style={styles.placePhone}>📞 {place.Telefon}</Text>
               </TouchableOpacity>
             ) : null}
@@ -427,7 +434,10 @@ export default function PlaceScreen() {
             <View style={styles.infoSection}>
               <TouchableOpacity
                 style={styles.externalLink}
-                onPress={() => place.Link_URL && Linking.openURL(place.Link_URL)}
+                onPress={() =>
+                  place.Link_URL &&
+                  openExternalUrl(place.Link_URL, "Die Website ist derzeit nicht erreichbar.")
+                }
                 activeOpacity={0.85}
               >
                 <Text style={styles.externalLinkText}>{place.Link_Text || "Website besuchen"}</Text>

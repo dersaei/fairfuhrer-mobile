@@ -10,7 +10,6 @@ import {
   Platform,
   ScrollView,
   ImageBackground,
-  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,6 +20,7 @@ import MenuButton from "@/components/MenuButton";
 import PlanCompareCard, { type Feature } from "@/components/PlanCompareCard";
 import AccountBenefitsCard from "@/components/AccountBenefitsCard";
 import { getAuthScreenContent, type AuthScreenContent } from "@/lib/directus";
+import { openExternalUrl } from "@/lib/openExternalUrl";
 import PasswordInput from "@/components/PasswordInput";
 
 type AuthView = "welcome" | "login" | "register" | "forgot";
@@ -519,7 +519,12 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
             {t.partner_info}{" "}
             <Text
               style={s.partnerLink}
-              onPress={() => Linking.openURL("https://www.fairfuehrer.guide/partner-werden")}
+              onPress={() =>
+                openExternalUrl(
+                  "https://www.fairfuehrer.guide/partner-werden",
+                  "Die Seite ist derzeit nicht erreichbar. Besuchen Sie fairfuehrer.guide/partner-werden.",
+                )
+              }
             >
               {t.partner_link}
             </Text>

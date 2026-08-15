@@ -7,7 +7,6 @@ import {
   Animated,
   Pressable,
   Dimensions,
-  Linking,
   Alert,
   ActivityIndicator,
 } from "react-native";
@@ -17,6 +16,7 @@ import Svg, { Path, Circle } from "react-native-svg";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
 import { syncPremiumToWeb } from "@/lib/revenuecat";
+import { openExternalUrl } from "@/lib/openExternalUrl";
 
 const FF_ORANGE = "#fc6c14";
 const FF_BLACK = "#181716";
@@ -273,11 +273,7 @@ export default function AppDrawer({ visible, onClose }: Props) {
             disabled={refreshing || status === "loading"}
           >
             <View style={s.itemIcon}>
-              {refreshing ? (
-                <ActivityIndicator size="small" color={FF_ORANGE} />
-              ) : (
-                <RefreshIcon />
-              )}
+              {refreshing ? <ActivityIndicator size="small" color={FF_ORANGE} /> : <RefreshIcon />}
             </View>
             <Text style={s.itemLabel}>
               {refreshing ? "Wird aktualisiert…" : "Daten aktualisieren"}
@@ -298,7 +294,12 @@ export default function AppDrawer({ visible, onClose }: Props) {
           <DrawerItem
             label="Feedback senden"
             icon={<FeedbackIcon />}
-            onPress={() => Linking.openURL("mailto:info@fairfuehrer.guide?subject=App-Feedback")}
+            onPress={() =>
+              openExternalUrl(
+                "mailto:info@fairfuehrer.guide?subject=App-Feedback",
+                "Auf diesem Gerät ist keine E-Mail-App eingerichtet. Sie erreichen uns unter info@fairfuehrer.guide.",
+              )
+            }
           />
         </View>
 
