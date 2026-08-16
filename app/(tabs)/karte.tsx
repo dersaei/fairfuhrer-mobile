@@ -15,6 +15,7 @@ import { useRouter, usePathname } from "expo-router";
 import * as Location from "expo-location";
 import * as Sentry from "@sentry/react-native";
 import { useTabGpsCenter } from "@/hooks/useTabGpsCenter";
+import { withPositionTimeout } from "@/lib/location";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
 import type { DirectusOrte } from "@/types";
@@ -324,11 +325,7 @@ export default function KarteScreen() {
                 (natywny), a osobny <UserLocation visible={false} onUpdate>
                 zostaje tylko po to, zeby dostac coords do userLocationRef
                 (uzywane przez globus) — puck sie nie duplikuje, bo visible=false. */}
-            <LocationPuck
-              puckBearingEnabled
-              puckBearing="heading"
-              visible
-            />
+            <LocationPuck puckBearingEnabled puckBearing="heading" visible />
             <UserLocation
               visible={false}
               onUpdate={(loc) => {
@@ -383,13 +380,12 @@ export default function KarteScreen() {
               return;
             }
             // getCurrentPositionAsync nie ma wbudowanego timeoutu i potrafi
-            // wisieć w nieskonczonosc bez fixa GPS — obudowujemy w Promise.race.
-            const pos = await Promise.race([
+            // wisieć w nieskonczonosc bez fixa GPS. Wspolny helper zamiast
+            // lokalnego Promise.race — ten zostawial wiszacy setTimeout takze
+            // wtedy, gdy pozycja przyszla na czas.
+            const pos = await withPositionTimeout(
               Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-              new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error("getCurrentPositionAsync timeout (10s)")), 10000),
-              ),
-            ]);
+            );
             const coords: [number, number] = [pos.coords.longitude, pos.coords.latitude];
             userLocationRef.current = coords;
             cameraRef.current?.setCamera({

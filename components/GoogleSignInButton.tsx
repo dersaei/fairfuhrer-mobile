@@ -66,7 +66,7 @@ export default function GoogleSignInButton({
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const gsi = require("@react-native-google-signin/google-signin");
-      const { GoogleSignin, statusCodes, isErrorWithCode, isSuccessResponse } = gsi;
+      const { GoogleSignin, isSuccessResponse } = gsi;
 
       await GoogleSignin.hasPlayServices();
       const response = await GoogleSignin.signIn();
@@ -94,18 +94,26 @@ export default function GoogleSignInButton({
         onSuccess?.();
       }
     } catch (error) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const gsi = require("@react-native-google-signin/google-signin");
-      const { statusCodes, isErrorWithCode } = gsi;
       const e = error as { code?: string };
-      if (isErrorWithCode(error)) {
-        if (e.code === statusCodes.IN_PROGRESS) {
-          return; // Anmeldung läuft bereits.
+      // Die Fehler-Helfer müssen erneut geladen werden, weil `gsi` im
+      // try-Block lebt. Das require bekommt ein eigenes try: schlägt schon
+      // das erste fehl (Native-Modul nicht verfügbar), würde ein Throw hier
+      // im catch ungefangen entweichen — der Nutzer sähe gar keine Meldung.
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const gsi = require("@react-native-google-signin/google-signin");
+        const { statusCodes, isErrorWithCode } = gsi;
+        if (isErrorWithCode(error)) {
+          if (e.code === statusCodes.IN_PROGRESS) {
+            return; // Anmeldung läuft bereits.
+          }
+          if (e.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+            onError?.("Google Play-Dienste sind nicht verfügbar oder veraltet.");
+            return;
+          }
         }
-        if (e.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-          onError?.("Google Play-Dienste sind nicht verfügbar oder veraltet.");
-          return;
-        }
+      } catch {
+        // Modul nicht ladbar — es bleibt bei der generischen Meldung.
       }
       onError?.("Anmeldung mit Google fehlgeschlagen. Bitte erneut versuchen.");
     } finally {

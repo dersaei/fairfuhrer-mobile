@@ -1,10 +1,4 @@
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
@@ -35,8 +29,8 @@ export default function DataErrorScreen() {
         <Text style={s.emoji}>📡</Text>
         <Text style={s.title}>Keine Verbindung</Text>
         <Text style={s.body}>
-          Wir konnten die Fairführer-Daten nicht laden. Prüfe deine
-          Internetverbindung und versuche es erneut.
+          Wir konnten die Fairführer-Daten nicht laden. Prüfe deine Internetverbindung und versuche
+          es erneut.
         </Text>
 
         <TouchableOpacity

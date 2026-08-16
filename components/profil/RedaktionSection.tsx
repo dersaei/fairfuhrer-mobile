@@ -63,7 +63,6 @@ async function uploadFile(uri: string, filename: string, mimeType: string): Prom
     uri,
     name: filename,
     type: mimeType,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
 
   const res = await apiFetch("/api/directus-upload", {

@@ -126,7 +126,10 @@ const s = StyleSheet.create({
     padding: 20,
     gap: 12,
   },
-  cardBrand: { backgroundColor: "#fc6c14" },
+  // 90 % Deckkraft statt Vollton: der Container wirkt auf dem weißen Screen
+  // weicher. Als Hintergrundfarbe, nicht als `opacity` auf der View — sonst
+  // würden Text und Button mit ausgeblichen.
+  cardBrand: { backgroundColor: "rgba(252, 108, 20, 0.9)" },
   /** Schrift auf orangem Grund — Weiß hat dort zu wenig Kontrast. */
   onBrand: { color: "#181716" },
   eyebrow: {

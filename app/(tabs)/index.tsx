@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Keyboard,
+  Linking,
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -102,7 +103,27 @@ export default function ListeScreen() {
     orderedIds,
     setOrderedIds,
     orderedIdsRef: gpsOrderedIdsRef,
+    status: gpsStatus,
+    sortByLocation,
   } = useGpsSort(status === "success");
+
+  // Dauerhaft abgelehnte Berechtigung lässt sich in der App nicht mehr
+  // erfragen — dann führt der Button in die Systemeinstellungen.
+  const handleSortByLocation = useCallback(() => {
+    if (gpsStatus === "blocked") {
+      Linking.openSettings().catch(() => {});
+      return;
+    }
+    sortByLocation();
+  }, [gpsStatus, sortByLocation]);
+
+  // Kurz halten: die Zeile teilt sich den Platz mit "Alle abspielen".
+  const gpsButtonLabel =
+    gpsStatus === "blocked"
+      ? "Standort aktivieren"
+      : gpsStatus === "error"
+        ? "Standort erneut suchen"
+        : "Nach Entfernung sortieren";
   const [regionFilterIds, setRegionFilterIds] = useState<Set<number> | null>(null);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
@@ -292,10 +313,36 @@ export default function ListeScreen() {
 
       {/* Przestrzeń nad kartą — GPS label po lewej, Alle abspielen button po prawej */}
       <View style={styles.aboveCards}>
-        {orderedIds && (
+        {/* Sortiert → Status-Label. Nicht sortiert → Button, der es auslöst.
+            Vorher gab es nur das Label: schlug die Ortung fehl oder wurde die
+            Berechtigung abgelehnt, hatte der Nutzer keinerlei Möglichkeit,
+            die Sortierung nachzuholen. */}
+        {orderedIds ? (
           <View style={[styles.gpsLabel, { marginLeft: LIST_HORIZONTAL_PADDING }]}>
             <Text style={styles.gpsLabelText}>Nach Entfernung sortiert</Text>
           </View>
+        ) : (
+          <TouchableOpacity
+            style={[styles.gpsSortBtn, { marginLeft: LIST_HORIZONTAL_PADDING }]}
+            onPress={handleSortByLocation}
+            disabled={gpsStatus === "locating"}
+            activeOpacity={0.7}
+          >
+            {gpsStatus === "locating" ? (
+              <>
+                <ActivityIndicator size="small" color="#fc6c14" />
+                <Text style={styles.gpsSortBtnText}>Standort wird ermittelt …</Text>
+              </>
+            ) : (
+              <>
+                <Svg width={14} height={14} viewBox="0 0 24 24">
+                  <Circle cx="12" cy="12" r="9" fill="none" stroke="#fc6c14" strokeWidth={2} />
+                  <Circle cx="12" cy="12" r="3.5" fill="#fc6c14" />
+                </Svg>
+                <Text style={styles.gpsSortBtnText}>{gpsButtonLabel}</Text>
+              </>
+            )}
+          </TouchableOpacity>
         )}
         {showAlleAbspielenBtn && (
           <TouchableOpacity
@@ -471,6 +518,28 @@ const styles = StyleSheet.create({
     color: "#fc6c14",
     letterSpacing: 0.8,
     textTransform: "uppercase",
+  },
+  // Steht an derselben Stelle wie das Label — als Button erkennbar durch
+  // Rahmen und Standort-Icon. marginLeft inline (Padding der Liste).
+  gpsSortBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#fff5ef",
+    borderWidth: 1,
+    borderColor: "#fc6c14",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    flexShrink: 1,
+  },
+  gpsSortBtnText: {
+    fontSize: 12,
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    color: "#fc6c14",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    flexShrink: 1,
   },
   // Alle abspielen — button orange po prawej stronie nad kartami. Widoczny gdy
   // user cos przefiltrowal (miasto lub kategoria) i sa piny z audio.

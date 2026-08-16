@@ -2,32 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import * as Location from "expo-location";
 import * as Sentry from "@sentry/react-native";
 import { useIsFocused } from "@react-navigation/native";
+import { withPositionTimeout } from "@/lib/location";
 
 const DEFAULT_CENTER: [number, number] = [10.0, 51.0];
 const DEFAULT_ZOOM = 5;
-const POSITION_TIMEOUT_MS = 10000;
-
-// getCurrentPositionAsync potrafi wisiec bez konca, gdy urzadzenie nie moze
-// zlapac fixa. Timer jest sprzatany takze przy sukcesie — inaczej zostawalby
-// wiszacy setTimeout na kazde wejscie na zakladke.
-function withPositionTimeout<T>(promise: Promise<T>): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`getCurrentPositionAsync timeout (${POSITION_TIMEOUT_MS / 1000}s)`)),
-      POSITION_TIMEOUT_MS,
-    );
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (err) => {
-        clearTimeout(timer);
-        reject(err);
-      },
-    );
-  });
-}
 
 export function useTabGpsCenter(dataReady: boolean): {
   center: [number, number];
