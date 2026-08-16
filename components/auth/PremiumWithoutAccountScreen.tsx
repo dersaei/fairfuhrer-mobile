@@ -24,9 +24,19 @@ import { useAuth } from "@/context/AuthContext";
  * Ziel: Nutzer klar informieren, dass Offline-Karten und Ort-Vorschläge
  * ein Konto erfordern, ohne den Kauf als Bedingung darzustellen.
  */
-export default function PremiumWithoutAccountScreen() {
+interface Props {
+  /**
+   * Öffnet direkt das Registrierungsformular statt der Zwischenseite.
+   * Wird nach dem Kauf gesetzt (purchase-success → "Konto anlegen"): der
+   * Nutzer hat seine Entscheidung dort schon getroffen und soll nicht
+   * denselben Button noch einmal drücken müssen.
+   */
+  startWithRegister?: boolean;
+}
+
+export default function PremiumWithoutAccountScreen({ startWithRegister = false }: Props = {}) {
   const { refreshPro } = useAuth();
-  const [showAuth, setShowAuth] = useState(false);
+  const [showAuth, setShowAuth] = useState(startWithRegister);
   const [restoring, setRestoring] = useState(false);
 
   const handleRestore = async () => {
@@ -42,8 +52,11 @@ export default function PremiumWithoutAccountScreen() {
     }
   };
 
+  // Direkt ins Registrierungsformular — der Welcome-View würde hier
+  // FAIRFÜHRER+ bewerben, das dieser Nutzer bereits gekauft hat.
+  // "← Zurück" führt deshalb auch hierher zurück, nicht nach Welcome.
   if (showAuth) {
-    return <AuthScreen />;
+    return <AuthScreen initialView="register" onBack={() => setShowAuth(false)} />;
   }
 
   return (
@@ -79,6 +92,12 @@ export default function PremiumWithoutAccountScreen() {
           </View>
           <Text style={s.hint}>
             Dein Kauf bleibt erhalten. Er wird automatisch mit deinem neuen Konto verknüpft.
+          </Text>
+          {/* Gleiche Bedingung wie auf dem Purchase-Success-Screen: ab dem
+              Konto hängt FAIRFÜHRER+ an der Konto-ID, nicht mehr am Gerät. */}
+          <Text style={s.hintStrong}>
+            Wichtig: Danach ist FAIRFÜHRER+ nur noch im angemeldeten Zustand nutzbar. Meldest du
+            dich ab, sind die Premium-Funktionen erst nach dem nächsten Anmelden wieder da.
           </Text>
 
           <TouchableOpacity
@@ -207,6 +226,12 @@ const s = StyleSheet.create({
     lineHeight: 17,
     marginTop: 4,
     fontStyle: "italic",
+  },
+  hintStrong: {
+    fontSize: 15,
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    color: "#181716",
+    lineHeight: 21,
   },
   primaryBtn: {
     backgroundColor: "#181716",

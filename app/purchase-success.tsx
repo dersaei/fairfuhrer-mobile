@@ -7,10 +7,12 @@ export default function PurchaseSuccessScreen() {
   const router = useRouter();
 
   const handleCreateAccount = () => {
-    // Profil-Tab öffnet AuthScreen im Registrierungs-Modus.
+    // `register=1` öffnet im Profil-Tab direkt das Registrierungsformular —
+    // ohne den Umweg über die Konto-Zwischenseite und den Welcome-View, der
+    // ausgerechnet hier FAIRFÜHRER+ bewerben würde.
     // Nach erfolgreicher Anmeldung mergt RevenueCat den anonymen Kauf
     // automatisch mit der neuen Supabase-user.id (Purchases.logIn).
-    router.replace("/(tabs)/profil");
+    router.replace({ pathname: "/(tabs)/profil", params: { register: "1" } });
   };
 
   const handleLater = () => {
@@ -38,7 +40,14 @@ export default function PurchaseSuccessScreen() {
           </View>
         </View>
 
-        <AccountBenefitsCard onCtaPress={handleCreateAccount} />
+        {/* Direkt nach dem Kauf ist die wichtigste Information nicht mehr,
+            dass ein Konto optional ist, sondern woran der Kauf ab dann
+            hängt — deshalb die eigene, hervorgehobene Fußnote. */}
+        <AccountBenefitsCard
+          onCtaPress={handleCreateAccount}
+          tone="brand"
+          footnoteVariant="post_purchase"
+        />
 
         <View style={s.ctaSection}>
           <TouchableOpacity style={s.secondaryBtn} onPress={handleLater} activeOpacity={0.7}>

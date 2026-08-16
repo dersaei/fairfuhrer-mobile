@@ -195,6 +195,12 @@ export interface AccountBenefitsContent {
   benefit_2: string;
   benefit_3: string;
   footnote?: string;
+  /**
+   * Ersetzt `footnote` nur auf dem Purchase-Success-Screen. Dort trägt die
+   * Fußnote eine Bedingung (Premium nur im angemeldeten Zustand) und wird
+   * entsprechend hervorgehoben — siehe AccountBenefitsCard `footnoteVariant`.
+   */
+  footnote_post_purchase?: string;
   cta_label: string;
 }
 
@@ -248,6 +254,13 @@ export interface AuthScreenContent {
   plans_free_features?: PlanFeature[];
   plans_premium_title?: string;
   plans_premium_features?: PlanFeature[];
+  // Hinweiskarte für Rückkehrer (Welcome-Screen): wer schon gekauft hat,
+  // soll sich anmelden statt ein zweites Mal zu kaufen. Felder existieren
+  // noch nicht in Directus — bis dahin greifen die Defaults in AuthScreen.
+  returning_headline?: string;
+  returning_text?: string;
+  returning_btn_login?: string;
+  returning_btn_restore?: string;
   // Formular-Zusatztexte
   password_hint?: string;
   consent_prefix?: string;

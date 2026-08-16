@@ -9,9 +9,9 @@ import AuthScreen from "@/components/auth/AuthScreen";
 // das Modal automatisch (router.back), der Paywall darunter behält seinen
 // State (gewähltes Paket) und kann den Kauf direkt fortsetzen.
 //
-// Wir starten den AuthScreen sofort im Login-View (skipWelcome) — Welcome
-// mit den PlanCompareCards würde wie ein zweiter Paywall wirken und den
-// Nutzer verwirren.
+// Wir starten den AuthScreen sofort im Login-View — Welcome mit den
+// PlanCompareCards würde wie ein zweiter Paywall wirken und den Nutzer
+// verwirren.
 export default function AuthModal() {
   const router = useRouter();
   const { session } = useAuth();
@@ -24,7 +24,7 @@ export default function AuthModal() {
 
   return (
     <View style={styles.container}>
-      <AuthScreen skipWelcome />
+      <AuthScreen initialView="login" />
     </View>
   );
 }

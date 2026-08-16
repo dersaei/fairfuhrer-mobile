@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import Purchases, { PurchasesPackage } from "react-native-purchases";
-import { ENTITLEMENT_ID } from "@/lib/revenuecat";
+import { ENTITLEMENT_ID, isAlreadyOwnedError, restoreAndCheckPro } from "@/lib/revenuecat";
 import { useAuth } from "@/context/AuthContext";
 import { getPaywallContent, type PaywallContent } from "@/lib/directus";
 import AccountBenefitsCard from "@/components/AccountBenefitsCard";
@@ -146,24 +146,47 @@ export default function PaywallScreen() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Nach erfolgreichem Kauf bzw. Restore: Status auffrischen und weiter.
+  // Bez Kontos: zeige Erfolgs-Screen mit Konto-Anmeldeoption (für
+  // Offline-Karten und Ort-Vorschläge). Mit Konto: direkt zurück.
+  const finishWithPro = async () => {
+    await refreshPro();
+    if (!session) {
+      router.replace("/purchase-success");
+    } else {
+      router.back();
+    }
+  };
+
   const executePurchase = async (pkg: PurchasesPackage) => {
     setPurchasing(true);
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       if (customerInfo.entitlements.active[ENTITLEMENT_ID]) {
-        await refreshPro();
-        // Bez Kontos: zeige Erfolgs-Screen mit Konto-Anmeldeoption
-        // (für Offline-Karten und Ort-Vorschläge). Mit Konto: direkt zurück.
-        if (!session) {
-          router.replace("/purchase-success");
-        } else {
-          router.back();
-        }
+        await finishWithPro();
       }
     } catch (e: any) {
-      if (!e.userCancelled) {
-        Alert.alert("Fehler", "Kauf konnte nicht abgeschlossen werden.");
+      if (e.userCancelled) return;
+
+      // "Gehört dir bereits": Der Store kennt den Kauf, RevenueCat hat ihn
+      // aber einer anderen App-User-ID zugeordnet — typischerweise der
+      // anonymen ID von vor der Registrierung. Ein Restore hängt den Beleg
+      // an den aktuellen Nutzer; sonst säße der Käufer fest (kein zweiter
+      // Kauf möglich, aber auch kein Premium).
+      if (isAlreadyOwnedError(e)) {
+        const recovered = await restoreAndCheckPro().catch(() => false);
+        if (recovered) {
+          await finishWithPro();
+        } else {
+          Alert.alert(
+            "Kauf bereits vorhanden",
+            "Dein Kauf konnte diesem Konto nicht zugeordnet werden. Bitte versuche es über „Käufe wiederherstellen“ — falls das nicht hilft, melde dich bei uns.",
+          );
+        }
+        return;
       }
+
+      Alert.alert("Fehler", "Kauf konnte nicht abgeschlossen werden.");
     } finally {
       setPurchasing(false);
     }

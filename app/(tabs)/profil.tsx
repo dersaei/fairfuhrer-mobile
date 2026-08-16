@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import MenuButton from "@/components/MenuButton";
 import AuthScreen from "@/components/auth/AuthScreen";
@@ -98,6 +99,24 @@ function AccountScreen() {
 
 export default function ProfilScreen() {
   const { user, isPro, isLoading } = useAuth();
+  // `?register=1` — gesetzt von Screens, deren CTA schon "Konto anlegen"
+  // heißt (purchase-success). Der Nutzer landet dann sofort im Formular
+  // statt auf einer weiteren Zwischenseite mit demselben Button.
+  const { register } = useLocalSearchParams<{ register?: string }>();
+  const router = useRouter();
+  const wantsRegister = register === "1";
+
+  // Parameter nach dem ersten Render wieder entfernen. Er bleibt sonst am
+  // Tab kleben und würde den Nutzer später (z. B. nach dem Abmelden) erneut
+  // im Registrierungsformular statt im Welcome-View landen lassen. Die
+  // Kind-Komponenten haben ihn zu diesem Zeitpunkt schon als Startzustand
+  // übernommen — das Zurücksetzen wirft sie also nicht zurück.
+  useEffect(() => {
+    // Erst wenn der Auth-Status steht — solange geladen wird, ist noch kein
+    // Kind gerendert, das den Startzustand übernehmen könnte.
+    if (isLoading || register === undefined) return;
+    router.setParams({ register: undefined });
+  }, [isLoading, register, router]);
 
   if (isLoading) {
     return (
@@ -113,9 +132,9 @@ export default function ProfilScreen() {
   if (user) return <AccountScreen />;
   // Bez konta ale z premium (kupił anonimowo) → dedykowany ekran z zachętą
   // do założenia konta dla Offline-Karten i Ort-Vorschläge
-  if (isPro) return <PremiumWithoutAccountScreen />;
+  if (isPro) return <PremiumWithoutAccountScreen startWithRegister={wantsRegister} />;
   // Bez konta i bez premium → standardowy welcome/login
-  return <AuthScreen />;
+  return <AuthScreen initialView={wantsRegister ? "register" : "welcome"} />;
 }
 
 const s = StyleSheet.create({

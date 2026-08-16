@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
-import Purchases, { LOG_LEVEL, CustomerInfo } from "react-native-purchases";
+import Purchases, { LOG_LEVEL, CustomerInfo, PURCHASES_ERROR_CODE } from "react-native-purchases";
+import * as Sentry from "@sentry/react-native";
+import { supabase } from "@/lib/supabase";
 
 // ─── API keys ────────────────────────────────────────────────────────────────
 // RevenueCat public SDK keys are safe to ship in the client, but we still
@@ -49,12 +51,74 @@ export function initializePurchases() {
 
 // ─── Identity ───────────────────────────────────────────────────────────────
 
+/**
+ * Verbindet den RevenueCat-Kunden mit der Supabase-user.id.
+ *
+ * WICHTIG: `logIn` überträgt einen anonym getätigten Kauf NICHT zuverlässig.
+ * Ob der Kauf mitwandert, hängt vom Transfer-Behavior des RC-Projekts ab —
+ * und laut RC-Doku unterbleibt die Übertragung ganz, wenn die Ziel-ID
+ * bereits mit einem anonymen Alias existiert ("No merge or purchase
+ * transfer occurs"). Dann bleibt der Beleg auf der anonymen ID liegen, die
+ * `logIn` gleichzeitig unerreichbar macht: Der Store meldet beim erneuten
+ * Kaufversuch "gehört dir bereits", die App zeigt aber "Kostenlos".
+ *
+ * Deshalb vergleichen wir den Entitlement-Status vor und nach dem Login und
+ * holen den Kauf im Verlustfall per `restorePurchases()` zurück — das hängt
+ * den Store-Beleg an die jetzt aktive App-User-ID.
+ */
 export async function identifyUser(userId: string) {
   try {
-    await Purchases.logIn(userId);
+    const hadProBefore = hasPro(await Purchases.getCustomerInfo());
+    const { customerInfo } = await Purchases.logIn(userId);
+    if (!hadProBefore || hasPro(customerInfo)) return;
   } catch (e) {
     console.error("[RevenueCat] identifyUser error:", e);
+    Sentry.captureException(e, { tags: { feature: "rc-identity" } });
+    return;
   }
+
+  console.warn("[RevenueCat] Entitlement nach logIn verloren — Restore wird versucht");
+  Sentry.captureMessage("RC: entitlement lost on logIn, attempting restore", {
+    level: "warning",
+    tags: { feature: "rc-identity" },
+  });
+
+  try {
+    const restored = await Purchases.restorePurchases();
+    if (!hasPro(restored)) {
+      // Kommt vor, wenn das RC-Projekt auf "Keep with original App User ID"
+      // steht oder der Beleg einem anderen Store-Konto gehört. Dann hilft nur
+      // noch Support / Dashboard — die App kann es nicht selbst reparieren.
+      Sentry.captureMessage("RC: restore after logIn did not recover entitlement", {
+        level: "error",
+        tags: { feature: "rc-identity" },
+      });
+    }
+  } catch (e) {
+    console.error("[RevenueCat] restore after logIn error:", e);
+    Sentry.captureException(e, { tags: { feature: "rc-identity" } });
+  }
+}
+
+/**
+ * Hängt vorhandene Store-Käufe an die aktuelle App-User-ID und meldet, ob
+ * damit Premium aktiv ist. Wirft die RC-Fehler durch — Aufrufer entscheiden
+ * über die Nutzermeldung.
+ */
+export async function restoreAndCheckPro(): Promise<boolean> {
+  return hasPro(await Purchases.restorePurchases());
+}
+
+/**
+ * Der Store kennt den Kauf schon, RevenueCat ordnet ihn aber der aktuellen
+ * App-User-ID nicht zu. Genau der Fall, den ein Restore auflösen kann.
+ */
+export function isAlreadyOwnedError(e: unknown): boolean {
+  const code = (e as { code?: string } | null)?.code;
+  return (
+    code === PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR ||
+    code === PURCHASES_ERROR_CODE.RECEIPT_ALREADY_IN_USE_ERROR
+  );
 }
 
 export async function setUserEmail(email: string | null | undefined) {
@@ -119,8 +183,6 @@ export function addCustomerInfoListener(listener: CustomerInfoListener): () => v
 //
 // Fire-and-forget: Fehler werden geloggt (Sentry), aber nicht dem Nutzer
 // gezeigt — mobile funktioniert weiterhin dank lokalem RC-SDK.
-import * as Sentry from "@sentry/react-native";
-import { supabase } from "@/lib/supabase";
 
 export async function syncPremiumToWeb(): Promise<void> {
   try {

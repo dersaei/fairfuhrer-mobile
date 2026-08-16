@@ -10,11 +10,14 @@ import {
   Platform,
   ScrollView,
   ImageBackground,
+  Alert,
 } from "react-native";
+import { restoreAndCheckPro } from "@/lib/revenuecat";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 import { AuthWeakPasswordError } from "@supabase/supabase-js";
 import MenuButton from "@/components/MenuButton";
 import PlanCompareCard, { type Feature } from "@/components/PlanCompareCard";
@@ -74,6 +77,11 @@ const DEFAULTS = {
     { text: "Neue Orte vorschlagen & eigene Pins erstellen" },
     { text: "Pins werden von unseren Redakteuren geprüft" },
   ] as Feature[],
+  returning_headline: "Schon FAIRFÜHRER+ gekauft?",
+  returning_text:
+    "Dann kauf es nicht noch einmal. Mit Konto: melde dich an — dein Abo ist sofort wieder aktiv. Ohne Konto gekauft: stelle deinen Kauf auf diesem Gerät wieder her.",
+  returning_btn_login: "Anmelden",
+  returning_btn_restore: "Käufe wiederherstellen",
   password_hint:
     "Mindestens 8 Zeichen mit Groß- und Kleinbuchstaben, einer Zahl und einem Sonderzeichen (z. B. !, @, #). Wähle ein einzigartiges Passwort – wir empfehlen einen Passwort-Manager (z. B. Dashlane, 1Password) zum Erstellen sicherer Passwörter.",
   consent_prefix: "Ich habe die",
@@ -85,16 +93,25 @@ const DEFAULTS = {
 
 interface AuthScreenProps {
   /**
-   * Wenn true, startet der Screen direkt im Login-View statt im Welcome-View
-   * mit den PlanCompareCards. Wird vom auth-modal genutzt — dort kommt der
-   * Nutzer vom Paywall und braucht keinen zweiten Verkaufstext.
+   * Startansicht. Default "welcome" (Hero + PlanCompareCards).
+   * Aufrufer, die den Nutzer schon abgeholt haben, überspringen Welcome —
+   * sonst wirkt es wie ein zweiter Verkaufstext: das auth-modal kommt vom
+   * Paywall ("login"), der Post-Kauf-Flow will direkt zur Registrierung
+   * ("register").
    */
-  skipWelcome?: boolean;
+  initialView?: AuthView;
+  /**
+   * Ersetzt das Verhalten des "← Zurück"-Buttons im Login-/Register-View.
+   * Ohne Callback führt er in den Welcome-View — für Nutzer, die
+   * FAIRFÜHRER+ bereits gekauft haben, wäre das falsch, weil Welcome
+   * genau dieses Abo bewirbt.
+   */
+  onBack?: () => void;
 }
 
-export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}) {
+export default function AuthScreen({ initialView = "welcome", onBack }: AuthScreenProps = {}) {
   const router = useRouter();
-  const [view, setView] = useState<AuthView>(skipWelcome ? "login" : "welcome");
+  const [view, setView] = useState<AuthView>(initialView);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -104,6 +121,8 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
   const [forgotSuccess, setForgotSuccess] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [content, setContent] = useState<AuthScreenContent | null>(null);
+  const [restoring, setRestoring] = useState(false);
+  const { refreshPro } = useAuth();
 
   useEffect(() => {
     let active = true;
@@ -148,6 +167,10 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
     plans_free_features: content?.plans_free_features ?? DEFAULTS.plans_free_features,
     plans_premium_title: content?.plans_premium_title || DEFAULTS.plans_premium_title,
     plans_premium_features: content?.plans_premium_features ?? DEFAULTS.plans_premium_features,
+    returning_headline: content?.returning_headline || DEFAULTS.returning_headline,
+    returning_text: content?.returning_text || DEFAULTS.returning_text,
+    returning_btn_login: content?.returning_btn_login || DEFAULTS.returning_btn_login,
+    returning_btn_restore: content?.returning_btn_restore || DEFAULTS.returning_btn_restore,
     password_hint: content?.password_hint || DEFAULTS.password_hint,
     consent_prefix: content?.consent_prefix || DEFAULTS.consent_prefix,
     consent_terms_link: content?.consent_terms_link || DEFAULTS.consent_terms_link,
@@ -168,6 +191,29 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
   const switchView = (v: AuthView) => {
     reset();
     setView(v);
+  };
+
+  // Käufe wiederherstellen ohne Konto: hängt das Store-Abo an die aktuelle
+  // (anonyme) App-User-ID. Für Nutzer, die ohne Konto gekauft haben oder die
+  // App neu installiert haben — mit Konto ist Anmelden der richtige Weg.
+  const handleRestore = async () => {
+    setRestoring(true);
+    try {
+      const recovered = await restoreAndCheckPro();
+      await refreshPro();
+      // Bei Erfolg wechselt der Profil-Tab von selbst auf den Premium-Screen
+      // (isPro ist dann true) — eine Erfolgsmeldung wäre nur ein Klick mehr.
+      if (!recovered) {
+        Alert.alert(
+          "Keine Käufe gefunden",
+          "Auf diesem Gerät ist kein Kauf hinterlegt. Wenn du beim Kauf ein Konto hattest, melde dich bitte mit diesem Konto an.",
+        );
+      }
+    } catch {
+      Alert.alert("Fehler", "Wiederherstellung fehlgeschlagen.");
+    } finally {
+      setRestoring(false);
+    }
   };
 
   const handleLogin = async () => {
@@ -299,6 +345,30 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
           </ImageBackground>
 
           <View style={s.welcomeValueSection}>
+            {/* Steht bewusst VOR den Plan-Karten: wer schon bezahlt hat, soll
+                nicht erst an einem Kaufangebot vorbei. Betrifft vor allem
+                abgemeldete Nutzer — ihr Abo hängt an der Konto-ID, das Gerät
+                zeigt hier sonst nur wieder den Verkaufstext. */}
+            <View style={s.returningCard}>
+              <Text style={s.returningHeadline}>{t.returning_headline}</Text>
+              <Text style={s.returningText}>{t.returning_text}</Text>
+              <TouchableOpacity style={s.returningBtnPrimary} onPress={() => switchView("login")}>
+                <Text style={s.returningBtnPrimaryText}>{t.returning_btn_login}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={s.returningBtnSecondary}
+                onPress={handleRestore}
+                disabled={restoring}
+                activeOpacity={0.7}
+              >
+                {restoring ? (
+                  <ActivityIndicator color="#181716" size="small" />
+                ) : (
+                  <Text style={s.returningBtnSecondaryText}>{t.returning_btn_restore}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
             <PlanCompareCard title={t.plans_free_title} features={t.plans_free_features} />
 
             <PlanCompareCard
@@ -405,7 +475,7 @@ export default function AuthScreen({ skipWelcome = false }: AuthScreenProps = {}
       >
         <View style={s.headerPlaceholder}>
           <TouchableOpacity
-            onPress={() => switchView("welcome")}
+            onPress={onBack ?? (() => switchView("welcome"))}
             style={s.headerSpacer}
             hitSlop={8}
           >
@@ -768,6 +838,52 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 28,
     gap: 16,
+  },
+  returningCard: {
+    borderWidth: 1.5,
+    borderColor: "#fc6c14",
+    backgroundColor: "#fff5ef",
+    borderRadius: 14,
+    padding: 18,
+    gap: 10,
+  },
+  returningHeadline: {
+    fontFamily: "Anton_400Regular",
+    fontSize: 22,
+    color: "#181716",
+    letterSpacing: 0.5,
+  },
+  returningText: {
+    fontSize: 15,
+    fontFamily: "FiraSansCondensed_400Regular",
+    color: "#181716",
+    lineHeight: 21,
+  },
+  returningBtnPrimary: {
+    backgroundColor: "#181716",
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  returningBtnPrimaryText: {
+    color: "#fc6c14",
+    fontSize: 17,
+    fontFamily: "FiraSansCondensed_700Bold",
+    letterSpacing: 0.5,
+  },
+  returningBtnSecondary: {
+    borderWidth: 1.5,
+    borderColor: "#181716",
+    borderRadius: 12,
+    paddingVertical: 11,
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  returningBtnSecondaryText: {
+    fontFamily: "FiraSansCondensed_600SemiBold",
+    fontSize: 15,
+    color: "#181716",
   },
   welcomeBtnPremium: {
     backgroundColor: "#181716",
