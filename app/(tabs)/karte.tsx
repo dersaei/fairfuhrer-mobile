@@ -9,6 +9,8 @@ import Mapbox, {
   ShapeSource,
   CircleLayer,
   SymbolLayer,
+  Images,
+  Image as MapImage,
 } from "@rnmapbox/maps";
 import type { ComponentRef } from "react";
 import { useRouter, usePathname } from "expo-router";
@@ -20,7 +22,7 @@ import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
 import type { DirectusOrte } from "@/types";
 import HomeHeader from "@/components/HomeHeader";
-import { CATEGORY_COLORS } from "@/components/CategoryIcon";
+import { CategoryIcon, CATEGORY_COLORS } from "@/components/CategoryIcon";
 import { KategorieBar } from "@/components/KategorieBar";
 import { SearchSection, type SearchSectionHandle } from "@/components/SearchSection";
 
@@ -30,6 +32,23 @@ Mapbox.setAccessToken(MAPBOX_TOKEN);
 Mapbox.setTelemetryEnabled(false);
 
 const DEFAULT_COLOR = "#fc6c14";
+
+// ─── Pin-Icons ───────────────────────────────────────────────────────────────
+// Die Pins tragen dieselben Icons wie die Kategorie-Leiste. Möglich, weil
+// <Image> aus @rnmapbox/maps eine React-View entgegennimmt und sie zu einem
+// Karten-Icon rastert — wir rendern also direkt <CategoryIcon> statt eigene
+// PNGs zu pflegen. Namen der Icons müssen zur `categoryIcon`-Property im
+// GeoJSON passen.
+const ICON_CATEGORY_IDS = Object.keys(CATEGORY_COLORS).map(Number);
+const ICON_NAME_DEFAULT = "cat-default";
+const iconName = (catId: number | null) =>
+  catId !== null && CATEGORY_COLORS[catId] ? `cat-${catId}` : ICON_NAME_DEFAULT;
+// Größe der gerasterten View in pt. Etwas größer als die früheren Kreise
+// (r=10), sonst wäre das Icon im Pin nicht lesbar.
+const ICON_SIZE = 26;
+// Radius des weißen Halos darunter — ersetzt den früheren circleStroke und
+// hält die Pins auf bunten Karten-Hintergründen erkennbar.
+const ICON_HALO_RADIUS = 13.5;
 
 // ─── GeoJSON builder ──────────────────────────────────────────────────────────
 
@@ -54,6 +73,7 @@ function placesToGeoJSON(
             locked: lockedIds.has(p.id) ? 1 : 0,
             categoryColor:
               catId !== null ? (CATEGORY_COLORS[catId] ?? DEFAULT_COLOR) : DEFAULT_COLOR,
+            categoryIcon: iconName(catId),
           },
         };
       }),
@@ -260,6 +280,24 @@ export default function KarteScreen() {
               animationDuration={800}
             />
 
+            {/* Ikony pinów — rejestrowane pod nazwami, do których odwołuje się
+                `iconImage` w warstwie symboli. Renderujemy ten sam komponent,
+                co pasek kategorii, więc ikona na mapie i ikona przy nazwie
+                kategorii nie mogą się rozjechać. */}
+            <Images>
+              {ICON_CATEGORY_IDS.map((id) => (
+                <MapImage key={id} name={`cat-${id}`}>
+                  <CategoryIcon categoryId={id} color={CATEGORY_COLORS[id]} size={ICON_SIZE} />
+                </MapImage>
+              ))}
+              {/* -1 = ID bez własnej ikony → CategoryIcon rysuje generyczny
+                  pin (DEFAULT_ICON_PATHS). null wzięłoby ikonę „alle
+                  Kategorien", co na pojedynczym pinie byłoby mylące. */}
+              <MapImage name={ICON_NAME_DEFAULT}>
+                <CategoryIcon categoryId={-1} color={DEFAULT_COLOR} size={ICON_SIZE} />
+              </MapImage>
+            </Images>
+
             {/* Jeden source dla wszystkich miejsc — klastry natywnie w GPU */}
             <ShapeSource
               ref={shapeSourceRef}
@@ -304,15 +342,26 @@ export default function KarteScreen() {
                 }}
               />
 
-              {/* Pojedyncze piny */}
+              {/* Pojedyncze piny — biały halo pod spodem, ikona kategorii na
+                  wierzchu. Kolejność JSX = kolejność warstw. */}
               <CircleLayer
+                id="unclustered-halo"
+                filter={["!", ["has", "point_count"]]}
+                style={{
+                  circleColor: "#fff",
+                  circleRadius: ICON_HALO_RADIUS,
+                }}
+              />
+              <SymbolLayer
                 id="unclustered"
                 filter={["!", ["has", "point_count"]]}
                 style={{
-                  circleColor: ["get", "categoryColor"],
-                  circleRadius: 10,
-                  circleStrokeWidth: 2,
-                  circleStrokeColor: "#fff",
+                  iconImage: ["get", "categoryIcon"],
+                  // Piny nie mogą znikać przy zagęszczeniu — dotąd były to
+                  // koła, które Mapbox rysuje zawsze. Bez tych dwóch flag
+                  // symbol-collision ukrywałby część pinów.
+                  iconAllowOverlap: true,
+                  iconIgnorePlacement: true,
                 }}
               />
             </ShapeSource>

@@ -17,6 +17,8 @@ import { usePlacesStore } from "@/stores/placesStore";
 import { useAuth } from "@/context/AuthContext";
 import { usePlaylistStore } from "@/stores/playlistStore";
 import { getAudioUrl } from "@/lib/mediaUrls";
+import { BRAND_ORANGE_TEXT } from "@/lib/colors";
+import HomeHeader from "@/components/HomeHeader";
 import { supabase } from "@/lib/supabase";
 import type { DirectusOrte, DirectusKategorie } from "@/types";
 
@@ -60,6 +62,7 @@ export default function TourScreen() {
   const places = usePlacesStore((s) => s.places);
   const categories = usePlacesStore((s) => s.categories);
   const status = usePlacesStore((s) => s.status);
+  const einstellungen = usePlacesStore((s) => s.einstellungen);
   const getVisiblePlaces = usePlacesStore((s) => s.getVisiblePlaces);
   const startPlaylist = usePlaylistStore((s) => s.startPlaylist);
 
@@ -192,6 +195,10 @@ export default function TourScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={["top"]}>
+      {/* Logo + Burger wie auf Liste und Karte — außerhalb der ScrollView,
+          damit die Kopfzeile beim Scrollen stehen bleibt und das Menü auf
+          allen Tabs an derselben Stelle sitzt. */}
+      <HomeHeader einstellungen={einstellungen} />
       <ScrollView contentContainerStyle={s.scroll}>
         <View style={s.header}>
           <Text style={s.headerTitle}>Tour</Text>
@@ -290,10 +297,14 @@ const s = StyleSheet.create({
   },
 
   section: { marginTop: 24, paddingHorizontal: 20 },
+  // Orange hebt die drei Gliederungspunkte ("Nach Umgebung", "Nach Stadt",
+  // "Nach Kategorie") von den Einträgen darunter ab — Vorgabe von Miriam,
+  // damit die Struktur der Seite sofort erkennbar ist. BRAND_ORANGE_TEXT
+  // statt BRAND_ORANGE, weil die Titel auf weißem Grund stehen.
   sectionTitle: {
     fontSize: 18,
     fontFamily: "FiraSansCondensed_600SemiBold",
-    color: "#18222F",
+    color: BRAND_ORANGE_TEXT,
     marginBottom: 12,
   },
 

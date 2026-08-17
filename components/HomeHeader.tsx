@@ -48,13 +48,16 @@ const styles = StyleSheet.create({
     width: 36,
     alignItems: "flex-end",
   },
+  // resizeMode="contain" — die Höhe steuert die Größe, die Breite folgt dem
+  // Seitenverhältnis. Der Text-Fallback darunter wird im gleichen Verhältnis
+  // skaliert, damit beide Varianten gleich groß wirken.
   logoImage: {
     flex: 1,
-    height: 76,
+    height: 68,
   },
   logo: {
     fontFamily: "Anton_400Regular",
-    fontSize: 30,
+    fontSize: 27,
     color: "#fc6c14",
     textAlign: "center",
     letterSpacing: 3,

@@ -212,7 +212,9 @@ export const SearchSection = forwardRef<SearchSectionHandle, SearchSectionProps>
           <TextInput
             style={styles.searchInput}
             placeholder="Suche…"
-            placeholderTextColor="rgba(255,255,255,0.7)"
+            // Voll deckendes Weiß auf dem orangenen Balken — wie auf der
+            // Website. Vorher 70 % Deckkraft, was auf #fc6c14 ausgewaschen wirkte.
+            placeholderTextColor="#fff"
             value={query}
             onChangeText={(t) => {
               setQuery(t);

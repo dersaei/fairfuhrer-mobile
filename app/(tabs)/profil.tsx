@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -104,18 +104,29 @@ export default function ProfilScreen() {
   // statt auf einer weiteren Zwischenseite mit demselben Button.
   const { register } = useLocalSearchParams<{ register?: string }>();
   const router = useRouter();
-  const wantsRegister = register === "1";
+  // Der Wunsch "direkt zur Registrierung" gilt genau EINMAL. Ihn nur über den
+  // Param zu steuern hat nicht gereicht: `setParams({ register: undefined })`
+  // räumt ihn am Tab nicht zuverlässig ab, er klebte dort weiter — und nach
+  // dem Abmelden landete der Nutzer wieder im Registrierungsformular statt
+  // im Welcome-View, das der Profil-Tab dann zeigen soll.
+  const consumedRef = useRef(false);
+  const wantsRegister = register === "1" && !consumedRef.current;
 
-  // Parameter nach dem ersten Render wieder entfernen. Er bleibt sonst am
-  // Tab kleben und würde den Nutzer später (z. B. nach dem Abmelden) erneut
-  // im Registrierungsformular statt im Welcome-View landen lassen. Die
-  // Kind-Komponenten haben ihn zu diesem Zeitpunkt schon als Startzustand
-  // übernommen — das Zurücksetzen wirft sie also nicht zurück.
   useEffect(() => {
     // Erst wenn der Auth-Status steht — solange geladen wird, ist noch kein
     // Kind gerendert, das den Startzustand übernehmen könnte.
-    if (isLoading || register === undefined) return;
-    router.setParams({ register: undefined });
+    if (isLoading) return;
+    if (register === "1") {
+      // Die Kind-Komponenten haben den Startzustand in diesem Render bereits
+      // übernommen; ab jetzt darf der Param nichts mehr auslösen. Zusätzlich
+      // überschreiben wir ihn — anders als `undefined` wird ein leerer String
+      // zuverlässig übernommen, und ein späterer Kauf kann den Wunsch dann
+      // erneut setzen.
+      consumedRef.current = true;
+      router.setParams({ register: "" });
+    } else {
+      consumedRef.current = false;
+    }
   }, [isLoading, register, router]);
 
   if (isLoading) {

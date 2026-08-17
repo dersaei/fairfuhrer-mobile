@@ -10,8 +10,14 @@ export const unstable_settings = {
   initialRouteName: "index",
 };
 
+// Tab-Farben an einer Stelle: Icons und Labels müssen dieselben Werte nutzen,
+// sonst driften sie beim nächsten Design-Update auseinander. Inaktiv ist
+// Schwarz statt Grau — Vorgabe für die Konsistenz mit der Website.
+const TAB_ACTIVE = "#fc6c14";
+const TAB_INACTIVE = "#181716";
+
 function ListeIcon({ focused }: { focused: boolean }) {
-  const color = focused ? "#fc6c14" : "#999";
+  const color = focused ? TAB_ACTIVE : TAB_INACTIVE;
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
       <Path
@@ -26,7 +32,7 @@ function ListeIcon({ focused }: { focused: boolean }) {
 }
 
 function KarteIcon({ focused }: { focused: boolean }) {
-  const color = focused ? "#fc6c14" : "#999";
+  const color = focused ? TAB_ACTIVE : TAB_INACTIVE;
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
       <Path
@@ -42,7 +48,7 @@ function KarteIcon({ focused }: { focused: boolean }) {
 }
 
 function TourIcon({ focused }: { focused: boolean }) {
-  const color = focused ? "#fc6c14" : "#999";
+  const color = focused ? TAB_ACTIVE : TAB_INACTIVE;
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
       <Circle cx={12} cy={12} r={10} stroke={color} strokeWidth={2} />
@@ -52,7 +58,7 @@ function TourIcon({ focused }: { focused: boolean }) {
 }
 
 function ProfilIcon({ focused }: { focused: boolean }) {
-  const color = focused ? "#fc6c14" : "#999";
+  const color = focused ? TAB_ACTIVE : TAB_INACTIVE;
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
       <Circle cx={12} cy={8} r={4} stroke={color} strokeWidth={2} />
@@ -82,8 +88,8 @@ export default function TabsLayout() {
         // widoczne jako lag. Z lazy=false Tour renderuje się w tle podczas
         // ekranu splash, więc pierwszy tap jest natychmiastowy.
         lazy: false,
-        tabBarActiveTintColor: "#fc6c14",
-        tabBarInactiveTintColor: "#999",
+        tabBarActiveTintColor: TAB_ACTIVE,
+        tabBarInactiveTintColor: TAB_INACTIVE,
         tabBarStyle: {
           backgroundColor: "#fff",
           borderTopColor: "#eee",

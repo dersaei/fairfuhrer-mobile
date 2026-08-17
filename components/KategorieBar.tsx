@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CategoryIcon, CATEGORY_COLORS } from "./CategoryIcon";
 import { isSightsCategory } from "@/stores/placesStore";
+import { BRAND_ORANGE_TEXT } from "@/lib/colors";
 import type { DirectusKategorie } from "@/types";
 
 const DEFAULT_COLOR = "#fc6c14";
@@ -195,7 +196,14 @@ export function KategorieBar({
             </TouchableOpacity>
           </>
         ) : (
-          <Text style={[styles.kategorieBarText, { color: "#000" }]}>Kategorie wählen ›</Text>
+          // Orange auf hellorangem Balken — Vorgabe für die Konsistenz mit
+          // der Website. Bewusst BRAND_ORANGE_TEXT statt BRAND_ORANGE: das
+          // helle Orange käme auf BAR_BG nur auf 2,65:1 und wäre bei
+          // Sonnenlicht kaum lesbar. Bei gewählter Kategorie färbt sich der
+          // Balken in die Kategoriefarbe, dort bleibt die Schrift weiß (oben).
+          <Text style={[styles.kategorieBarText, { color: BRAND_ORANGE_TEXT }]}>
+            Kategorie wählen ›
+          </Text>
         )}
       </TouchableOpacity>
     </View>
